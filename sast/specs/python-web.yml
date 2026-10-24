@@ -1,0 +1,213 @@
+# Sentinel specification pack for Python web apps.
+#
+# These are ordinary Semgrep rules. Sentinel does not use them to report findings. It uses
+# them to *locate* sources, sinks and sanitizers, and lifts every match into a Datalog fact
+# (see sentinel/extract/semgrep_specs.py). Each rule declares its role in metadata.sentinel:
+#   role: source | sink | sanitizer
+#   cls:  vulnerability class (sinks, sanitizers) or `all` (sanitizers that neutralise everything)
+#   kind: source kind (sources): http | cookie | cli | header
+# Sinks must focus the *dangerous argument* (focus-metavariable) so the match span is exactly
+# the expression that must not be attacker-controlled.
+rules:
+  # ───────────────────────────── sources ─────────────────────────────
+  - id: spec.source.flask.request-params
+    languages: [python]
+    severity: INFO
+    message: source
+    metadata: {sentinel: {role: source, kind: http}}
+    pattern-either:
+      - pattern: flask.request.args.get(...)
+      - pattern: flask.request.args[...]
+      - pattern: flask.request.form.get(...)
+      - pattern: flask.request.form[...]
+      - pattern: flask.request.values.get(...)
+      - pattern: flask.request.get_json(...)
+      - pattern: flask.request.get_data(...)
+      - pattern: flask.request.data
+      - pattern: flask.request.json
+  - id: spec.source.flask.cookies
+    languages: [python]
+    severity: INFO
+    message: source
+    metadata: {sentinel: {role: source, kind: cookie}}
+    pattern-either:
+      - pattern: flask.request.cookies.get(...)
+      - pattern: flask.request.cookies[...]
+  - id: spec.source.flask.headers
+    languages: [python]
+    severity: INFO
+    message: source
+    metadata: {sentinel: {role: source, kind: header}}
+    pattern-either:
+      - pattern: flask.request.headers.get(...)
+      - pattern: flask.request.headers[...]
+  - id: spec.source.cli.argv
+    languages: [python]
+    severity: INFO
+    message: source
+    metadata: {sentinel: {role: source, kind: cli}}
+    pattern: sys.argv
+
+  # ───────────────────────────── sinks ─────────────────────────────
+  - id: spec.sink.sqli.dbapi-execute
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: sqli, cwe: CWE-89}}
+    patterns:
+      - pattern-either:
+          - pattern: $CUR.execute($Q, ...)
+          - pattern: $CUR.executemany($Q, ...)
+          - pattern: $CUR.executescript($Q)
+      - focus-metavariable: $Q
+  - id: spec.sink.cmdi.os
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: cmdi, cwe: CWE-78}}
+    patterns:
+      - pattern-either:
+          - pattern: os.system($X)
+          - pattern: os.popen($X, ...)
+      - focus-metavariable: $X
+  - id: spec.sink.cmdi.subprocess-shell
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: cmdi, cwe: CWE-78}}
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.$F($X, ..., shell=True, ...)
+      - metavariable-regex: {metavariable: $F, regex: ^(run|call|check_call|check_output|Popen)$}
+      - focus-metavariable: $X
+  - id: spec.sink.path.file-access
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: path, cwe: CWE-22}}
+    patterns:
+      - pattern-either:
+          - pattern: open($P, ...)
+          - pattern: flask.send_file($P, ...)
+          - pattern: os.remove($P)
+          - pattern: shutil.rmtree($P, ...)
+      - focus-metavariable: $P
+  - id: spec.sink.ssti.render-template-string
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: ssti, cwe: CWE-1336}}
+    patterns:
+      - pattern: flask.render_template_string($T, ...)
+      - focus-metavariable: $T
+  - id: spec.sink.xss.markup
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: xss, cwe: CWE-79}}
+    patterns:
+      - pattern-either:
+          - pattern: markupsafe.Markup($X)
+          - pattern: flask.make_response($X, ...)
+      - focus-metavariable: $X
+  - id: spec.sink.xss.route-returns-html
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: xss, cwe: CWE-79}}
+    patterns:
+      - pattern-inside: |
+          @$APP.route(...)
+          def $F(...):
+            ...
+      - pattern: return $E
+      - pattern-not: return $FN(...)
+      - metavariable-pattern:
+          metavariable: $E
+          pattern-either:
+            - pattern: '"=~/<[a-zA-Z]/" + ...'
+            - pattern: f"=~/<[a-zA-Z]/"
+      - focus-metavariable: $E
+  - id: spec.sink.ssrf.requests
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: ssrf, cwe: CWE-918}}
+    patterns:
+      - pattern-either:
+          - pattern: requests.$M($U, ...)
+          - pattern: urllib.request.urlopen($U, ...)
+      - metavariable-regex: {metavariable: $M, regex: ^(get|post|put|delete|head|patch|request)$}
+      - focus-metavariable: $U
+  - id: spec.sink.deser.pickle
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: deser, cwe: CWE-502}}
+    patterns:
+      - pattern-either:
+          - pattern: pickle.loads($X, ...)
+          - pattern: pickle.load($X, ...)
+      - focus-metavariable: $X
+  - id: spec.sink.deser.yaml-unsafe
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: deser, cwe: CWE-502}}
+    patterns:
+      - pattern: yaml.load($X, ...)
+      - pattern-not: yaml.load($X, Loader=yaml.SafeLoader)
+      - pattern-not: yaml.load($X, Loader=yaml.CSafeLoader)
+      - focus-metavariable: $X
+  - id: spec.sink.code.eval
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: code, cwe: CWE-95}}
+    patterns:
+      - pattern-either:
+          - pattern: eval($X, ...)
+          - pattern: exec($X, ...)
+      - focus-metavariable: $X
+  - id: spec.sink.redirect.flask
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: redirect, cwe: CWE-601}}
+    patterns:
+      - pattern: flask.redirect($U, ...)
+      - focus-metavariable: $U
+
+  # ───────────────────────────── sanitizers ─────────────────────────────
+  - id: spec.sanitizer.type-cast
+    languages: [python]
+    severity: INFO
+    message: sanitizer
+    metadata: {sentinel: {role: sanitizer, cls: all}}
+    pattern-either:
+      - pattern: int(...)
+      - pattern: float(...)
+      - pattern: uuid.UUID(...)
+  - id: spec.sanitizer.path.basename
+    languages: [python]
+    severity: INFO
+    message: sanitizer
+    metadata: {sentinel: {role: sanitizer, cls: path}}
+    pattern-either:
+      - pattern: os.path.basename(...)
+      - pattern: werkzeug.utils.secure_filename(...)
+  - id: spec.sanitizer.xss.escape
+    languages: [python]
+    severity: INFO
+    message: sanitizer
+    metadata: {sentinel: {role: sanitizer, cls: xss}}
+    pattern-either:
+      - pattern: markupsafe.escape(...)
+      - pattern: html.escape(...)
+      - pattern: flask.escape(...)
+  - id: spec.sanitizer.cmdi.shlex-quote
+    languages: [python]
+    severity: INFO
+    message: sanitizer
+    metadata: {sentinel: {role: sanitizer, cls: cmdi}}
+    pattern: shlex.quote(...)

@@ -1,0 +1,39 @@
+# Ground truth for the demo corpus. Lives OUTSIDE the scanned repositories so it can never
+# leak into what the engine or the agent sees. Key = (repo, function containing the source, vuln class).
+# label: tp = real, exploitable vulnerability; fp = would be a false positive if reported.
+# Entries with `expect_flow: false` have no dangerous flow at all; reporting them is a FP.
+acme-shop:
+  - {fn: product,              cls: sqli,     label: fp, why: "<int:> route converter"}
+  - {fn: search,               cls: sqli,     label: tp, why: "interprocedural: search_products -> build_search_sql -> run_query"}
+  - {fn: user_profile,         cls: sqli,     label: fp, why: "isdigit() early-exit guard"}
+  - {fn: order_lookup,         cls: sqli,     label: fp, why: "custom sanitizer acme_common.db.quote_sql"}
+  - {fn: orders_by_customer,   cls: sqli,     label: fp, why: "parameterized query", expect_flow: false}
+  - {fn: export_catalog,       cls: cmdi,     label: tp, why: "os.system with concatenated input"}
+  - {fn: convert_image,        cls: cmdi,     label: fp, why: "argv list, no shell", expect_flow: false}
+  - {fn: thumbnail,            cls: path,     label: fp, why: "os.path.basename"}
+  - {fn: download,             cls: path,     label: tp, why: "os.path.join with raw input"}
+  - {fn: hello,                cls: xss,      label: fp, why: "markupsafe.escape"}
+  - {fn: greet,                cls: ssti,     label: tp, why: "render_template_string with input"}
+  - {fn: link_preview,         cls: ssrf,     label: tp, why: "interprocedural: acme_common.net.fetch"}
+  - {fn: avatar,               cls: ssrf,     label: fp, why: "host allow-list in fetch_allowed"}
+  - {fn: import_catalog,       cls: deser,    label: fp, why: "yaml.safe_load", expect_flow: false}
+  - {fn: import_legacy,        cls: deser,    label: tp, why: "yaml.load with yaml.Loader"}
+  - {fn: cart,                 cls: deser,    label: tp, why: "pickle.loads of cookie"}
+  - {fn: sales_report,         cls: sqli,     label: fp, why: "int() cast"}
+  - {fn: coupon,               cls: sqli,     label: fp, why: "sha256 hexdigest output is hex"}
+  - {fn: category,             cls: sqli,     label: fp, why: "slugify output is [a-z0-9-]"}
+  - {fn: login,                cls: redirect, label: tp, why: "redirect to user-controlled next"}
+  - {fn: ping,                 cls: cmdi,     label: tp, why: "shell=True with concatenated input"}
+  - {fn: legacy_debug_console, cls: code,     label: fp, why: "dead code: not routed, never called"}
+  - {fn: test_replay_fixture,  cls: cmdi,     label: fp, why: "test-only utility"}
+acme-billing:
+  - {fn: list_invoices,        cls: sqli,     label: tp, why: "interprocedural via invoices._customer_filter"}
+  - {fn: invoice,              cls: sqli,     label: fp, why: "<int:> route converter"}
+  - {fn: invoice_search,       cls: sqli,     label: fp, why: "custom sanitizer quote_sql (learnable from acme-shop triage)"}
+  - {fn: invoice_by_plan,      cls: sqli,     label: fp, why: "is_safe_slug regex guard"}
+  - {fn: invoice_pdf,          cls: cmdi,     label: fp, why: "is_safe_slug regex guard"}
+  - {fn: invoice_pdf,          cls: path,     label: fp, why: "is_safe_slug regex guard"}
+  - {fn: invoice_raw,          cls: path,     label: tp, why: "path traversal via invoice_path"}
+  - {fn: archive,              cls: cmdi,     label: tp, why: "run_shell with concatenated input"}
+  - {fn: webhook_test,         cls: ssrf,     label: tp, why: "interprocedural fetch"}
+  - {fn: statements,           cls: path,     label: fp, why: "isalnum() guard"}
