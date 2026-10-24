@@ -64,7 +64,7 @@ Ground truth lives in `demo/ground_truth.yaml`, outside the scanned trees, so it
 
 ## Safety properties exercised by the test suite
 
-96 tests run in about 45 s:
+98 tests (including 2 browser end-to-end flows) run in about a minute:
 - **Canary gate.** Overbroad knowledge such as `os.path.join` as a sanitizer, `regex:[a-z]+` as a validator, or `*.strip` cannot activate.
 - **Confirmed findings are protected.** Human-confirmed findings block conflicting knowledge.
 - **Rescans are not corroboration.** Machine-proposed suppressing knowledge needs independent support: distinct findings for agent items, distinct repositories for oracle items.

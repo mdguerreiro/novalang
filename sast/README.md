@@ -31,7 +31,7 @@ python3 -m venv .venv-semgrep && .venv-semgrep/bin/pip install semgrep   # separ
 PYTHONPATH=. .venv/bin/python -m sentinel demo     # onboard acme-shop, AppSec review, rescan, onboard acme-billing
 PYTHONPATH=. .venv/bin/python -m sentinel serve    # http://127.0.0.1:8077
 PYTHONPATH=. .venv/bin/python -m sentinel eval     # precision/recall per stage -> docs/evaluation.json
-PYTHONPATH=. .venv/bin/python -m pytest -q         # 96 tests
+PYTHONPATH=. .venv/bin/python -m pytest -q         # 98 tests (incl. 2 browser E2E)
 ```
 
 Inbox keys: `j`/`k` move · `c` confirm · `x` not exploitable (then `1`–`9` reason, `↵` commit) · `a` accept risk · `.` apply to root-cause group · `u` undo · `g` grouping · `[`/`]` lanes · `?` help.
