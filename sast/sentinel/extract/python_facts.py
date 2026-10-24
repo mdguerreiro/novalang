@@ -492,6 +492,8 @@ class _FunctionWalker:
         srcs = value if isinstance(value, set) else ({value} if value else set())
         env = dict(env)
         if isinstance(target, ast.Name):
+            # A host extracted from the old value of this variable says nothing about the new one.
+            self.hosts = {h: u for h, u in self.hosts.items() if u != target.id}
             did = self.ex.new_node(self.fn.qname, self.file, target, "def", label=target.id)
             for v in srcs:
                 self.f.edges.add((v, did))
@@ -653,7 +655,7 @@ class _FunctionWalker:
         if not is_neutral:
             for a in incoming:
                 self.f.edges.add((a, nid))
-        known = is_neutral or qual in PROPAGATORS or (method in PROPAGATOR_METHODS and qual.startswith("*."))
+        known = is_neutral or qual in PROPAGATORS or method in PROPAGATOR_METHODS
         if not known and incoming:
             self.f.libcalls[nid] = qual
         return nid

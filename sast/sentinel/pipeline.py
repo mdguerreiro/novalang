@@ -339,8 +339,12 @@ def _gate_ok(item: dict) -> bool:
 
 
 def _evidence(row: dict) -> float | None:
+    """Likelihood that a finding is real given what is known about it. Human triage dominates; a
+    proof-carrying engine decision is strong evidence; a gated machine verdict is weaker."""
     if row["triage_state"] == "confirmed":
         return 0.99
     if row["triage_state"] == "not_exploitable":
         return 0.01
-    return None
+    by = (row.get("data") or {}).get("decided_by")
+    return {"suppressed": 0.03, "test": 0.2, "suppressed_ai": 0.12 if by == "tier2" else 0.08}.get(
+        row["lane"], 0.85 if (row["lane"] == "confirmed" and by == "tier2") else None)

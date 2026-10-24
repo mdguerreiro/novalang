@@ -140,7 +140,8 @@ class KnowledgeService:
             # Knowledge that only *removes an assumption toward reporting* (not_sanitizer, propagator_api,
             # not_safe_pred) can never hide a vulnerability, so it activates once its gates pass.
             return "active"
-        support = max(item["corroborations"], self.support(item["id"]))
+        # Only independent evidence counts: re-verifying the same finding on every scan is not corroboration.
+        support = self.support(item["id"])
         if support >= self.policy.corroborations_to_activate and not report["over_budget"]:
             return "active"
         return "shadow"

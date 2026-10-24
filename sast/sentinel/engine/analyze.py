@@ -69,6 +69,7 @@ class Step:
     kind: str  # source | flow | call | param | return | guard | sanitizer | assumption | sink
     label: str
     note: str = ""
+    other_kills: list[str] = field(default_factory=list)  # sanitizers here that protect *other* classes
 
 
 @dataclass
@@ -297,11 +298,11 @@ def _jsonable(v):
 
 
 def _status_atom(f: Finding) -> str:
+    """The status atom exactly as clingo prints it, so it can be looked up in the derivation graph."""
     if f.status == "mitigated" and f.mitigations:
-        w = f.mitigations[0]["why"]
-        return f"mitigated({f.source},{f.sink},{f.cls},{_term_str(w)})"
+        return f"mitigated({f.source},{f.sink},{_term_str(f.cls)},{_term_str(f.mitigations[0]['why'])})"
     pred = {"confirmed": "confirmed", "undecided": "undecided", "test_only": "test_only"}.get(f.status, "cand")
-    return f"{pred}({f.source},{f.sink},{f.cls})"
+    return f"{pred}({f.source},{f.sink},{_term_str(f.cls)})"
 
 
 def _term_str(v) -> str:
@@ -309,7 +310,7 @@ def _term_str(v) -> str:
         return f"{v[0]}({','.join(_term_str(a) for a in v[1:])})"
     if isinstance(v, int):
         return str(v)
-    return f'"{v}"' if not re.fullmatch(r"[a-z_][A-Za-z0-9_]*", str(v)) else str(v)
+    return '"' + str(v).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
 def proof_tree(derivs: dict, atom: str, facts: Facts, depth: int = 0, seen: frozenset = frozenset()) -> dict:
@@ -407,6 +408,8 @@ class _Graph:
             elif kills.get((n, cls)):
                 kind = "sanitizer"
                 note = ", ".join(_why_label(w, self.f) for w in kills[(n, cls)])
+            elif how == "return":
+                kind = "return"
             elif node.kind == "call" and n in self.callee:
                 kind = "call"
             if n in asm_nodes and kind not in ("source", "sink"):
@@ -414,13 +417,17 @@ class _Graph:
                 note = "; ".join(_asm_label(a) for a in asm_nodes[n])
             if node.kind == "guard" and kills.get((n, cls)):
                 note = ", ".join(_why_label(w, self.f) for w in kills[(n, cls)])
-            steps.append(Step(n, node.file, node.l1, node.c1, node.l2, node.c2, node.fn, kind, node.label, note))
-        # Collapse consecutive steps on the same line with the same kind, keeping the most specific.
+            other = sorted({_why_label(w, self.f) for (n2, c2), ws in kills.items() if n2 == n and c2 != cls for w in ws}
+                           - {_why_label(w, self.f) for w in kills.get((n, cls), ())})
+            steps.append(Step(n, node.file, node.l1, node.c1, node.l2, node.c2, node.fn, kind, node.label, note, other))
+        # One step per source line: a plain `flow` step on the same line as its predecessor adds
+        # nothing, and a more specific step replaces a plain `flow` on its line.
         compact: list[Step] = []
         for st in steps:
-            if compact and compact[-1].line == st.line and compact[-1].file == st.file and st.kind == "flow" and compact[-1].kind in ("flow", "source", "param"):
+            same_line = compact and compact[-1].line == st.line and compact[-1].file == st.file
+            if same_line and st.kind == "flow":
                 continue
-            if compact and compact[-1].line == st.line and compact[-1].file == st.file and compact[-1].kind == "flow":
+            if same_line and compact[-1].kind == "flow":
                 compact[-1] = st
                 continue
             compact.append(st)

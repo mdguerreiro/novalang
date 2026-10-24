@@ -24,6 +24,12 @@ LEARNABLE = {"SANITIZED", "GUARDED", "UNREACHABLE", "NOT_EXPOSED"}
 STATES = {"confirmed", "not_exploitable", "accepted_risk", "untriaged"}
 
 
+def _disp(name: str) -> str:
+    """`billing.invoices.clean_filename` -> `invoices.clean_filename` (enough to recognise it)."""
+    parts = name.removeprefix("call:").split(".")
+    return ".".join(parts[-2:])
+
+
 class Triage:
     def __init__(self, scanner: Scanner):
         self.sc = scanner
@@ -35,18 +41,18 @@ class Triage:
         for a in finding["data"].get("assumptions", []):
             kind, *args = a["asm"]
             if kind == "maybe_sanitizer":
-                out.append({"reason": "SANITIZED", "detail": {"fn": args[0]}, "label": f"Sanitized by {args[0]}"})
+                out.append({"reason": "SANITIZED", "detail": {"fn": args[0]}, "label": f"Sanitized by {_disp(args[0])}"})
             elif kind == "unknown_api":
-                out.append({"reason": "SANITIZED", "detail": {"fn": args[0]}, "label": f"Sanitized by {args[0]}"})
+                out.append({"reason": "SANITIZED", "detail": {"fn": args[0]}, "label": f"Sanitized by {_disp(args[0])}"})
             elif kind == "unknown_guard":
-                out.append({"reason": "GUARDED", "detail": {"pred": args[0]}, "label": f"Validated by {args[0].removeprefix('call:')}"})
+                out.append({"reason": "GUARDED", "detail": {"pred": args[0]}, "label": f"Validated by {_disp(args[0])}"})
             elif kind == "unreachable":
                 out.append({"reason": "UNREACHABLE", "detail": {}, "label": f"Dead code: {args[0].rsplit('.', 1)[-1]} is never called"})
         # Agent proposals that did not clear the gates are still useful hints.
         for v in self.store.q("SELECT evidence FROM verdicts WHERE finding_id=? AND kind='agent' ORDER BY id DESC LIMIT 1", finding["id"]):
             for p in v["evidence"].get("proposed", []):
                 if p["pred"] == "sanitizer_api":
-                    s = {"reason": "SANITIZED", "detail": {"fn": p["args"][0]}, "label": f"Sanitized by {p['args'][0]}"}
+                    s = {"reason": "SANITIZED", "detail": {"fn": p["args"][0]}, "label": f"Sanitized by {_disp(p['args'][0])}"}
                     if s not in out:
                         out.append(s)
         out += [{"reason": "NOT_EXPOSED", "detail": {}, "label": "Route is not externally exposed"},
