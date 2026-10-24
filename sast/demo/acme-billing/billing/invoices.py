@@ -21,3 +21,7 @@ def invoice_path(name):
 
 def render_invoice_pdf(name):
     run_shell("invoice-render --template default --out " + invoice_path(name))
+
+
+def clean_filename(name):
+    return name.replace("../", "")

@@ -8,7 +8,7 @@ from acme_common.net import fetch
 from acme_common.shell import run_shell
 from acme_common.validators import is_safe_slug
 
-from .invoices import invoice_path, invoices_for_customer, render_invoice_pdf
+from .invoices import clean_filename, invoice_path, invoices_for_customer, render_invoice_pdf
 
 app = Flask(__name__)
 
@@ -72,3 +72,9 @@ def statements():
     if not account.isalnum():
         abort(400)
     return send_file(os.path.join("/srv/statements", account + ".pdf"))
+
+
+@app.route("/invoice/attachment")
+def attachment():
+    name = clean_filename(request.args.get("file", ""))
+    return send_file(os.path.join("/srv/attachments", name))

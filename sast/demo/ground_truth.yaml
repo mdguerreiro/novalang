@@ -37,3 +37,4 @@ acme-billing:
   - {fn: archive,              cls: cmdi,     label: tp, why: "run_shell with concatenated input"}
   - {fn: webhook_test,         cls: ssrf,     label: tp, why: "interprocedural fetch"}
   - {fn: statements,           cls: path,     label: fp, why: "isalnum() guard"}
+  - {fn: attachment,           cls: path,     label: tp, why: "single-pass ../ stripping is bypassable with ....//"}

@@ -446,14 +446,27 @@ class _FunctionWalker:
                     pred = f"call:{qual}"
                     fn = self.f.functions.get(qual)
                     if fn is not None:
-                        lines = self.f.files[fn.file].splitlines()[fn.line - 1: fn.end_line]
-                        self.f.pred_sources[pred] = "\n".join(lines)
+                        self.f.pred_sources[pred] = self._predicate_context(fn)
                     return [(var, pred)]
             if isinstance(func, ast.Name) and func.id == "isinstance" and len(test.args) == 2 and isinstance(test.args[0], ast.Name):
                 t = self.ex._dotted(test.args[1]) or ""
                 if t in ("int", "float", "bool"):
                     return [(test.args[0].id, f"isinstance_{t}")]
         return None
+
+    def _predicate_context(self, fn: Function) -> str:
+        """Source of a predicate function plus the module-level constants it references
+        (e.g. a compiled regex), which is what a judge needs to decide what it accepts."""
+        src = self.f.files[fn.file]
+        lines = src.splitlines()
+        body = "\n".join(lines[fn.line - 1: fn.end_line])
+        mod = self.ex._modules.get(fn.file)
+        names = {n.id for n in ast.walk(ast.parse(body)) if isinstance(n, ast.Name)} if body else set()
+        consts = []
+        for stmt in mod.tree.body if mod else []:
+            if isinstance(stmt, ast.Assign) and any(isinstance(t, ast.Name) and t.id in names for t in stmt.targets):
+                consts.append(ast.get_source_segment(src, stmt) or "")
+        return "\n".join(consts + [body])
 
     def refine(self, env: Env, guards: list[tuple[str, str]], at: ast.stmt) -> Env:
         env = dict(env)

@@ -1,0 +1,227 @@
+"""Deterministic stand-ins for the neural tiers (no API key needed).
+
+They are *not* oracles of truth. They imitate a careful model with a few heuristics and a small
+knowledge table, and they produce the same structured, citation-bearing output as the real
+client. Everything they say still has to pass the orchestrator's symbolic gates.
+"""
+from __future__ import annotations
+
+import ast
+import hashlib
+import re
+
+from .interfaces import (AgentTools, ApiLabel, Citation, Claim, GuardLabel, ProposedKnowledge, VerificationCase,
+                         Verdict)
+
+# What a well-read model "knows" about common library APIs.
+API_TABLE: dict[str, tuple[str, list[str], float, str]] = {
+    "hashlib.sha256": ("propagator", [], 0.90, "Returns a hash object wrapping the input; the digest is derived from it."),
+    "hashlib.sha1": ("propagator", [], 0.90, "Returns a hash object wrapping the input."),
+    "hashlib.md5": ("propagator", [], 0.90, "Returns a hash object wrapping the input."),
+    "hashlib.sha256().hexdigest": ("sanitizer", ["all"], 0.96, "hexdigest() returns only [0-9a-f]; no attacker-chosen characters survive."),
+    "hashlib.md5().hexdigest": ("sanitizer", ["all"], 0.96, "hexdigest() returns only [0-9a-f]."),
+    "slugify.slugify": ("sanitizer", ["all"], 0.93, "python-slugify output is restricted to lowercase [a-z0-9-] by default."),
+    "werkzeug.utils.secure_filename": ("sanitizer", ["path"], 0.95, "Strips path separators and leading dots."),
+    "bleach.clean": ("sanitizer", ["xss"], 0.92, "Allow-list based HTML sanitizer."),
+    "urllib.parse.quote": ("sanitizer", ["redirect", "path"], 0.7, "Percent-encodes reserved characters."),
+    "urllib.parse.urlparse": ("propagator", [], 0.95, "Parses the URL; components carry the input."),
+}
+
+# `.replace("'", ...)`, `.replace('\'', ...)` or `.replace("\\", ...)`: quote/backslash escaping.
+ESCAPE_RE = re.compile(r"""\.replace\(\s*(?:"'"|'\\''|"\\\\")""")
+
+PAYLOADS = {
+    "sqli": ["' OR '1'='1", "1; DROP TABLE users--", "\" OR 1=1 --"],
+    "cmdi": ["a; rm -rf /", "a && id", "$(id)", "`id`", "a | nc evil 1"],
+    "path": ["../../etc/passwd", "/etc/passwd", "..\\..\\win.ini"],
+    "xss": ["<script>alert(1)</script>", "\" onmouseover=alert(1) x=\""],
+    "ssti": ["{{7*7}}", "{% for x in () %}"],
+    "ssrf": ["http://169.254.169.254/", "file:///etc/passwd"],
+    "redirect": ["https://evil.example", "//evil.example"],
+    "code": ["__import__('os').system('id')"],
+    "deser": [],
+}
+
+
+class MockSpecOracle:
+    name = "mock-oracle-v1"
+
+    def classify_api(self, api: str, usage: str) -> ApiLabel:
+        if api in API_TABLE:
+            role, classes, conf, why = API_TABLE[api]
+            return ApiLabel(api, role, classes, conf, why, self.name)
+        if api.endswith("().hexdigest") or api == "*.hexdigest":
+            return ApiLabel(api, "sanitizer", ["all"], 0.9, "Hex digests only contain [0-9a-f].", self.name)
+        return ApiLabel(api, "unknown", [], 0.4, "No reliable knowledge about this API; keep the conservative assumption.", self.name)
+
+    def judge_guard(self, pred: str, source: str) -> GuardLabel:
+        """Judge a validation predicate by *executing* the regex it relies on against payloads."""
+        regexes = _regexes_in(source) if not pred.startswith("regex:") else [pred.split(":", 1)[1]]
+        anchored = "fullmatch" in source or any(r.startswith("^") and r.endswith("$") for r in regexes)
+        if not regexes:
+            return GuardLabel(pred, [], 0.3, "Could not find the validation logic.", self.name)
+        if not anchored:
+            return GuardLabel(pred, [], 0.8, "Regex is not anchored (re.match/search without $): a valid prefix "
+                                              "followed by a payload still passes.", self.name, {"regexes": regexes})
+        safe, passing = [], {}
+        for cls, payloads in PAYLOADS.items():
+            hits = [p for p in payloads for r in regexes if _fullmatch(r, p)]
+            if hits:
+                passing[cls] = hits
+            elif payloads:
+                safe.append(cls)
+        if not passing:
+            return GuardLabel(pred, ["all"], 0.92, f"Anchored allow-list regex {regexes[0]!r} rejects every payload in the "
+                                                   "battery (quotes, separators, dots, angle brackets, braces).", self.name,
+                              {"regexes": regexes, "payloads_tested": sum(len(v) for v in PAYLOADS.values())})
+        return GuardLabel(pred, safe, 0.85, f"Regex accepts payloads for {sorted(passing)}.", self.name,
+                          {"regexes": regexes, "accepted": passing})
+
+
+def _regexes_in(source: str) -> list[str]:
+    out = []
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        tree = None
+    if tree is not None:
+        for n in ast.walk(tree):
+            if isinstance(n, ast.Call) and n.args and isinstance(n.args[0], ast.Constant) and isinstance(n.args[0].value, str):
+                name = n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", "")
+                if name in ("compile", "fullmatch", "match", "search"):
+                    out.append(n.args[0].value)
+    return out
+
+
+def _fullmatch(regex: str, s: str) -> bool:
+    try:
+        return re.fullmatch(regex, s) is not None
+    except re.error:
+        return True  # unparseable regex: assume it accepts the payload
+
+
+def _cite(tools: AgentTools, file: str, l1: int, l2: int) -> Citation:
+    _, sha = tools.read_span(file, l1, l2)
+    return Citation(file, l1, l2, sha)
+
+
+class MockVerifier:
+    """Imitates a tool-using verification agent with k-sample voting."""
+
+    name = "mock-verifier-v1"
+    k = 5
+
+    def verify(self, case: VerificationCase, tools: AgentTools) -> Verdict:
+        for a in case.assumptions:
+            kind, *args = a["asm"]
+            if kind == "maybe_sanitizer":
+                return self._judge_sanitizer(case, tools, args[0])
+            if kind == "unreachable":
+                return self._judge_reachability(case, tools, args[0])
+        return Verdict(case.fingerprint, "ABSTAIN", case.cls, None, [], [], {"k": self.k, "agree": self.k},
+                       0.0, "The remaining assumptions concern library semantics the agent cannot establish from "
+                            "this repository; routing to a human.", self.name)
+
+    # ── does F neutralise this vulnerability class? ──────────────────────────────────────
+    def _judge_sanitizer(self, case: VerificationCase, tools: AgentTools, fn: str) -> Verdict:
+        found = tools.function_source(fn)
+        if found is None:
+            return self._abstain(case, f"Could not read {fn}.")
+        file, l1, l2, text, _sha = found
+        lines = text.splitlines()
+        escapes = [i for i, ln in enumerate(lines) if ESCAPE_RE.search(ln)]
+        claims: list[Claim] = []
+        sink_ctx = self._sink_context(case, tools)
+        if escapes and case.cls == "sqli":
+            esc_l1, esc_l2 = l1 + escapes[0], l1 + escapes[-1]
+            claims.append(Claim("c1", "sanitizer", f"`{fn.rsplit('.', 1)[-1]}` doubles single quotes and escapes "
+                                                    "backslashes, so the value cannot terminate a quoted SQL literal.",
+                                _cite(tools, file, esc_l1, esc_l2), {"pred": "sanitizer_api", "args": [fn, "sqli"]}))
+            if sink_ctx["quoted"]:
+                claims.append(Claim("c2", "context", "The escaped value is concatenated inside single quotes "
+                                                     "(`'...'`), which is exactly the context the escaping protects.",
+                                    _cite(tools, sink_ctx["file"], sink_ctx["line"], sink_ctx["line"])))
+                return Verdict(case.fingerprint, "FALSE_POSITIVE", case.cls, "SANITIZED", claims,
+                               [ProposedKnowledge("sanitizer_api", [fn, "sqli"], _scope_for(fn),
+                                                  f"{fn} escapes quotes for single-quoted SQL literals.", ["c1"])],
+                               {"k": self.k, "agree": self.k, "dissent": []}, 0.93,
+                               f"{fn} is a quote-escaping sanitizer and the sink uses it inside a quoted literal.",
+                               self.name, _cost(self.k))
+            claims.append(Claim("c2", "context", "The escaped value is concatenated *without* surrounding quotes, so "
+                                                 "quote-escaping does not prevent injection (e.g. `1 OR 1=1`).",
+                                _cite(tools, sink_ctx["file"], sink_ctx["line"], sink_ctx["line"])))
+            return Verdict(case.fingerprint, "TRUE_POSITIVE", case.cls, "EXPLOITABLE", claims, [],
+                           {"k": self.k, "agree": 4, "dissent": ["one sample considered the escaping sufficient"]}, 0.78,
+                           "Quote escaping is the wrong defence for an unquoted numeric context.", self.name, _cost(self.k))
+        strip = [i for i, ln in enumerate(lines) if re.search(r"""\.replace\(\s*["']\.\./["']\s*,\s*["']["']\s*\)""", ln)]
+        if strip and case.cls == "path":
+            at = l1 + strip[0]
+            claims.append(Claim("c1", "sanitizer", f"`{fn.rsplit('.', 1)[-1]}` removes `../` in a single pass; `....//` "
+                                                   "collapses back to `../` after replacement, and absolute paths are not handled.",
+                                _cite(tools, file, at, at)))
+            return Verdict(case.fingerprint, "NEEDS_HUMAN", case.cls, None, claims, [],
+                           {"k": self.k, "agree": 3, "dissent": ["2 samples judged the replacement sufficient because the "
+                                                                 "caller appends a fixed directory prefix"]}, 0.55,
+                           "Samples disagree on whether single-pass `../` stripping is exploitable here; "
+                           "a reviewer should decide (likely exploitable via `....//`).", self.name, _cost(self.k))
+        # F does not escape anything relevant: the "sanitizer-looking" name is misleading.
+        ret_line = next((i for i, ln in enumerate(lines) if ln.strip().startswith("return")), len(lines) - 1)
+        claims.append(Claim("c1", "not_sanitizer", f"`{fn.rsplit('.', 1)[-1]}` returns its argument embedded in a string "
+                                                   "without escaping or validation.",
+                            _cite(tools, file, l1 + ret_line, l1 + ret_line), {"pred": "not_sanitizer", "args": [fn]}))
+        return Verdict(case.fingerprint, "TRUE_POSITIVE", case.cls, "NOT_A_SANITIZER", claims,
+                       [ProposedKnowledge("not_sanitizer", [fn], _scope_for(fn),
+                                          f"{fn} only concatenates; it is not a sanitizer.", ["c1"])],
+                       {"k": self.k, "agree": self.k, "dissent": []}, 0.9,
+                       f"Despite its name, {fn} does not neutralise {case.cls} payloads.", self.name, _cost(self.k))
+
+    def _sink_context(self, case: VerificationCase, tools: AgentTools) -> dict:
+        # Find the step where the sanitized value is spliced into the query string.
+        for st in case.path:
+            text, _ = tools.read_span(st["file"], st["line"], st["line"])
+            if "+" in text and re.search(r"""'%?\s*["']\s*\+|\+\s*["']\s*%?'""", text):
+                return {"quoted": True, "file": st["file"], "line": st["line"]}
+            if re.search(r"""'\{[^}]+\}'""", text):
+                return {"quoted": True, "file": st["file"], "line": st["line"]}
+        last = case.path[-1] if case.path else {"file": "", "line": 1}
+        for st in case.path:
+            text, _ = tools.read_span(st["file"], st["line"], st["line"])
+            if "+" in text:
+                return {"quoted": False, "file": st["file"], "line": st["line"]}
+        return {"quoted": False, "file": last["file"], "line": last["line"]}
+
+    # ── is the source function reachable at all? ─────────────────────────────────────────
+    def _judge_reachability(self, case: VerificationCase, tools: AgentTools, fn: str) -> Verdict:
+        short = fn.rsplit(".", 1)[-1]
+        refs = [(f, ln, t) for f, ln, t in tools.grep(rf"\b{re.escape(short)}\b") if not t.lstrip().startswith("def ")]
+        found = tools.function_source(fn)
+        if found is None:
+            return self._abstain(case, f"Could not read {fn}.")
+        file, l1, l2, _text, _ = found
+        if refs:
+            return Verdict(case.fingerprint, "NEEDS_HUMAN", case.cls, None,
+                           [Claim("c1", "reachability", f"{short} is referenced {len(refs)} time(s); it may be wired up "
+                                                        "dynamically.", _cite(tools, refs[0][0], refs[0][1], refs[0][1]))],
+                           [], {"k": self.k, "agree": 3, "dissent": ["2 samples judged it reachable"]}, 0.5,
+                           "Cannot rule out dynamic registration.", self.name, _cost(self.k))
+        claims = [Claim("c1", "reachability", f"`{short}` has no route decorator and no references anywhere in the "
+                                              f"repository (searched all files for `{short}`).",
+                        _cite(tools, file, l1, l1), {"pred": "dead_fn", "args": [fn]})]
+        return Verdict(case.fingerprint, "FALSE_POSITIVE", case.cls, "UNREACHABLE", claims,
+                       [ProposedKnowledge("dead_fn", [fn], "repo", f"{fn} is dead code (never routed or called).", ["c1"])],
+                       {"k": self.k, "agree": self.k, "dissent": []}, 0.88,
+                       f"The tainted source sits in {short}, which nothing can invoke. Recommend deleting it.",
+                       self.name, _cost(self.k))
+
+    def _abstain(self, case: VerificationCase, why: str) -> Verdict:
+        return Verdict(case.fingerprint, "ABSTAIN", case.cls, None, [], [], {"k": self.k, "agree": self.k}, 0.0, why, self.name)
+
+
+def _scope_for(fn: str) -> str:
+    """Helpers in shared internal packages are org-wide knowledge; app-local ones stay repo-scoped."""
+    return "org" if fn.split(".")[0].endswith("_common") or fn.split(".")[0] in ("common", "shared", "lib") else "repo"
+
+
+def _cost(k: int) -> dict:
+    # What the real client would report; the mock reports nominal numbers so the cost KPI is exercised.
+    return {"samples": k, "tokens_in": 2400 * k, "tokens_out": 350 * k, "tool_calls": 3 * k}
