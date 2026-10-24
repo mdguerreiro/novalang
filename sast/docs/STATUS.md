@@ -17,3 +17,4 @@ Running plan/status, updated every loop iteration so work can resume from here.
 - Track 01 (taint-spec inference) DONE.
 - Track 04 (triage learning & UX) DONE — key numbers: Google <10% effective FP bar; FB diff-time fix rate >70% vs ~0% batch; Bingo -44.2% alarms inspected; 50.8% of suppressions match no warning.
 - Track 05 (neurosymbolic & agentic) DONE — no published system reaches very low FP on real code (IRIS FDR 84.8%, NESA 66% prec, RepoAudit 78%); precision comes from symbolic confirmation of LLM claims; AIxCC top teams act only with PoV; Theori arch ~ ours.
+- Track 02 (LLM FP filtering) DONE — LLM4PFA 94-98% FP elimination @ $0.001-0.12/alarm; no vendor publishes FN rate; synthetic-benchmark rankings do not transfer (ZeroFalse gemini F1 0.91 OWASP -> 0.37 real); Juliet memorised. Verdicts must be typed+evidenced facts re-checked by Datalog.
