@@ -5,7 +5,7 @@ Running plan/status, updated every loop iteration so work can resume from here.
 ## Phases
 1. [x] Literature review — 5 parallel research tracks -> docs/lit/*.md, synthesized into docs/literature.md
 2. [x] Architecture — docs/architecture.md
-3. [ ] Build — scanner pipeline, logic engine, mocked agent, flywheel, persistence, triage UI, tests, demo codebase, E2E + screenshots
+3. [x] Build (POC complete; polishing) — scanner pipeline, logic engine, mocked agent, flywheel, persistence, triage UI, tests, demo codebase, E2E + screenshots
 
 ## Log
 - Iter 1: branch created; research tracks launched (taint-spec inference, LLM FP filtering, Datalog/logic analysis, triage learning & UX, neurosymbolic/agentic); semgrep toolchain probe.
@@ -21,16 +21,24 @@ Running plan/status, updated every loop iteration so work can resume from here.
 - Track 03 (Datalog/logic) DONE — recommendation: clingo as stratified Datalog + provenance via auto-generated fire/N twins (verified working with clingo 5.8.2 ast API); Python BP layer for Bingo-style ranking.
 - Iter 2: docs/literature.md (synthesis, R1-R16) and docs/architecture.md written. Semgrep moved to its own venv (.venv-semgrep) due to opentelemetry pin conflict with FastAPI.
 
-## Build plan (phase 3)
-- [ ] demo corpus (acme-shop, acme-billing, acme_common) + ground_truth.yaml
-- [ ] specs/ semgrep spec packs + baseline taint rules
-- [ ] extract/python_facts.py + semgrep_specs.py
-- [ ] engine/datalog.py + rules/*.lp + taint decisions/paths/proofs
-- [ ] store/db.py
-- [ ] agent/ interfaces, mock, claude stub, orchestrator gates
-- [ ] learn/ knowledge lifecycle+gates, bayes BP, calibration
-- [ ] pipeline + cli (scan, eval, demo seeding)
-- [ ] api (FastAPI)
-- [ ] ui (React/Vite/TS)
-- [ ] tests (unit, integration, e2e playwright) + screenshots review
-- [ ] eval report docs/evaluation.md
+## Build plan (phase 3) — done
+- [x] demo corpus (acme-shop, acme-billing, acme_common) + ground_truth.yaml (outside scanned trees)
+- [x] specs/ Semgrep spec pack + generated Semgrep-OSS taint baseline
+- [x] extract/python_facts.py (reaching defs, guard refinement nodes, routes/converters) + semgrep_specs.py
+- [x] engine: clingo stratified Datalog, provenance via fire twins, summary-based interprocedural taint, decision layer
+- [x] store (SQLite), agent (interfaces, mock, Claude client, gates), learn (knowledge lifecycle + gates, Bayes BP)
+- [x] pipeline (Tier 0/1/2, Tier-2 verdict cache, shadow eval, audit sampling), triage service, explanations
+- [x] API (FastAPI) + UI (React/TS: inbox, evidence, triage rail w/ impact preview, knowledge workbench, insights, activity)
+- [x] tests: 96 passing (unit, integration, eval regression, offline Claude client); Playwright screenshots
+- [x] docs/evaluation.md, README.md
+
+## Iteration log (build)
+- Iter 3: corpus, specs, extractor, engine. Tier-0 matches GT (all TPs found; FPs only as undecided).
+- Iter 4: neural tiers + gates + knowledge + Bayes + pipeline; eval harness (S0 .64/.64 -> S3 1.0/1.0 with mock).
+- Iter 5: API + UI; test agent found 4 real bugs (proof lookup quoting, host allow-list rebinding, chained str methods, rescans counted as corroboration) — fixed.
+- Iter 6: Tier-2 cache by content hash; scan triggers; honest flywheel demo (billing onboarded after shop review: 46% -> 55% engine-decided); Claude client + offline tests.
+
+## Next ideas (if continuing)
+- E2E Playwright triage flow test (x -> reason -> commit -> knowledge active -> other repo resolved).
+- Remaining UX: diff lenses (new since last scan), suppression-health view, PR-time surface.
+- Engine: method resolution on objects, context-sensitive summaries, Soufflé backend for scale.
