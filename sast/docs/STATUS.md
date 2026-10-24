@@ -3,8 +3,8 @@
 Running plan/status, updated every loop iteration so work can resume from here.
 
 ## Phases
-1. [ ] Literature review — 5 parallel research tracks -> docs/lit/*.md, synthesized into docs/literature.md
-2. [ ] Architecture — docs/architecture.md
+1. [x] Literature review — 5 parallel research tracks -> docs/lit/*.md, synthesized into docs/literature.md
+2. [x] Architecture — docs/architecture.md
 3. [ ] Build — scanner pipeline, logic engine, mocked agent, flywheel, persistence, triage UI, tests, demo codebase, E2E + screenshots
 
 ## Log
@@ -18,3 +18,19 @@ Running plan/status, updated every loop iteration so work can resume from here.
 - Track 04 (triage learning & UX) DONE — key numbers: Google <10% effective FP bar; FB diff-time fix rate >70% vs ~0% batch; Bingo -44.2% alarms inspected; 50.8% of suppressions match no warning.
 - Track 05 (neurosymbolic & agentic) DONE — no published system reaches very low FP on real code (IRIS FDR 84.8%, NESA 66% prec, RepoAudit 78%); precision comes from symbolic confirmation of LLM claims; AIxCC top teams act only with PoV; Theori arch ~ ours.
 - Track 02 (LLM FP filtering) DONE — LLM4PFA 94-98% FP elimination @ $0.001-0.12/alarm; no vendor publishes FN rate; synthetic-benchmark rankings do not transfer (ZeroFalse gemini F1 0.91 OWASP -> 0.37 real); Juliet memorised. Verdicts must be typed+evidenced facts re-checked by Datalog.
+- Track 03 (Datalog/logic) DONE — recommendation: clingo as stratified Datalog + provenance via auto-generated fire/N twins (verified working with clingo 5.8.2 ast API); Python BP layer for Bingo-style ranking.
+- Iter 2: docs/literature.md (synthesis, R1-R16) and docs/architecture.md written. Semgrep moved to its own venv (.venv-semgrep) due to opentelemetry pin conflict with FastAPI.
+
+## Build plan (phase 3)
+- [ ] demo corpus (acme-shop, acme-billing, acme_common) + ground_truth.yaml
+- [ ] specs/ semgrep spec packs + baseline taint rules
+- [ ] extract/python_facts.py + semgrep_specs.py
+- [ ] engine/datalog.py + rules/*.lp + taint decisions/paths/proofs
+- [ ] store/db.py
+- [ ] agent/ interfaces, mock, claude stub, orchestrator gates
+- [ ] learn/ knowledge lifecycle+gates, bayes BP, calibration
+- [ ] pipeline + cli (scan, eval, demo seeding)
+- [ ] api (FastAPI)
+- [ ] ui (React/Vite/TS)
+- [ ] tests (unit, integration, e2e playwright) + screenshots review
+- [ ] eval report docs/evaluation.md
