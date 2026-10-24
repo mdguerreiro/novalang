@@ -161,6 +161,15 @@ export interface Insights {
   knowledge: { origin: string; status: string; n: number }[];
 }
 
+export interface StageScore { tp: number; fp: number; fn: number; precision: number; recall: number; missed: string[]; false_alarms: string[] }
+export interface Benchmark {
+  available: boolean;
+  stages?: Record<string, StageScore>;
+  ai_suppression?: { suppressed: number; wrongly_suppressed_tps: string[] };
+  coverage?: { findings: number; human_queue: number; auto_decided: number };
+  flywheel?: Record<string, { tier0_rate?: number; tier2_calls?: number; tier1_calls?: number; resolved_by_learned_knowledge?: number }>;
+}
+
 export interface EventRow { id: number; ts: number; actor: string; type: string; finding_id: number | null; knowledge_id: string | null; payload: Record<string, unknown> }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {
@@ -191,4 +200,5 @@ export const api = {
   scan: (repo: string) => req<ScanStats>(`/api/scan/${repo}`, { method: "POST" }),
   insights: () => req<Insights>("/api/insights"),
   events: () => req<EventRow[]>("/api/events"),
+  benchmark: () => req<Benchmark>("/api/benchmark"),
 };

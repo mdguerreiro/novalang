@@ -97,12 +97,17 @@ def lanes_reported(store: Store, repo: str, lanes=("confirmed", "review")) -> se
     return {(repo, _short(r["source_fn"]), r["cls"]) for r in rows}
 
 
-def fresh_scanner(db: str = ":memory:") -> Scanner:
+def onboard(sc: Scanner, repo: str) -> None:
+    sc.store.upsert_repo(repo, "acme", repo, str(DEMO / repo))
+
+
+def fresh_scanner(db: str = ":memory:", repos: list[str] | None = None) -> Scanner:
     st = Store(db)
     st.upsert_org("acme", "Acme Corp")
-    for r in REPOS:
-        st.upsert_repo(r, "acme", r, str(DEMO / r))
-    return Scanner(st)
+    sc = Scanner(st)
+    for r in REPOS if repos is None else repos:
+        onboard(sc, r)
+    return sc
 
 
 def simulate_appsec_review(sc: Scanner, repo: str, actor: str = "human:appsec-lead") -> dict:
@@ -170,13 +175,14 @@ def run(write: Path | None = None) -> dict:
     results["coverage"] = {"findings": total, "human_queue": human_queue, "auto_decided": round(1 - human_queue / max(total, 1), 3)}
 
     # S4 flywheel: shop scanned + reviewed, then billing scanned for the first time.
-    warm = fresh_scanner()
+    warm = fresh_scanner(repos=["acme-shop"])
     shop1 = warm.scan("acme-shop")
     review = simulate_appsec_review(warm, "acme-shop")
-    bill_warm = warm.scan("acme-billing")
-    cold_bill = fresh_scanner()
-    bill_cold = cold_bill.scan("acme-billing")
     shop2 = warm.scan("acme-shop", refresh=False)
+    onboard(warm, "acme-billing")  # billing is onboarded only after shop was reviewed
+    bill_warm = warm.scan("acme-billing")
+    cold_bill = fresh_scanner(repos=["acme-billing"])
+    bill_cold = cold_bill.scan("acme-billing")
     keep = ("tier0_rate", "auto_rate", "tier1_calls", "tier1_cache_hits", "tier2_calls", "resolved_by_learned_knowledge", "lanes")
     results["flywheel"] = {
         "acme-shop scan 1": {k: shop1[k] for k in keep},

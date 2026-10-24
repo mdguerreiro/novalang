@@ -1,0 +1,219 @@
+{
+  "stages": {
+    "S0 Semgrep OSS baseline": {
+      "tp": 9,
+      "fp": 5,
+      "fn": 5,
+      "precision": 0.643,
+      "recall": 0.643,
+      "missed": [
+        "acme-billing/archive/cmdi",
+        "acme-billing/list_invoices/sqli",
+        "acme-billing/webhook_test/ssrf",
+        "acme-shop/link_preview/ssrf",
+        "acme-shop/search/sqli"
+      ],
+      "false_alarms": [
+        "acme-billing/invoice_pdf/path",
+        "acme-billing/statements/path",
+        "acme-shop/legacy_debug_console/code",
+        "acme-shop/test_replay_fixture/cmdi",
+        "acme-shop/user_profile/sqli"
+      ],
+      "unlabeled": []
+    },
+    "S1 Tier 0 engine": {
+      "tp": 14,
+      "fp": 8,
+      "fn": 0,
+      "precision": 0.636,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [
+        "acme-billing/invoice_by_plan/sqli",
+        "acme-billing/invoice_pdf/cmdi",
+        "acme-billing/invoice_pdf/path",
+        "acme-billing/invoice_search/sqli",
+        "acme-shop/category/sqli",
+        "acme-shop/coupon/sqli",
+        "acme-shop/legacy_debug_console/code",
+        "acme-shop/order_lookup/sqli"
+      ],
+      "unlabeled": []
+    },
+    "S2 + Tier 1 oracle": {
+      "tp": 14,
+      "fp": 3,
+      "fn": 0,
+      "precision": 0.824,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [
+        "acme-billing/invoice_search/sqli",
+        "acme-shop/legacy_debug_console/code",
+        "acme-shop/order_lookup/sqli"
+      ],
+      "unlabeled": []
+    },
+    "S3 + Tier 2 agent (gated)": {
+      "tp": 14,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [],
+      "unlabeled": []
+    }
+  },
+  "flywheel": {
+    "acme-shop scan 1": {
+      "tier0_rate": 0.8,
+      "auto_rate": 1.0,
+      "tier1_calls": 3,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 2,
+      "resolved_by_learned_knowledge": 0,
+      "lanes": {
+        "review": 0,
+        "confirmed": 9,
+        "suppressed": 6,
+        "suppressed_ai": 4,
+        "test": 1
+      }
+    },
+    "appsec review of acme-shop": {
+      "triaged": 1,
+      "approved": [
+        "K-001",
+        "K-003",
+        "K-004",
+        "K-005"
+      ],
+      "audited": 1
+    },
+    "acme-shop scan 2 (after review)": {
+      "tier0_rate": 1.0,
+      "auto_rate": 1.0,
+      "tier1_calls": 0,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 0,
+      "resolved_by_learned_knowledge": 4,
+      "lanes": {
+        "review": 0,
+        "confirmed": 9,
+        "suppressed": 10,
+        "suppressed_ai": 0,
+        "test": 1
+      }
+    },
+    "acme-billing cold (no shop knowledge)": {
+      "tier0_rate": 0.455,
+      "auto_rate": 0.909,
+      "tier1_calls": 1,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 3,
+      "resolved_by_learned_knowledge": 0,
+      "lanes": {
+        "review": 1,
+        "confirmed": 4,
+        "suppressed": 2,
+        "suppressed_ai": 4,
+        "test": 0
+      }
+    },
+    "acme-billing warm (after shop review)": {
+      "tier0_rate": 0.545,
+      "auto_rate": 0.909,
+      "tier1_calls": 1,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 2,
+      "resolved_by_learned_knowledge": 1,
+      "lanes": {
+        "review": 1,
+        "confirmed": 4,
+        "suppressed": 3,
+        "suppressed_ai": 3,
+        "test": 0
+      }
+    },
+    "acme-billing warm precision/recall": {
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [],
+      "unlabeled": []
+    },
+    "active learned knowledge": [
+      {
+        "id": "K-001",
+        "pred": "sanitizer_api",
+        "args": [
+          "hashlib.sha256().hexdigest",
+          "all"
+        ],
+        "scope": "global",
+        "origin": "oracle:mock-oracle-v1"
+      },
+      {
+        "id": "K-002",
+        "pred": "propagator_api",
+        "args": [
+          "hashlib.sha256"
+        ],
+        "scope": "global",
+        "origin": "oracle:mock-oracle-v1"
+      },
+      {
+        "id": "K-003",
+        "pred": "sanitizer_api",
+        "args": [
+          "slugify.slugify",
+          "all"
+        ],
+        "scope": "global",
+        "origin": "oracle:mock-oracle-v1"
+      },
+      {
+        "id": "K-004",
+        "pred": "sanitizer_api",
+        "args": [
+          "acme_common.db.quote_sql",
+          "sqli"
+        ],
+        "scope": "org",
+        "origin": "agent:mock-verifier-v1"
+      },
+      {
+        "id": "K-005",
+        "pred": "dead_fn",
+        "args": [
+          "shop.app.legacy_debug_console"
+        ],
+        "scope": "repo",
+        "origin": "agent:mock-verifier-v1"
+      },
+      {
+        "id": "K-007",
+        "pred": "not_sanitizer",
+        "args": [
+          "billing.invoices._customer_filter"
+        ],
+        "scope": "repo",
+        "origin": "agent:mock-verifier-v1"
+      }
+    ]
+  },
+  "ai_suppression": {
+    "suppressed": 8,
+    "wrongly_suppressed_tps": []
+  },
+  "coverage": {
+    "findings": 31,
+    "human_queue": 1,
+    "auto_decided": 0.968
+  }
+}

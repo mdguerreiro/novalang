@@ -30,12 +30,26 @@ def cmd_demo(args) -> None:
         Path(str(db) + suffix).unlink(missing_ok=True)
     st = Store(db)
     st.upsert_org("acme", "Acme Corp")
-    for r in ("acme-shop", "acme-billing"):
-        st.upsert_repo(r, "acme", r, str(SAST_ROOT / "demo" / r))
+    onboard = lambda r: st.upsert_repo(r, "acme", r, str(SAST_ROOT / "demo" / r))
+    onboard("acme-shop")
+    if args.cold:
+        onboard("acme-billing")
     sc = Scanner(st)
-    for r in ("acme-shop", "acme-billing"):
-        stats = sc.scan(r)
-        print(f"{r}: {json.dumps({k: stats[k] for k in ('lanes', 'tier0_rate', 'auto_rate', 'tier2_calls')})}")
+    keys = ("lanes", "tier0_rate", "auto_rate", "tier1_calls", "tier2_calls", "resolved_by_learned_knowledge")
+    show = lambda label, stats: print(f"{label:34} {json.dumps({k: stats[k] for k in keys})}")
+    if args.cold:
+        for r in ("acme-shop", "acme-billing"):
+            show(f"{r} scan", sc.scan(r))
+    else:
+        # A realistic history: the team onboards acme-shop, reviews it, rescans it, then onboards
+        # acme-billing, which benefits from everything learned on acme-shop.
+        from .eval import simulate_appsec_review
+        show("acme-shop scan 1", sc.scan("acme-shop"))
+        review = simulate_appsec_review(sc, "acme-shop")
+        print(f"{'acme-shop reviewed by AppSec lead':34} triaged={review['triaged']} approved={review['approved']}")
+        show("acme-shop scan 2", sc.scan("acme-shop", refresh=False))
+        onboard("acme-billing")
+        show("acme-billing scan 1 (warm)", sc.scan("acme-billing"))
     print(f"database: {db}")
 
 
@@ -65,7 +79,9 @@ def main() -> None:
     ap = argparse.ArgumentParser(prog="sentinel")
     ap.add_argument("--db")
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("demo").set_defaults(fn=cmd_demo)
+    s = sub.add_parser("demo")
+    s.add_argument("--cold", action="store_true", help="scan both repos with no history")
+    s.set_defaults(fn=cmd_demo)
     s = sub.add_parser("scan")
     s.add_argument("repo")
     s.set_defaults(fn=cmd_scan)

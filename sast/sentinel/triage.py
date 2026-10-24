@@ -141,7 +141,8 @@ class Triage:
     def rescan_scope(self, item: dict) -> list[dict]:
         out = []
         for repo_id in self.sc.repos_in_scope(item):
-            out.append({"repo": repo_id, **{k: v for k, v in self.sc.scan(repo_id, refresh=False).items() if k in ("scan_id", "lanes")}})
+            res = self.sc.scan(repo_id, refresh=False, trigger="knowledge")
+            out.append({"repo": repo_id, **{k: v for k, v in res.items() if k in ("scan_id", "lanes")}})
         return out
 
     def set_knowledge(self, kid: str, status: str, actor: str) -> dict:

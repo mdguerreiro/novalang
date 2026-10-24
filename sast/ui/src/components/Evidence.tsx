@@ -46,7 +46,7 @@ function Trace({ f, onOpenFile }: { f: FindingDetail; onOpenFile: (file: string,
         const span: [number, number] | undefined = st.end_line === st.line ? [st.col - 1, st.end_col - 1] : [st.col - 1, 10_000];
         const prev = path[i - 1];
         const crossed = prev && prev.fn !== st.fn;
-        const guardOk = st.kind === "guard" && !!st.note;
+        const guardOk = st.kind === "guard" && !!st.note && !st.note.startsWith("assumed");
         return (
           <div key={i} className={`t-step ${st.kind}`}>
             <div className="t-rail">
@@ -65,11 +65,14 @@ function Trace({ f, onOpenFile }: { f: FindingDetail; onOpenFile: (file: string,
                 <span className="t-loc" onClick={() => onOpenFile(st.file, st.line)} title="Open file at this line">{st.file}:{st.line}</span>
               </div>
               <CodeLines content={content} line={st.line} l1={st.line - (i === 0 ? 1 : 0)} l2={st.line} span={span} />
-              {st.note && (
-                <div className={`t-note ${st.kind === "sanitizer" || guardOk ? "good" : st.kind === "assumption" ? "warn" : "info"}`}>
-                  <Icon name={st.kind === "assumption" ? "alert" : "check"} size={13} /> {st.note}
-                </div>
-              )}
+              {st.note && (() => {
+                const assumed = st.kind === "assumption" || st.note.startsWith("assumed") || (st.kind === "guard" && !guardOk);
+                return (
+                  <div className={`t-note ${assumed ? "warn" : st.kind === "sanitizer" || guardOk ? "good" : "info"}`}>
+                    <Icon name={assumed ? "alert" : "check"} size={13} /> {st.note}
+                  </div>
+                );
+              })()}
               {st.other_kills.length > 0 && (
                 <div className="t-note info"><Icon name="info" size={13} /> {st.other_kills.join(", ")}, but not against {f.title.toLowerCase()}</div>
               )}

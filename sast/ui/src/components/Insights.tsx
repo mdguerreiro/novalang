@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, type Insights as I } from "../api";
+import { api, type Benchmark, type Insights as I } from "../api";
 import { Icon, pct } from "../lib";
 
 interface Pt { x: string; sub: string; values: number[] }
@@ -102,6 +102,53 @@ function StackedBars({ pts, series }: { pts: Pt[]; series: { name: string; color
   );
 }
 
+function GroupedBars({ groups, series, fmt }: { groups: { label: string; values: number[] }[]; series: { name: string; color: string }[]; fmt: (v: number) => string }) {
+  const { hover, setHover } = useHover();
+  const iw = W - PAD.l - 20, ih = H - PAD.t - PAD.b;
+  const step = iw / Math.max(groups.length, 1);
+  const bw = Math.min(26, (step * 0.7) / series.length);
+  const y = (v: number) => v * ih;
+  return (
+    <div className="chart-wrap" onMouseLeave={() => setHover(null)}>
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Precision and recall by pipeline stage">
+        <g className="grid">{[0, 0.5, 1].map((t) => <line key={t} x1={PAD.l} x2={W - 20} y1={PAD.t + ih - y(t)} y2={PAD.t + ih - y(t)} />)}</g>
+        <g className="axis">
+          {[0, 0.5, 1].map((t) => <text key={t} x={PAD.l - 8} y={PAD.t + ih - y(t) + 4} textAnchor="end">{fmt(t)}</text>)}
+          {groups.map((g, i) => {
+            const [a, ...rest] = g.label.split(" ");
+            return (
+              <g key={i}>
+                <text x={PAD.l + step * i + step / 2} y={H - PAD.b + 16} textAnchor="middle" style={{ fontWeight: 600 }}>{a}</text>
+                <text x={PAD.l + step * i + step / 2} y={H - PAD.b + 29} textAnchor="middle" style={{ fontSize: 10 }}>{rest.join(" ").replace("(gated)", "").trim()}</text>
+              </g>
+            );
+          })}
+        </g>
+        {groups.map((g, i) => {
+          const x0 = PAD.l + step * i + step / 2 - (bw * series.length + 2 * (series.length - 1)) / 2;
+          return (
+            <g key={i} onMouseMove={(e) => { const r = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect(); setHover({ i, x: e.clientX - r.left, y: e.clientY - r.top }); }}>
+              <rect x={PAD.l + step * i} y={PAD.t} width={step} height={ih} fill="transparent" />
+              {g.values.map((v, si) => (
+                <g key={si}>
+                  <path fill={series[si].color} opacity={hover && hover.i !== i ? 0.55 : 1} d={roundedTop(x0 + si * (bw + 2), PAD.t + ih - y(v), bw, Math.max(y(v), 1), 4)} />
+                  <text x={x0 + si * (bw + 2) + bw / 2} y={PAD.t + ih - y(v) - 5} textAnchor="middle" style={{ fontSize: 10.5, fill: "var(--text-2)", fontWeight: 600 }}>{fmt(v)}</text>
+                </g>
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+      {hover && (
+        <div className="tooltip" style={{ left: Math.min(hover.x + 14, 380), top: hover.y - 10 }}>
+          <b>{groups[hover.i].label}</b>
+          {series.map((s, si) => <div key={s.name} className="row"><span className="dot" style={{ background: s.color }} />{s.name}<span className="grow" /><b>{fmt(groups[hover.i].values[si])}</b></div>)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function roundedTop(x: number, y: number, w: number, h: number, r: number) {
   r = Math.min(r, h, w / 2);
   return `M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h} Z`;
@@ -110,12 +157,13 @@ function roundedTop(x: number, y: number, w: number, h: number, r: number) {
 export function Insights() {
   const [data, setData] = useState<I | null>(null);
   const [table, setTable] = useState(false);
-  useEffect(() => { api.insights().then(setData); }, []);
-  const pts = useMemo<Pt[]>(() => (data?.scans ?? []).map((s, i) => ({ x: `#${i + 1}`, sub: s.repo_id.replace("acme-", ""), values: [] })), [data]);
+  const [bench, setBench] = useState<Benchmark | null>(null);
+  useEffect(() => { api.insights().then(setData); api.benchmark().then(setBench); }, []);
+  const pts = useMemo<Pt[]>(() => (data?.scans ?? []).filter((s) => (s.stats as { trigger?: string }).trigger !== "knowledge").map((s, i) => ({ x: `#${i + 1}`, sub: s.repo_id.replace("acme-", ""), values: [] })), [data]);
   if (!data) return <div className="page"><div className="skeleton" style={{ height: 200 }} /></div>;
-  const scans = data.scans;
+  // Re-derivations after a knowledge change are not scans; the charts show real scans only.
+  const scans = data.scans.filter((s) => (s.stats as { trigger?: string }).trigger !== "knowledge");
   const last = scans[scans.length - 1]?.stats;
-  const first = scans[0]?.stats;
   const decidedPts = scans.map((s, i) => ({ ...pts[i], values: [s.stats.auto_rate, s.stats.tier0_rate] }));
   const callPts = scans.map((s, i) => ({ ...pts[i], values: [s.stats.tier1_calls, s.stats.tier2_calls] }));
   const learned = scans.reduce((a, s) => Math.max(a, s.stats.resolved_by_learned_knowledge), 0);
@@ -123,6 +171,11 @@ export function Insights() {
   const effFp = data.effective_fp.shown_triaged ? data.effective_fp.fp / data.effective_fp.shown_triaged : null;
   const kActive = data.knowledge.filter((k) => k.status === "active" && !k.origin.startsWith("curated")).reduce((a, k) => a + k.n, 0);
   const totalCalls = scans.reduce((a, s) => a + s.stats.tier1_calls + s.stats.tier2_calls, 0);
+  const perRepo = [...new Set(scans.map((s) => s.repo_id))].map((repo) => {
+    const rs = scans.filter((s) => s.repo_id === repo);
+    return { repo, first: rs[0].stats, last: rs[rs.length - 1].stats, n: rs.length };
+  });
+  const improved = perRepo.find((r) => r.n > 1);
 
   return (
     <div className="page">
@@ -139,7 +192,7 @@ export function Insights() {
         <div className="card kpi">
           <div className="k-label">Decided by the engine alone</div>
           <div className="k-value">{pct(last?.tier0_rate)}</div>
-          {first && last && <div className={`k-delta ${last.tier0_rate >= first.tier0_rate ? "up" : ""}`}>{last.tier0_rate >= first.tier0_rate ? "▲" : "▼"} {Math.abs(Math.round((last.tier0_rate - first.tier0_rate) * 100))} pts since first scan</div>}
+          {improved && <div className="k-delta up">▲ {Math.round((improved.last.tier0_rate - improved.first.tier0_rate) * 100)} pts on {improved.repo} after one review</div>}
           <p>Tier 0: deterministic, free, reproducible.</p>
         </div>
         <div className="card kpi">
@@ -189,6 +242,43 @@ export function Insights() {
           <StackedBars pts={callPts} series={[{ name: "Oracle questions", color: "var(--series-1)" }, { name: "Agent verifications", color: "var(--series-2)" }]} />
         </div>
       </div>
+
+      {bench?.available && bench.stages && (
+        <div className="charts">
+          <div className="card">
+            <div className="card-h">Benchmark vs Semgrep OSS<span className="grow" /><span className="muted" style={{ fontWeight: 500, fontSize: 12 }}>demo corpus · 14 real vulns</span></div>
+            <div className="legend"><span><i style={{ background: "var(--series-1)" }} />Precision</span><span><i style={{ background: "var(--series-2)" }} />Recall</span></div>
+            <GroupedBars groups={Object.entries(bench.stages).map(([k, v]) => ({ label: k.replace(/^S\d /, "").replace("Semgrep OSS baseline", "Semgrep OSS").replace("Tier 0 engine", "Engine (Tier 0)").replace("+ Tier 1 oracle", "+Oracle (Tier 1)").replace("+ Tier 2 agent (gated)", "+Agent (Tier 2)"), values: [v.precision, v.recall] }))}
+              series={[{ name: "Precision", color: "var(--series-1)" }, { name: "Recall", color: "var(--series-2)" }]} fmt={(v) => pct(v)} />
+            <div className="muted" style={{ padding: "0 14px 12px", fontSize: 12 }}>
+              Semgrep OSS misses every cross-function flow. The agent is a deterministic mock in this POC, so the Tier-2 bar validates the gating machinery, not model quality.
+              {bench.ai_suppression && <> AI suppressions that hid a real vulnerability: <b>{bench.ai_suppression.wrongly_suppressed_tps.length}</b> of {bench.ai_suppression.suppressed}.</>}
+            </div>
+          </div>
+          <div className="card">
+            <div className="card-h">What one review taught the engine</div>
+            <div className="card-b">
+              <table className="data">
+                <thead><tr><th>Repository</th><th>Engine-decided</th><th>AI calls</th><th>Learned</th></tr></thead>
+                <tbody>
+                  {perRepo.flatMap((r) => (r.n > 1 ? [
+                    <tr key={`${r.repo}-1`}><td>{r.repo} · first scan</td><td>{pct(r.first.tier0_rate)}</td><td>{r.first.tier1_calls + r.first.tier2_calls}</td><td>{r.first.resolved_by_learned_knowledge}</td></tr>,
+                    <tr key={`${r.repo}-2`}><td><b>{r.repo} · after review</b></td><td><b>{pct(r.last.tier0_rate)}</b></td><td><b>{r.last.tier1_calls + r.last.tier2_calls}</b></td><td><b>{r.last.resolved_by_learned_knowledge}</b></td></tr>,
+                  ] : []))}
+                  {bench.flywheel?.["acme-billing cold (no shop knowledge)"] && bench.flywheel?.["acme-billing warm (after shop review)"] && (() => {
+                    const c = bench.flywheel!["acme-billing cold (no shop knowledge)"], w = bench.flywheel!["acme-billing warm (after shop review)"];
+                    return [
+                      <tr key="bc"><td>acme-billing · onboarded cold</td><td>{pct(c.tier0_rate)}</td><td>{(c.tier1_calls ?? 0) + (c.tier2_calls ?? 0)}</td><td>{c.resolved_by_learned_knowledge}</td></tr>,
+                      <tr key="bw"><td><b>acme-billing · onboarded with org knowledge</b></td><td><b>{pct(w.tier0_rate)}</b></td><td><b>{(w.tier1_calls ?? 0) + (w.tier2_calls ?? 0)}</b></td><td><b>{w.resolved_by_learned_knowledge}</b></td></tr>,
+                    ];
+                  })()}
+                </tbody>
+              </table>
+              <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>A new repository in the same organization starts with everything the engine already learned: shared sanitizers, validated guards and library facts. It needs fewer AI calls from its very first scan.</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <div className="card-h">Scan history<span className="grow" /><button className="btn ghost sm table-toggle" onClick={() => setTable((t) => !t)}>{table ? "Hide table" : "Show table"}</button></div>

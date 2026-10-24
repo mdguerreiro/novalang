@@ -59,7 +59,8 @@ class Scanner:
         return analyze(facts, matches, kn, self.program)
 
     # ── the scan ─────────────────────────────────────────────────────────────────────────
-    def scan(self, repo_id: str, refresh: bool = True) -> dict:
+    def scan(self, repo_id: str, refresh: bool = True, trigger: str = "scan") -> dict:
+        """`trigger` is "scan" for a real scan, "knowledge" when knowledge changed and decisions are re-derived."""
         t0 = time.time()
         repo = self.store.repo(repo_id)
         org = repo["org_id"]
@@ -101,10 +102,19 @@ class Scanner:
         # Tier 2 — the verifier agent on what is still undecided, behind symbolic gates.
         rerun = lambda extra: self.analyze_repo(repo_id, t1_facts + extra)
         tools = Tools(facts, a1, rerun)
-        t2_calls, t2_cost = 0, {"tokens_in": 0, "tokens_out": 0, "tool_calls": 0}
+        t2_calls, t2_hits, t2_cost = 0, 0, {"tokens_in": 0, "tokens_out": 0, "tool_calls": 0}
         for fp, o in outcome.items():
             f: Finding = o["finding"]
             if o["lane"] != "review" or f.status != "undecided":
+                continue
+            # Unchanged code is never re-verified: reuse the last verdict for the same evidence.
+            key = self._evidence_key(f, facts)
+            prev = self.store.one("SELECT v.* FROM verdicts v JOIN findings x ON x.id = v.finding_id WHERE x.repo_id=? "
+                                  "AND x.fingerprint=? AND v.kind='agent' ORDER BY v.id DESC LIMIT 1", repo_id, fp)
+            if prev and prev["evidence"].get("evidence_key") == key:
+                t2_hits += 1
+                if prev["gate"].get("accepted"):
+                    o.update(lane=prev["gate"]["lane"], decided_by="tier2")
                 continue
             case = VerificationCase(fp, repo_id, f.cls, f.title, f.status, f.assumptions,
                                     [asdict(s) for s in f.path], f.source_fn, f.sink_fn, f.proof)
@@ -114,7 +124,8 @@ class Scanner:
             for k_ in t2_cost:
                 t2_cost[k_] += verdict.cost.get(k_, 0)
             o["verdicts"].append({"kind": "agent", "actor": f"agent:{verdict.model}", "verdict": verdict.verdict,
-                                  "reason_code": verdict.reason_code, "evidence": verdict.to_json(), "gate": result.to_json()})
+                                  "reason_code": verdict.reason_code, "evidence": {**verdict.to_json(), "evidence_key": key},
+                                  "gate": result.to_json()})
             if result.accepted:
                 o.update(lane=result.lane, decided_by="tier2")
                 o["proposals"] = verdict.proposed
@@ -159,6 +170,7 @@ class Scanner:
         self.rank(repo_id)
         self.last[repo_id] = a1
         stats = self._stats(outcome, a0, t1_calls, t1_hits, t2_calls, t2_cost, auto_by_knowledge, time.time() - t0)
+        stats.update(trigger=trigger, tier2_cache_hits=t2_hits)
         self.store.x("UPDATE scans SET finished_at=?, stats=? WHERE id=?", time.time(), json.dumps(stats), scan_id)
         self.store.event("system", "scan.completed", None, None, repo=repo_id, scan=scan_id, **{k: v for k, v in stats.items() if k != "lanes"})
         return {"scan_id": scan_id, **stats}
@@ -304,6 +316,11 @@ class Scanner:
             rule = r["data"].get("sink_rule", "")
             out.setdefault(rule, [0, 0])[0 if r["triage_state"] == "confirmed" else 1] += 1
         return {k: (v[0], v[1]) for k, v in out.items()}
+
+    def _evidence_key(self, f: Finding, facts: Facts) -> str:
+        files = sorted({st.file for st in f.path})
+        blob = "|".join([f.fingerprint, getattr(self.verifier, "name", "")] + [f"{p}:{content_hash(facts.files.get(p, ''))}" for p in files])
+        return hashlib.sha256(blob.encode()).hexdigest()[:24]
 
     def _stats(self, outcome, a0: Analysis, t1_calls, t1_hits, t2_calls, t2_cost, auto_by_knowledge, elapsed) -> dict:
         lanes = {l: 0 for l in LANES}

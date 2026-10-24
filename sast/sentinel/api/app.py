@@ -209,6 +209,14 @@ def create_app(store: Store | None = None, scanner: Scanner | None = None) -> Fa
             "verdicts": triage_counts, "knowledge": kn,
         }
 
+    @app.get("/api/benchmark")
+    def benchmark():
+        path = SAST_ROOT / "docs" / "evaluation.json"
+        if not path.exists():
+            return {"available": False}
+        import json
+        return {"available": True, **json.loads(path.read_text())}
+
     @app.get("/api/events")
     def events(limit: int = 100):
         return store.q("SELECT * FROM events ORDER BY id DESC LIMIT ?", limit)
