@@ -194,3 +194,14 @@ def test_related_groups_by_shared_hypothesis_excluding_sinks():
     rel = bayes.related(_net(), "A")
     assert rel == {"summ:lib.helper": ["B"], "asm:maybe_sanitizer:lib.escape": ["B"]}
     assert bayes.related(_net(), "C") == {}
+
+
+def test_learned_triage_model_learns_from_decisions():
+    from sentinel.learn.triage_model import TriageModel, auc
+    tp = {"cls": "sqli", "engine_status": "confirmed", "source_kind": "http", "sink_fn": "a", "source_fn": "b",
+          "data": {"sink_rule": "spec.sink.sqli", "assumptions": [], "path": [1, 2, 3]}}
+    fp = {"cls": "path", "engine_status": "undecided", "source_kind": "cli", "sink_fn": "a", "source_fn": "a",
+          "data": {"sink_rule": "learned:x", "assumptions": [{"asm": ["weak_source", "cli"]}], "path": [1]}}
+    m = TriageModel().fit([tp] * 8 + [fp] * 8, [1] * 8 + [0] * 8)
+    assert m.predict(tp) > 0.8 > 0.2 > m.predict(fp)
+    assert auc([m.predict(tp), m.predict(fp)], [1, 0]) == 1.0

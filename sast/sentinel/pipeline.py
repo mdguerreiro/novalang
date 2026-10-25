@@ -873,11 +873,30 @@ class Scanner:
                 net.add_hypothesis(h, p)
             net.findings.append(bayes.BayesFinding(str(r["id"]), [h for h, _ in hs], _evidence(r)))
         post = bayes.posteriors(net) if net.findings else {}
+        post = self._blend_learned(repo_id, rows, post)
         with self.store.tx() as c:
             for fid, p in post.items():
                 c.execute("UPDATE findings SET posterior=? WHERE id=?", (round(p, 4), int(fid)))
         self._net = net
         return post
+
+    def _blend_learned(self, repo_id: str, rows: list[dict], post: dict[str, float]) -> dict[str, float]:
+        """Blend the Bayesian posterior with a ranking model trained on this organisation's triage decisions.
+        Weight n/(n+30): the model takes over as analysts label more findings (the triage flywheel)."""
+        from .learn.triage_model import TriageModel
+        org = self.store.repo(repo_id)["org_id"]
+        labelled = self.store.q("SELECT f.* FROM findings f JOIN repos r ON r.id=f.repo_id WHERE r.org_id=? AND "
+                                "f.triage_state IN ('confirmed','not_exploitable')", org)
+        if len(labelled) < 10 or len({x["triage_state"] for x in labelled}) < 2:
+            return post
+        m = TriageModel().fit(labelled, [int(x["triage_state"] == "confirmed") for x in labelled])
+        lam = len(labelled) / (len(labelled) + 30)
+        out = {}
+        for r in rows:
+            k = str(r["id"])
+            if k in post:
+                out[k] = (1 - lam) * post[k] + lam * m.predict(r)
+        return out
 
     def _rule_stats(self) -> dict[str, tuple[int, int]]:
         out: dict[str, list[int]] = {}
