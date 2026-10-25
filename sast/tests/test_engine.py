@@ -146,9 +146,9 @@ def test_class_specific_sanitizer(corpus):
 
 
 @pytest.mark.parametrize("fn,why,label,kid", [
-    ("guarded", ["guard", "isdigit"], "validated by guard isdigit", "K-cur-isdigit"),
-    ("allow", ["guard", "in_allowlist"], "validated by guard in_allowlist", "K-cur-allowlist"),
-    ("item", ["type", "int"], "value is typed int", "K-cur-int"),
+    ("guarded", ["guard", "isdigit"], "Validation: isdigit()", "K-cur-isdigit"),
+    ("allow", ["guard", "in_allowlist"], "Validation: allow-list check", "K-cur-allowlist"),
+    ("item", ["type", "int"], "Type cast: int", "K-cur-int"),
 ])
 def test_guard_and_type_mitigations_are_named(corpus, fn, why, label, kid):
     f = one_finding(corpus[3], fn, "sqli")
@@ -170,7 +170,7 @@ def test_unknown_library_call_is_undecided_with_assumption(corpus):
     f = one_finding(a, "unknown", "sqli")
     assert f.status == "undecided"
     assert {"asm": ["unknown_api", "mylib.transform"],
-            "label": "assumed `mylib.transform` passes tainted data through (library call not modelled)"} in f.assumptions
+            "label": "Unmodelled call: mylib.transform"} in f.assumptions
     assert any(s.kind == "assumption" for s in f.path)
 
 

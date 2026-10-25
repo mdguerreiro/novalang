@@ -36,7 +36,7 @@ async def main() -> int:
             await page.wait_for_timeout(1500)
             await page.screenshot(path=OUT / "triage-reason-dark.png")
             await page.keyboard.press("Escape")
-            for lane in ("Confirmed", "AI-suppressed", "Proved safe"):
+            for lane in ("Open", "Closed by AI", "Closed by engine"):
                 await page.click(f".lane-tab:has-text('{lane}')")
                 await page.wait_for_timeout(900)
                 await page.screenshot(path=OUT / f"lane-{lane.lower().replace(' ', '-')}-dark.png")

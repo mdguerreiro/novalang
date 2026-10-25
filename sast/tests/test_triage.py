@@ -141,5 +141,5 @@ def test_suggestions_offer_learnable_reason(world):
     sc, tr = world
     f = _row(sc.store, "acme-shop", "order_lookup", "sqli")
     sugg = tr.suggestions(f)
-    assert {"reason": "SANITIZED", "detail": {"fn": QUOTE_SQL}, "label": "Sanitized by db.quote_sql"} in sugg
+    assert {"reason": "SANITIZED", "detail": {"fn": QUOTE_SQL}, "label": "Sanitized: db.quote_sql"} in sugg
     assert any(s["reason"] == "ACCEPTED_RISK" for s in sugg)

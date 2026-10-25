@@ -84,24 +84,24 @@ def test_teach_engine_from_triage_transfers_to_other_repo(server, page):
     assert before["lane"] == "suppressed_ai"  # decided by the agent on its own, not yet by the engine
 
     page.goto(f"{server}/#/inbox/acme-shop")
-    page.click(".lane-tab:has-text('AI-suppressed')")
+    page.click(".lane-tab:has-text('Closed by AI')")
     page.click(".q-item:has-text('order_lookup')")
     page.wait_for_selector(".f-title:has-text('SQL injection')")
     page.keyboard.press("x")
-    page.wait_for_selector(".reason:has-text('Sanitized by db.quote_sql')")
+    page.wait_for_selector(".reason:has-text('Sanitized: db.quote_sql')")
     idx = page.locator(".reason").all_inner_texts().index(
         next(t for t in page.locator(".reason").all_inner_texts() if "db.quote_sql" in t))
     page.keyboard.press(str(idx + 1))
     impact = page.locator(".impact")
-    impact.locator("text=re-decided across").wait_for(timeout=20000)
+    impact.locator("text=closed in").wait_for(timeout=20000)
     text = impact.inner_text()
     assert "acme_common.db.quote_sql sanitizes SQLI" in text
-    assert "Canary corpus and confirmed findings unaffected" in text
-    assert "across 2 repos" in text  # the shared helper is used by both services
+    assert "Canaries pass" in text
+    assert "in 2 repos" in text  # the shared helper is used by both services
     SHOTS.mkdir(parents=True, exist_ok=True)
     page.screenshot(path=SHOTS / "impact-preview-dark.png")
     page.keyboard.press("Enter")
-    page.locator(".toast:has-text('Taught the engine')").wait_for(timeout=30000)
+    page.locator(".toast:has-text('active: sanitizer_api')").wait_for(timeout=30000)
 
     # The agent had already proposed this fact (in shadow); the human decision merges into that item,
     # corroborates it and approves it, instead of creating a duplicate.
@@ -117,11 +117,11 @@ def test_confirm_and_undo_with_keyboard(server, page):
     target = _finding(server, "acme-billing", "attachment", "path")
     assert target["lane"] == "review" and target["triage_state"] == "untriaged"
     page.goto(f"{server}/#/inbox/acme-billing")
-    page.click(".lane-tab:has-text('Needs review')")
+    page.click(".lane-tab:has-text('Review')")
     page.click(".q-item:has-text('attachment')")
     page.wait_for_selector(".f-title:has-text('Path traversal')")
     page.keyboard.press("c")
-    page.locator(".toast:has-text('Confirmed')").wait_for(timeout=15000)
+    page.locator(".toast:has-text('True positive')").wait_for(timeout=15000)
     assert _finding(server, "acme-billing", "attachment", "path")["triage_state"] == "confirmed"
     page.keyboard.press("u")
     page.locator(".toast:has-text('Undone')").wait_for(timeout=15000)

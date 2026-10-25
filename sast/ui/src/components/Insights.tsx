@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type Benchmark, type Insights as I } from "../api";
-import { Icon, pct } from "../lib";
+import { pct } from "../lib";
 
 interface Pt { x: string; sub: string; values: number[] }
 
@@ -179,65 +179,48 @@ export function Insights() {
 
   return (
     <div className="page">
-      <p className="page-intro">
-        The flywheel at work. Each scan sends only what the deterministic engine cannot decide to the AI tiers. Each verdict,
-        from AI or human, becomes engine knowledge, so the next scan needs fewer AI calls and fewer human decisions.
-      </p>
       <div className="kpis">
         <div className="card kpi">
-          <div className="k-label">Decided without a human</div>
+          <div className="k-label">Auto-decided</div>
           <div className="k-value">{pct(last?.auto_rate)}</div>
-          <p>Latest scan. The engine, oracle and agent together; every AI decision re-derived symbolically.</p>
+          <p>Latest scan, all tiers</p>
         </div>
         <div className="card kpi">
-          <div className="k-label">Decided by the engine alone</div>
+          <div className="k-label">Engine-decided</div>
           <div className="k-value">{pct(last?.tier0_rate)}</div>
-          {improved && <div className="k-delta up">▲ {Math.round((improved.last.tier0_rate - improved.first.tier0_rate) * 100)} pts on {improved.repo} after one review</div>}
-          <p>Tier 0: deterministic, free, reproducible.</p>
+          {improved && <div className="k-delta up">▲ {Math.round((improved.last.tier0_rate - improved.first.tier0_rate) * 100)} pts on {improved.repo} after review</div>}
+          <p>Latest scan, no AI</p>
         </div>
         <div className="card kpi">
-          <div className="k-label">Resolved by learned knowledge</div>
+          <div className="k-label">Closed by learned facts</div>
           <div className="k-value">{learned}</div>
-          <p>Findings decided by facts the engine learned from triage and AI ({kActive} active items).</p>
+          <p>{kActive} active facts</p>
         </div>
         <div className="card kpi">
-          <div className="k-label">Audited AI false-negative rate</div>
-          <div className="k-value">{fnRate == null ? "–" : pct(fnRate)}</div>
-          <p>{data.audit.audited ? `${data.audit.missed_tps} real issue(s) in ${data.audit.audited} audited AI suppressions.` : "Audit the sampled AI suppressions to measure this."}</p>
+          <div className="k-label">AI false-negative rate</div>
+          <div className="k-value">{pct(fnRate)}</div>
+          <p>{data.audit.audited ? `${data.audit.missed_tps} TP in ${data.audit.audited} audited closures` : "No audits yet"}</p>
         </div>
         <div className="card kpi">
-          <div className="k-label">Effective false-positive rate</div>
-          <div className="k-value">{effFp == null ? "–" : pct(effFp)}</div>
-          <p>{data.effective_fp.shown_triaged ? `Of ${data.effective_fp.shown_triaged} findings shown to people and triaged.` : "Shown findings later marked not exploitable."}</p>
+          <div className="k-label">False-positive rate</div>
+          <div className="k-value">{pct(effFp)}</div>
+          <p>{data.effective_fp.shown_triaged ? `${data.effective_fp.fp} of ${data.effective_fp.shown_triaged} triaged` : "No triage yet"}</p>
         </div>
         <div className="card kpi">
-          <div className="k-label">AI calls, all scans</div>
+          <div className="k-label">AI calls</div>
           <div className="k-value">{totalCalls}</div>
-          <p>Oracle questions and agent verifications. Cached and learned answers are free.</p>
-        </div>
-      </div>
-
-      <div className="card" style={{ marginBottom: 18 }}>
-        <div className="card-h"><Icon name="activity" /> How the flywheel turns</div>
-        <div className="flywheel">
-          {[["1", "Engine decides", "Datalog proves or refutes each source→sink flow, with named mitigations.", pct(last?.tier0_rate)],
-            ["2", "AI resolves the rest", "The oracle labels unknown APIs; the agent verifies with cited evidence.", `${last ? last.decided.tier1 + last.decided.tier2 : 0}`],
-            ["3", "Gates check AI", "Hash-checked citations, unanimous votes, symbolic re-derivation.", "100%"],
-            ["4", "Humans teach", "A structured triage reason becomes a fact, previewed across repos.", `${data.verdicts.human ?? 0}`],
-            ["5", "Engine learns", "Facts pass canary gates, then decide future findings for free.", `${kActive}`]].map(([n, h, p, v]) => (
-            <div key={n} className="fw-step"><div className="fw-n">STEP {n}</div><h4>{h}</h4><p>{p}</p><div className="fw-v">{v}</div></div>
-          ))}
+          <p>All scans, oracle + agent</p>
         </div>
       </div>
 
       <div className="charts">
         <div className="card">
-          <div className="card-h">Share of findings decided without a human<span className="grow" /><span className="muted" style={{ fontWeight: 500, fontSize: 12 }}>per scan</span></div>
+          <div className="card-h">Auto-decided per scan</div>
           <div className="legend"><span><i style={{ background: "var(--series-1)" }} />All tiers</span><span><i style={{ background: "var(--series-2)" }} />Engine alone</span></div>
           <LineChart pts={decidedPts} series={[{ name: "All tiers", color: "var(--series-1)" }, { name: "Engine alone", color: "var(--series-2)" }]} fmt={(v) => pct(v)} />
         </div>
         <div className="card">
-          <div className="card-h">AI calls per scan<span className="grow" /><span className="muted" style={{ fontWeight: 500, fontSize: 12 }}>lower is better</span></div>
+          <div className="card-h">AI calls per scan</div>
           <div className="legend"><span><i style={{ background: "var(--series-1)" }} />Oracle questions</span><span><i style={{ background: "var(--series-2)" }} />Agent verifications</span></div>
           <StackedBars pts={callPts} series={[{ name: "Oracle questions", color: "var(--series-1)" }, { name: "Agent verifications", color: "var(--series-2)" }]} />
         </div>
@@ -246,35 +229,34 @@ export function Insights() {
       {bench?.available && bench.stages && (
         <div className="charts">
           <div className="card">
-            <div className="card-h">Benchmark vs Semgrep OSS<span className="grow" /><span className="muted" style={{ fontWeight: 500, fontSize: 12 }}>demo corpus · 14 real vulns</span></div>
+            <div className="card-h">Benchmark<span className="grow" /><span className="muted" style={{ fontWeight: 500, fontSize: 12 }}>demo corpus, 14 TPs</span></div>
             <div className="legend"><span><i style={{ background: "var(--series-1)" }} />Precision</span><span><i style={{ background: "var(--series-2)" }} />Recall</span></div>
-            <GroupedBars groups={Object.entries(bench.stages).map(([k, v]) => ({ label: k.replace(/^S\d /, "").replace("Semgrep OSS baseline", "Semgrep OSS").replace("Tier 0 engine", "Engine (Tier 0)").replace("+ Tier 1 oracle", "+Oracle (Tier 1)").replace("+ Tier 2 agent (gated)", "+Agent (Tier 2)"), values: [v.precision, v.recall] }))}
+            <GroupedBars groups={Object.entries(bench.stages).map(([k, v]) => ({ label: k.replace(/^S\d /, "").replace("Semgrep OSS baseline", "Semgrep OSS").replace("Tier 0 engine", "Engine").replace("+ Tier 1 oracle", "+Oracle").replace("+ Tier 2 agent (gated)", "+Agent"), values: [v.precision, v.recall] }))}
               series={[{ name: "Precision", color: "var(--series-1)" }, { name: "Recall", color: "var(--series-2)" }]} fmt={(v) => pct(v)} />
             <div className="muted" style={{ padding: "0 14px 12px", fontSize: 12 }}>
-              Semgrep OSS misses every cross-function flow. The agent is a deterministic mock in this POC, so the Tier-2 bar validates the gating machinery, not model quality.
-              {bench.ai_suppression && <> AI suppressions that hid a real vulnerability: <b>{bench.ai_suppression.wrongly_suppressed_tps.length}</b> of {bench.ai_suppression.suppressed}.</>}
+              Tiers 1 and 2 use a mock model.
+              {bench.ai_suppression && <> TPs closed by AI: <b>{bench.ai_suppression.wrongly_suppressed_tps.length}</b> of {bench.ai_suppression.suppressed}.</>}
             </div>
           </div>
           <div className="card">
-            <div className="card-h">What one review taught the engine</div>
+            <div className="card-h">Learning per repository</div>
             <div className="card-b">
               <table className="data">
-                <thead><tr><th>Repository</th><th>Engine-decided</th><th>AI calls</th><th>Learned</th></tr></thead>
+                <thead><tr><th>Repository</th><th>Engine-decided</th><th>AI calls</th><th>Closed by facts</th></tr></thead>
                 <tbody>
                   {perRepo.flatMap((r) => (r.n > 1 ? [
-                    <tr key={`${r.repo}-1`}><td>{r.repo} · first scan</td><td>{pct(r.first.tier0_rate)}</td><td>{r.first.tier1_calls + r.first.tier2_calls}</td><td>{r.first.resolved_by_learned_knowledge}</td></tr>,
-                    <tr key={`${r.repo}-2`}><td><b>{r.repo} · after review</b></td><td><b>{pct(r.last.tier0_rate)}</b></td><td><b>{r.last.tier1_calls + r.last.tier2_calls}</b></td><td><b>{r.last.resolved_by_learned_knowledge}</b></td></tr>,
+                    <tr key={`${r.repo}-1`}><td>{r.repo}, scan 1</td><td>{pct(r.first.tier0_rate)}</td><td>{r.first.tier1_calls + r.first.tier2_calls}</td><td>{r.first.resolved_by_learned_knowledge}</td></tr>,
+                    <tr key={`${r.repo}-2`}><td><b>{r.repo}, after review</b></td><td><b>{pct(r.last.tier0_rate)}</b></td><td><b>{r.last.tier1_calls + r.last.tier2_calls}</b></td><td><b>{r.last.resolved_by_learned_knowledge}</b></td></tr>,
                   ] : []))}
                   {bench.flywheel?.["acme-billing cold (no shop knowledge)"] && bench.flywheel?.["acme-billing warm (after shop review)"] && (() => {
                     const c = bench.flywheel!["acme-billing cold (no shop knowledge)"], w = bench.flywheel!["acme-billing warm (after shop review)"];
                     return [
-                      <tr key="bc"><td>acme-billing · onboarded cold</td><td>{pct(c.tier0_rate)}</td><td>{(c.tier1_calls ?? 0) + (c.tier2_calls ?? 0)}</td><td>{c.resolved_by_learned_knowledge}</td></tr>,
-                      <tr key="bw"><td><b>acme-billing · onboarded with org knowledge</b></td><td><b>{pct(w.tier0_rate)}</b></td><td><b>{(w.tier1_calls ?? 0) + (w.tier2_calls ?? 0)}</b></td><td><b>{w.resolved_by_learned_knowledge}</b></td></tr>,
+                      <tr key="bc"><td>acme-billing, no org history</td><td>{pct(c.tier0_rate)}</td><td>{(c.tier1_calls ?? 0) + (c.tier2_calls ?? 0)}</td><td>{c.resolved_by_learned_knowledge}</td></tr>,
+                      <tr key="bw"><td><b>acme-billing, with org history</b></td><td><b>{pct(w.tier0_rate)}</b></td><td><b>{(w.tier1_calls ?? 0) + (w.tier2_calls ?? 0)}</b></td><td><b>{w.resolved_by_learned_knowledge}</b></td></tr>,
                     ];
                   })()}
                 </tbody>
               </table>
-              <p className="muted" style={{ fontSize: 12, marginBottom: 0 }}>A new repository in the same organization starts with everything the engine already learned: shared sanitizers, validated guards and library facts. It needs fewer AI calls from its very first scan.</p>
             </div>
           </div>
         </div>

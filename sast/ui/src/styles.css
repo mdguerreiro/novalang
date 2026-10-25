@@ -283,7 +283,7 @@ a { color: var(--accent-text); text-decoration: none; }
 .tier.on { color: var(--text); border-color: var(--border-strong); background: var(--surface-2); font-weight: 600; }
 .tier.decided { color: var(--accent-text); border-color: var(--accent); background: var(--accent-soft); font-weight: 650; }
 
-.explain { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.explain { display: grid; grid-template-columns: 3fr 2fr; gap: 12px; margin-bottom: 14px; }
 .explain .card-b ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 5px; }
 .explain .card-b li { color: var(--text-2); }
 .counterfactual {
@@ -469,3 +469,14 @@ table.data th:first-child, table.data td:first-child { text-align: left; }
   .page { padding: 16px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* status row, summary, mitigation checklist */
+.status-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; font-size: 12.5px; }
+.kv { margin: 0; display: grid; gap: 8px; }
+.kv > div { display: grid; grid-template-columns: 78px 1fr; gap: 10px; align-items: baseline; }
+.kv dt { color: var(--text-3); font-size: 12px; font-weight: 600; }
+.kv dd { margin: 0; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.kv-code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kv-meta { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
+.checks li { display: grid; grid-template-columns: 18px 1fr; gap: 6px; align-items: start; }

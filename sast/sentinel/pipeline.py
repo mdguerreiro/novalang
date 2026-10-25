@@ -68,7 +68,7 @@ class Scanner:
         facts, matches = self.inputs(repo_id, refresh=refresh)
         self.store.save_files(repo_id, {p: (content_hash(c), c) for p, c in facts.files.items()})
 
-        # Tier 0 — deterministic decisions from facts + active knowledge.
+        # Tier 0: deterministic decisions from facts + active knowledge.
         a0 = self.analyze_repo(repo_id)
         outcome: dict[str, dict] = {}
         for f in a0.findings:
@@ -79,7 +79,7 @@ class Scanner:
         auto_by_knowledge = [f for f in a0.findings if f.status == "mitigated"
                              and any(set(m["knowledge"]) & learned for m in f.mitigations)]
 
-        # Tier 1 — neural predicates for assumption points on undecided findings (lazy, cached).
+        # Tier 1: neural predicates for assumption points on undecided findings (lazy, cached).
         undecided = [f for f in a0.findings if f.status == "undecided"]
         t1_facts, t1_calls, t1_hits = self._tier1(undecided, facts, org, repo_id)
         a1 = self.analyze_repo(repo_id, t1_facts) if t1_facts else a0
@@ -99,7 +99,7 @@ class Scanner:
             else:
                 outcome[f.fingerprint]["finding"] = g
 
-        # Tier 2 — the verifier agent on what is still undecided, behind symbolic gates.
+        # Tier 2: the verifier agent on what is still undecided, behind symbolic gates.
         rerun = lambda extra: self.analyze_repo(repo_id, t1_facts + extra)
         tools = Tools(facts, a1, rerun)
         t2_calls, t2_hits, t2_cost = 0, 0, {"tokens_in": 0, "tokens_out": 0, "tool_calls": 0}
@@ -242,7 +242,7 @@ class Scanner:
                              "mitigations": g.mitigations},
                 "gate": {"accepted": True, "lane": "suppressed_ai" if verdict == "FALSE_POSITIVE" else "confirmed",
                          "checks": [{"gate": "discharge", "ok": True,
-                                     "detail": "engine re-derived the decision with the oracle's facts applied to this finding"}]}}
+                                     "detail": "re-derived with the oracle's facts"}]}}
 
     # ── knowledge gating ─────────────────────────────────────────────────────────────────
     def repos_in_scope(self, item: dict) -> list[str]:

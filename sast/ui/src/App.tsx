@@ -20,7 +20,6 @@ function Activity() {
   useEffect(() => { api.events().then(setRows); }, []);
   return (
     <div className="page">
-      <p className="page-intro">Append-only audit trail. Every scan, AI verdict, triage decision and knowledge change is recorded with its actor.</p>
       <div className="card"><div className="card-b">
         {rows.map((e) => (
           <div key={e.id} className="event">
@@ -88,7 +87,7 @@ export function App() {
         <div className="brand"><span className="brand-mark"><Icon name="shield" size={14} stroke={2.4} /></span>Sentinel</div>
         <div className="org"><span className="org-avatar">A</span><span className="grow">{overview?.orgs[0]?.name ?? "…"}</span></div>
         <button className={`nav-item${view === "inbox" ? " active" : ""}`} onClick={() => go("inbox")}><Icon name="inbox" />Triage<span className="count">{inboxCount || ""}</span></button>
-        <button className={`nav-item${view === "knowledge" ? " active" : ""}`} onClick={() => go("knowledge")}><Icon name="brain" />Knowledge<span className="count">{pending ? `${pending} pending` : ""}</span></button>
+        <button className={`nav-item${view === "knowledge" ? " active" : ""}`} onClick={() => go("knowledge")}><Icon name="brain" />Knowledge<span className="count">{pending || ""}</span></button>
         <button className={`nav-item${view === "insights" ? " active" : ""}`} onClick={() => go("insights")}><Icon name="chart" />Insights</button>
         <button className={`nav-item${view === "activity" ? " active" : ""}`} onClick={() => go("activity")}><Icon name="activity" />Activity</button>
         <div className="nav-label">Repositories</div>
@@ -99,7 +98,7 @@ export function App() {
           </button>
         ))}
         <div className="sidebar-foot">
-          <span className="chip" title="The agent runs as a deterministic mock in this POC"><Icon name="sparkle" size={11} />agent: mock</span>
+          <span className="chip" title="Deterministic mock, no API key"><Icon name="sparkle" size={11} />Model: mock</span>
           <span className="grow" />
           <button className="btn ghost sm" onClick={() => setTheme(effectiveDark ? "light" : "dark")} aria-label="Toggle theme"><Icon name={effectiveDark ? "sun" : "moon"} size={14} /></button>
         </div>
@@ -109,7 +108,7 @@ export function App() {
           <h1>{titles[view]}</h1>
           {repo && <span className="chip">{repo}</span>}
           <span className="spacer" />
-          {view === "inbox" && <span className="muted" style={{ fontSize: 12 }}>Press <span className="kbd">?</span> for shortcuts</span>}
+          {view === "inbox" && <span className="muted" style={{ fontSize: 12 }}><span className="kbd">?</span> shortcuts</span>}
           <button className="btn" onClick={rescan} disabled={scanning}>{scanning ? <span className="spinner" /> : <Icon name="play" size={13} />}Rescan</button>
         </header>
         <div className="content">

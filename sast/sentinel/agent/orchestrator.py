@@ -150,7 +150,7 @@ def gate(verdict: Verdict, tools: Tools, never_auto_suppress: set[str] | None = 
         return ok
 
     if verdict.verdict in ("ABSTAIN", "NEEDS_HUMAN"):
-        check("verdict", True, f"agent returned {verdict.verdict}: routed to a human")
+        check("verdict", True, f"{verdict.verdict}: sent to analyst")
         return GateResult(False, "review", checks)
 
     ok = True
@@ -160,37 +160,36 @@ def gate(verdict: Verdict, tools: Tools, never_auto_suppress: set[str] | None = 
             continue
         _, sha = tools.read_span(c.cite.file, c.cite.l1, c.cite.l2)
         ok &= check("citation", sha == c.cite.sha256,
-                    f"{c.id}: {c.cite.file}:{c.cite.l1}-{c.cite.l2} " + ("matches the scanned code" if sha == c.cite.sha256
-                                                                       else "does NOT match the scanned code"))
+                    f"{c.id}: {c.cite.file}:{c.cite.l1}-{c.cite.l2} " + ("hash matches" if sha == c.cite.sha256 else "hash mismatch"))
     # G2 votes
     k, agree = verdict.votes.get("k", 1), verdict.votes.get("agree", 0)
     if verdict.verdict == "FALSE_POSITIVE":
-        ok &= check("votes", agree == k, f"{agree}/{k} samples agree; suppression requires unanimity")
+        ok &= check("votes", agree == k, f"{agree}/{k} agree (closing needs {k}/{k})")
     else:
-        ok &= check("votes", agree * 2 > k, f"{agree}/{k} samples agree; confirmation requires a majority")
+        ok &= check("votes", agree * 2 > k, f"{agree}/{k} agree (confirming needs a majority)")
     # G3 symbolic discharge
     facts = [c.fact for c in verdict.claims if c.fact]
     wi = tools.what_if(facts) if facts else None
     after = wi["findings"].get(verdict.fingerprint) if wi else None
     if verdict.verdict == "FALSE_POSITIVE":
         if after is None:
-            ok &= check("discharge", False, "the verdict carries no checkable fact; free-text FP verdicts never suppress")
+            ok &= check("discharge", False, "no checkable fact in verdict")
         else:
             reproduced = after["status"] == "mitigated" and any(
                 any(kid.startswith("WHATIF-") for kid in m.get("knowledge", [])) for m in after["mitigations"])
             ok &= check("discharge", reproduced,
-                        "engine re-derived the finding as mitigated from the agent's facts" if reproduced else
-                        f"engine did not reproduce the argument (status under the agent's facts: {after['status']})")
+                        "mitigation re-derived from the agent's facts" if reproduced else
+                        f"not re-derived (engine status: {after['status']})")
         if ok and verdict.cls in never:
-            check("policy", False, f"{verdict.cls} is on the never-auto-suppress list")
+            check("policy", False, f"{verdict.cls} is never auto-closed")
             return GateResult(False, "review", checks)
         return GateResult(bool(ok), "suppressed_ai" if ok else "review", checks)
     # TRUE_POSITIVE
     current = {f.fingerprint: f for f in tools.analysis.findings}.get(verdict.fingerprint)
     has_alarm = current is not None and current.status in ("confirmed", "undecided")
-    ok &= check("alarm", has_alarm, "engine derives a source→sink flow" if has_alarm else "engine derives no flow")
+    ok &= check("alarm", has_alarm, "source to sink flow exists" if has_alarm else "no flow")
     if after is not None:
         ok &= check("discharge", after["status"] == "confirmed",
-                    "the agent's facts discharge every open assumption" if after["status"] == "confirmed"
-                    else f"open assumptions remain (status {after['status']})")
+                    "all assumptions resolved" if after["status"] == "confirmed"
+                    else f"assumptions still open (status {after['status']})")
     return GateResult(bool(ok), "confirmed" if ok else "review", checks)

@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { FindingDetail, ProofNode, Step, VerdictRow } from "../api";
 import { Conf, Icon, Sev, highlightLine, pct, short } from "../lib";
 
 const KIND_LABEL: Record<Step["kind"], string> = {
-  source: "Source", flow: "Flows", call: "Calls", param: "Enters", return: "Returns", guard: "Guard",
+  source: "Source", flow: "Flow", call: "Call", param: "Param", return: "Return", guard: "Validation",
   sanitizer: "Sanitizer", assumption: "Assumption", sink: "Sink",
 };
 const KIND_GLYPH: Record<Step["kind"], string> = {
@@ -46,7 +46,7 @@ function Trace({ f, onOpenFile }: { f: FindingDetail; onOpenFile: (file: string,
         const span: [number, number] | undefined = st.end_line === st.line ? [st.col - 1, st.end_col - 1] : [st.col - 1, 10_000];
         const prev = path[i - 1];
         const crossed = prev && prev.fn !== st.fn;
-        const guardOk = st.kind === "guard" && !!st.note && !st.note.startsWith("assumed");
+        const guardOk = st.kind === "guard" && !!st.note && st.note.startsWith("Validation");
         return (
           <div key={i} className={`t-step ${st.kind}`}>
             <div className="t-rail">
@@ -58,15 +58,14 @@ function Trace({ f, onOpenFile }: { f: FindingDetail; onOpenFile: (file: string,
                 <span className="t-kind" style={{ color: st.kind === "source" || st.kind === "sink" ? "var(--critical-text)" : st.kind === "sanitizer" ? "var(--good-text)" : st.kind === "assumption" ? "var(--warning-text)" : "var(--text-2)" }}>
                   {KIND_LABEL[st.kind]}
                 </span>
-                {crossed && <span className="chip accent"><Icon name="arrow" size={11} />{short(st.fn)}()</span>}
-                {i === 0 && <span className="chip">{f.source_kind || "input"}</span>}
+                {crossed && <span className="chip accent">{short(st.fn)}()</span>}
                 {st.kind === "sink" && <span className="chip bad">{f.cwe}</span>}
                 <span className="grow" />
-                <span className="t-loc" onClick={() => onOpenFile(st.file, st.line)} title="Open file at this line">{st.file}:{st.line}</span>
+                <span className="t-loc" onClick={() => onOpenFile(st.file, st.line)} title="Open file">{st.file}:{st.line}</span>
               </div>
               <CodeLines content={content} line={st.line} l1={st.line - (i === 0 ? 1 : 0)} l2={st.line} span={span} />
               {st.note && (() => {
-                const assumed = st.kind === "assumption" || st.note.startsWith("assumed") || (st.kind === "guard" && !guardOk);
+                const assumed = st.kind === "assumption" || st.note.startsWith("Un") || st.note.startsWith("No route") || (st.kind === "guard" && !guardOk);
                 return (
                   <div className={`t-note ${assumed ? "warn" : st.kind === "sanitizer" || guardOk ? "good" : "info"}`}>
                     <Icon name={assumed ? "alert" : "check"} size={13} /> {st.note}
@@ -74,7 +73,7 @@ function Trace({ f, onOpenFile }: { f: FindingDetail; onOpenFile: (file: string,
                 );
               })()}
               {st.other_kills.length > 0 && (
-                <div className="t-note info"><Icon name="info" size={13} /> {st.other_kills.join(", ")}, but not against {f.title.toLowerCase()}</div>
+                <div className="t-note info"><Icon name="info" size={13} /> {st.other_kills.join(", ")} (not {f.cls.toUpperCase()})</div>
               )}
             </div>
           </div>
@@ -84,48 +83,33 @@ function Trace({ f, onOpenFile }: { f: FindingDetail; onOpenFile: (file: string,
   );
 }
 
-function DecisionBanner({ f }: { f: FindingDetail }) {
-  const by = f.data.decided_by;
+const STATUS: Record<string, [string, string]> = {
+  confirmed: ["Open", "critical"], review: ["Review", "warning"], suppressed: ["Closed by engine", "good"],
+  suppressed_ai: ["Closed by AI", "good"], test: ["Test code", "neutral"],
+};
+const TRIAGE: Record<string, [string, string]> = {
+  confirmed: ["True positive", "critical"], not_exploitable: ["Not exploitable", "good"], accepted_risk: ["Risk accepted", "warning"],
+};
+
+function StatusRow({ f }: { f: FindingDetail }) {
   const human = f.triage_state !== "untriaged";
-  const cfg = useMemo(() => {
-    if (human) {
-      const map: Record<string, [string, string, string]> = {
-        confirmed: ["Confirmed by a reviewer", "Counts as a true positive; the engine and canaries learned from it.", "critical"],
-        not_exploitable: ["Marked not exploitable", "The reviewer's structured reason was turned into engine knowledge where possible.", "good"],
-        accepted_risk: ["Risk accepted", "Governance only; nothing was learned about correctness.", "warning"],
-      };
-      return map[f.triage_state];
-    }
-    switch (f.lane) {
-      case "confirmed": return ["Exploitable path proved", by === "tier2" ? "The verifier agent discharged the open assumptions and the engine re-derived the flow." : "Every step is modelled: no sanitizer, no open assumption.", "critical"];
-      case "review": return ["Needs your judgement", "The engine and the agent could not settle this. Your decision teaches both.", "warning"];
-      case "suppressed": return ["Proved safe by the engine", `Derived mitigation: ${f.data.mitigations.map((m) => m.label).join("; ")}.`, "good"];
-      case "suppressed_ai": return ["Suppressed by AI, with proof", by === "tier1" ? "A neural predicate labelled an unknown API or guard, and the engine re-derived the mitigation." : "The agent's evidence-bearing claims were re-checked and reproduced by the engine.", "good"];
-      default: return ["Test-only flow", "Lives in tests or tooling; kept for completeness.", "neutral"];
-    }
-  }, [f, by, human]);
-  const tone = cfg[2];
-  const color = tone === "critical" ? "var(--critical)" : tone === "good" ? "var(--good)" : tone === "warning" ? "var(--warning)" : "var(--text-3)";
+  const [label, tone] = human ? TRIAGE[f.triage_state] : STATUS[f.lane] ?? ["Unknown", "neutral"];
+  const by = human ? "human" : f.data.decided_by ?? (f.lane === "review" ? "" : "engine");
   const tiers: [string, string, boolean][] = [
     ["engine", "Engine", true],
     ["tier1", "Oracle", f.verdicts.some((v) => v.kind === "oracle")],
     ["tier2", "Agent", f.verdicts.some((v) => v.kind === "agent")],
-    ["human", "Human", human],
+    ["human", "Analyst", human],
   ];
-  const decided = human ? "human" : by ?? (f.lane === "review" ? "" : "engine");
+  const cls = tone === "critical" ? "bad" : tone === "good" ? "good" : tone === "warning" ? "warn" : "";
   return (
-    <div className="decision">
-      <div className="icon" style={{ background: color, color: tone === "warning" ? "#3a2a00" : "white" }}>
-        <Icon name={tone === "good" ? "shield" : tone === "critical" ? "alert" : tone === "warning" ? "eye" : "flask"} size={17} />
-      </div>
-      <div>
-        <h4>{cfg[0]}</h4>
-        <p>{cfg[1]}</p>
-      </div>
-      <div className="tier-strip" aria-label="Decision tiers">
-        {tiers.map(([id, label, on]) => (
-          <span key={id} className={`tier${on ? " on" : ""}${decided === id ? " decided" : ""}`} title={decided === id ? "Decided here" : on ? "Consulted" : "Not needed"}>
-            {decided === id && <Icon name="check" size={11} />}{label}
+    <div className="status-row">
+      <span className={`chip ${cls}`} style={{ fontWeight: 650 }}>{label}</span>
+      <span className="muted">Decided by</span>
+      <div className="tier-strip" aria-label="Decided by">
+        {tiers.map(([id, name, on]) => (
+          <span key={id} className={`tier${on ? " on" : ""}${by === id ? " decided" : ""}`}>
+            {by === id && <Icon name="check" size={11} />}{name}
           </span>
         ))}
       </div>
@@ -133,43 +117,103 @@ function DecisionBanner({ f }: { f: FindingDetail }) {
   );
 }
 
+const CHECK_ICON: Record<string, { icon: "check" | "alert" | "x" | "info"; color: string; label: string }> = {
+  applies: { icon: "check", color: "var(--good-text)", label: "Applies" },
+  unverified: { icon: "alert", color: "var(--warning-text)", label: "Unverified" },
+  missing: { icon: "x", color: "var(--critical-text)", label: "None" },
+  other_class: { icon: "info", color: "var(--text-3)", label: "Other class" },
+};
+
+function Explanation({ f, onOpenFile }: { f: FindingDetail; onOpenFile: (file: string, line: number) => void }) {
+  const ex = f.explanation;
+  return (
+    <div className="explain">
+      <div className="card">
+        <div className="card-h">Summary</div>
+        <div className="card-b">
+          <dl className="kv">
+            {ex.summary.map((r) => (
+              <div key={r.k}>
+                <dt>{r.k}</dt>
+                <dd>
+                  <code className="kv-code" title={r.v}>{r.v}</code>
+                  {(r.loc || r.note) && (
+                    <span className="kv-meta">
+                      {r.loc && <button className="cite" onClick={() => { const [file, line] = r.loc.split(":"); onOpenFile(file, Number(line)); }}>{r.loc}</button>}
+                      {r.note && <span className="muted">{r.note}</span>}
+                    </span>
+                  )}
+                </dd>
+              </div>
+            ))}
+            {ex.fix && (
+              <div>
+                <dt>{ex.fix.k}</dt>
+                <dd>{ex.fix.v}</dd>
+              </div>
+            )}
+          </dl>
+        </div>
+      </div>
+      <div className="card">
+        <div className="card-h">Mitigations</div>
+        <div className="card-b">
+          <ul className="checks">
+            {ex.checks.map((c, i) => {
+              const m = CHECK_ICON[c.state];
+              return (
+                <li key={i} title={m.label}>
+                  <span style={{ color: m.color }}><Icon name={m.icon} size={14} /></span>
+                  <span>{c.text}</span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const VERDICT: Record<string, [string, string]> = {
+  FALSE_POSITIVE: ["False positive", "good"], TRUE_POSITIVE: ["True positive", "bad"],
+  NEEDS_HUMAN: ["Needs analyst", "warn"], ABSTAIN: ["No verdict", "warn"],
+};
+const GATE_NAME: Record<string, string> = {
+  citation: "Citation", votes: "Votes", discharge: "Engine re-check", alarm: "Flow exists", policy: "Policy", verdict: "Verdict",
+};
+
 function VerdictCard({ v, onCite }: { v: VerdictRow; onCite: (file: string, line: number) => void }) {
+  if (v.kind === "human") return null;
   const isOracle = v.kind === "oracle";
-  const isHuman = v.kind === "human";
-  const tone = v.verdict === "FALSE_POSITIVE" ? "good" : v.verdict === "TRUE_POSITIVE" ? "bad" : "warn";
+  const [label, tone] = VERDICT[v.verdict] ?? [v.verdict, "warn"];
   const votes = v.evidence.votes;
-  if (isHuman) return null;
   return (
     <div className="card agent">
       <div className="card-h">
         <Icon name={isOracle ? "book" : "sparkle"} />
-        {isOracle ? "Spec oracle (Tier 1)" : "Verifier agent (Tier 2)"}
-        <span className="chip outline mono" style={{ fontWeight: 500 }}>{v.actor.split(":")[1]}</span>
+        {isOracle ? "Oracle" : "Agent"}
+        <span className="chip outline mono" style={{ fontWeight: 500 }}>{v.actor.split(":").slice(1).join(":")}</span>
         <span className="grow" />
-        <span className={`verdict-badge chip ${tone}`}>
-          {v.verdict === "FALSE_POSITIVE" ? "False positive" : v.verdict === "TRUE_POSITIVE" ? "True positive" : v.verdict === "NEEDS_HUMAN" ? "Needs human" : "Abstained"}
-        </span>
+        {votes && (
+          <span className="row muted" style={{ fontSize: 12, gap: 6 }} title={`${votes.agree} of ${votes.k} samples agree`}>
+            <span className="votes">{Array.from({ length: votes.k }, (_, i) => <i key={i} className={i < votes.agree ? "y" : ""} />)}</span>
+            {votes.agree}/{votes.k}
+          </span>
+        )}
+        <span className={`verdict-badge chip ${tone}`}>{label}</span>
       </div>
       <div className="card-b">
         {v.evidence.rationale && <p style={{ margin: "0 0 8px" }}>{v.evidence.rationale}</p>}
-        {votes && (
-          <div className="row muted" style={{ fontSize: 12 }}>
-            <span className="votes" aria-label={`${votes.agree} of ${votes.k} samples agree`}>
-              {Array.from({ length: votes.k }, (_, i) => <i key={i} className={i < votes.agree ? "y" : ""} />)}
-            </span>
-            {votes.agree}/{votes.k} samples agree
-            {v.evidence.confidence != null && <>· raw confidence {pct(v.evidence.confidence)} (not used for decisions)</>}
-          </div>
-        )}
         {votes?.dissent && votes.dissent.length > 0 && <div className="t-note warn"><Icon name="alert" size={13} /> Dissent: {votes.dissent.join("; ")}</div>}
         {isOracle && v.evidence.labels && (
           <div className="claims">
             {v.evidence.labels.map((l) => (
               <div key={l.id} className="claim">
-                <span className="claim-id">{l.id.replace("K-", "K")}</span>
+                <span className="claim-id">{l.id}</span>
                 <div>
-                  <div className="mono" style={{ fontSize: 12 }}>{l.pred}({(l.args as string[]).join(", ")})</div>
-                  <div className="muted">{l.rationale} · confidence {pct(l.confidence)}</div>
+                  <code>{l.pred}({(l.args as string[]).join(", ")})</code>
+                  <div className="muted">{l.rationale} Confidence {pct(l.confidence)}.</div>
                 </div>
               </div>
             ))}
@@ -184,11 +228,11 @@ function VerdictCard({ v, onCite }: { v: VerdictRow; onCite: (file: string, line
                   <div>{c.statement}</div>
                   <div className="row wrap" style={{ marginTop: 4, gap: 6 }}>
                     {c.cite && (
-                      <button className="cite" onClick={() => onCite(c.cite!.file, c.cite!.l1)} title={`sha256 ${c.cite.sha256.slice(0, 12)}…`}>
+                      <button className="cite" onClick={() => onCite(c.cite!.file, c.cite!.l1)} title={`sha256 ${c.cite.sha256.slice(0, 12)}`}>
                         <Icon name="lock" size={10} /> {c.cite.file}:{c.cite.l1}{c.cite.l2 !== c.cite.l1 ? `-${c.cite.l2}` : ""}
                       </button>
                     )}
-                    {c.fact && <span className="chip outline mono" style={{ fontSize: 11 }}>{c.fact.pred}({c.fact.args.join(", ")})</span>}
+                    {c.fact && <code className="chip outline">{c.fact.pred}({c.fact.args.join(", ")})</code>}
                   </div>
                 </div>
               </div>
@@ -197,11 +241,10 @@ function VerdictCard({ v, onCite }: { v: VerdictRow; onCite: (file: string, line
         )}
         {v.gate.checks && (
           <div className="gates">
-            <div className="section-title" style={{ margin: 0 }}>Symbolic gates {v.gate.accepted ? "· accepted" : "· not accepted"}</div>
             {v.gate.checks.map((g, i) => (
               <div key={i} className="gate">
                 <span style={{ color: g.ok ? "var(--good-text)" : "var(--critical-text)" }}><Icon name={g.ok ? "check" : "x"} size={14} /></span>
-                <span className="g-name">{g.gate}</span>
+                <span className="g-name">{GATE_NAME[g.gate] ?? g.gate}</span>
                 <span className="text-2">{g.detail}</span>
               </div>
             ))}
@@ -215,7 +258,7 @@ function VerdictCard({ v, onCite }: { v: VerdictRow; onCite: (file: string, line
 
 function ProofTree({ node, depth = 0 }: { node: ProofNode; depth?: number }) {
   const kids = node.children ?? [];
-  const label = <span>{node.atom}{node.rule ? <span className="muted"> · rule {node.rule}</span> : null}</span>;
+  const label = <span>{node.atom}{node.rule ? <span className="muted"> rule {node.rule}</span> : null}</span>;
   if (!kids.length && !node.absent) return <div style={{ marginLeft: 14 }}>{label}</div>;
   return (
     <details open={depth < 2}>
@@ -229,7 +272,6 @@ function ProofTree({ node, depth = 0 }: { node: ProofNode; depth?: number }) {
 export function Evidence({ f, onOpenFile, onSelect }: { f: FindingDetail; onOpenFile: (file: string, line: number) => void; onSelect: (id: number) => void }) {
   const [showProof, setShowProof] = useState(false);
   const machine = f.verdicts.filter((v) => v.kind !== "human");
-  const ex = f.explanation;
   const cal = f.calibration;
   return (
     <div className="evidence">
@@ -238,44 +280,29 @@ export function Evidence({ f, onOpenFile, onSelect }: { f: FindingDetail; onOpen
           <Sev s={f.severity} />
           <span className="chip mono">{f.cwe}</span>
           <span className="chip">{f.repo_id}</span>
-          {f.shadow_by && <span className="chip accent" title="A knowledge item in shadow mode would suppress this finding"><Icon name="eye" size={11} />Shadow: would be suppressed by {f.shadow_by}</span>}
+          {f.shadow_by && <span className="chip accent" title="Shadow knowledge item that would close this finding"><Icon name="eye" size={11} />Shadow: {f.shadow_by}</span>}
           {f.audit === 1 && <span className="chip warn"><Icon name="flask" size={11} />Audit sample</span>}
         </div>
-        <h2 className="f-title">{f.title} <span className="muted" style={{ fontWeight: 500, fontSize: 15 }}>in {short(f.source_fn)}</span></h2>
+        <h2 className="f-title">{f.title} <span className="muted mono" style={{ fontWeight: 500, fontSize: 14 }}>{short(f.source_fn)}()</span></h2>
         <div className="f-sub">
-          <span className="flow-line">{short(f.source_fn)}() <Icon name="arrow" size={12} /> {short(f.sink_fn)}()</span>
-          <span className="muted">·</span>
           <span className="mono muted" style={{ fontSize: 12 }}>{f.file}:{f.line}</span>
           {f.posterior != null && (f.lane === "review" || f.lane === "confirmed") && (
             <>
               <span className="muted">·</span>
               <Conf p={f.posterior} />
-              <span className="muted" style={{ fontSize: 12 }}>
-                {cal.calibrated ? `${pct(cal.rate)} of ${cal.n} similar findings were confirmed` : `uncalibrated (${cal.n} similar triaged)`}
+              <span className="muted" style={{ fontSize: 12 }} title="Share of triaged findings in the same class and lane that were true positives">
+                {cal.calibrated ? `${pct(cal.rate)} TP in ${cal.n} similar` : "not calibrated"}
               </span>
             </>
           )}
         </div>
       </div>
 
-      <DecisionBanner f={f} />
-
-      <div className="explain">
-        <div className="card">
-          <div className="card-h"><Icon name="alert" /> Why this is a finding</div>
-          <div className="card-b"><ul>{ex.why.map((w, i) => <li key={i}>{w}</li>)}</ul></div>
-        </div>
-        <div className="card">
-          <div className="card-h"><Icon name="shield" /> Why it might not be</div>
-          <div className="card-b">
-            {ex.why_not.length ? <ul>{ex.why_not.map((w, i) => <li key={i}>{w}</li>)}</ul> : <span className="muted">No candidate mitigation on this path. Nothing the engine can see makes it safe.</span>}
-          </div>
-        </div>
-        {ex.counterfactual && <div className="counterfactual"><Icon name="sparkle" /> <span>{ex.counterfactual}</span></div>}
-      </div>
+      <StatusRow f={f} />
+      <Explanation f={f} onOpenFile={onOpenFile} />
 
       <div className="card" style={{ marginBottom: 14 }}>
-        <div className="card-h"><Icon name="git" /> Data flow <span className="muted" style={{ fontWeight: 500 }}>· {f.data.path.length} steps across {new Set(f.data.path.map((s) => s.fn)).size} functions</span></div>
+        <div className="card-h"><Icon name="git" /> Data flow <span className="muted" style={{ fontWeight: 500 }}>{f.data.path.length} steps, {new Set(f.data.path.map((s) => s.fn)).size} functions</span></div>
         <div className="card-b"><Trace f={f} onOpenFile={onOpenFile} /></div>
       </div>
 
@@ -283,12 +310,12 @@ export function Evidence({ f, onOpenFile, onSelect }: { f: FindingDetail; onOpen
 
       {f.related.length > 0 && (
         <div className="card" style={{ marginBottom: 14 }}>
-          <div className="card-h"><Icon name="layers" /> Shares a derivation with <span className="muted" style={{ fontWeight: 500 }}>· your verdict re-ranks these</span></div>
+          <div className="card-h"><Icon name="layers" /> Same root cause</div>
           <div className="card-b">
             {f.related.slice(0, 6).map((r, i) => (
               <div key={i} className="related-item" onClick={() => onSelect(r.finding.id)}>
                 <Sev s={r.finding.severity} />
-                <span className="r-name grow ellipsis">{r.finding.title} in <b>{short(r.finding.source_fn)}</b></span>
+                <span className="r-name grow ellipsis">{r.finding.title} <code>{short(r.finding.source_fn)}()</code></span>
                 <span className="chip mono" style={{ fontSize: 10.5 }}>{r.hypothesis.split(":").slice(0, 2).join(":").replace("summ:", "via ").replace("asm:", "")}</span>
                 <Conf p={r.finding.posterior} />
               </div>
@@ -299,7 +326,7 @@ export function Evidence({ f, onOpenFile, onSelect }: { f: FindingDetail; onOpen
 
       <div className="card">
         <div className="card-h">
-          <Icon name="book" /> Derivation <span className="muted" style={{ fontWeight: 500 }}>· Datalog provenance</span>
+          <Icon name="book" /> Derivation
           <span className="grow" />
           <button className="btn ghost sm" onClick={() => setShowProof((s) => !s)}>{showProof ? "Hide" : "Show"}</button>
         </div>

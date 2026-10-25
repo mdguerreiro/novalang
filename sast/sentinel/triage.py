@@ -41,23 +41,23 @@ class Triage:
         for a in finding["data"].get("assumptions", []):
             kind, *args = a["asm"]
             if kind == "maybe_sanitizer":
-                out.append({"reason": "SANITIZED", "detail": {"fn": args[0]}, "label": f"Sanitized by {_disp(args[0])}"})
+                out.append({"reason": "SANITIZED", "detail": {"fn": args[0]}, "label": f"Sanitized: {_disp(args[0])}"})
             elif kind == "unknown_api":
-                out.append({"reason": "SANITIZED", "detail": {"fn": args[0]}, "label": f"Sanitized by {_disp(args[0])}"})
+                out.append({"reason": "SANITIZED", "detail": {"fn": args[0]}, "label": f"Sanitized: {_disp(args[0])}"})
             elif kind == "unknown_guard":
-                out.append({"reason": "GUARDED", "detail": {"pred": args[0]}, "label": f"Validated by {_disp(args[0])}"})
+                out.append({"reason": "GUARDED", "detail": {"pred": args[0]}, "label": f"Validated: {_disp(args[0])}"})
             elif kind == "unreachable":
-                out.append({"reason": "UNREACHABLE", "detail": {}, "label": f"Dead code: {args[0].rsplit('.', 1)[-1]} is never called"})
+                out.append({"reason": "UNREACHABLE", "detail": {}, "label": f"Dead code: {args[0].rsplit('.', 1)[-1]}()"})
         # Agent proposals that did not clear the gates are still useful hints.
         for v in self.store.q("SELECT evidence FROM verdicts WHERE finding_id=? AND kind='agent' ORDER BY id DESC LIMIT 1", finding["id"]):
             for p in v["evidence"].get("proposed", []):
                 if p["pred"] == "sanitizer_api":
-                    s = {"reason": "SANITIZED", "detail": {"fn": p["args"][0]}, "label": f"Sanitized by {_disp(p['args'][0])}"}
+                    s = {"reason": "SANITIZED", "detail": {"fn": p["args"][0]}, "label": f"Sanitized: {_disp(p['args'][0])}"}
                     if s not in out:
                         out.append(s)
-        out += [{"reason": "NOT_EXPOSED", "detail": {}, "label": "Route is not externally exposed"},
-                {"reason": "TEST_CODE", "detail": {}, "label": "Test or tooling code"},
-                {"reason": "ACCEPTED_RISK", "detail": {}, "label": "Accepted risk (no learning)"}]
+        out += [{"reason": "NOT_EXPOSED", "detail": {}, "label": "Not exposed externally"},
+                {"reason": "TEST_CODE", "detail": {}, "label": "Test code"},
+                {"reason": "ACCEPTED_RISK", "detail": {}, "label": "Risk accepted"}]
         return out
 
     # ── reason -> knowledge ──────────────────────────────────────────────────────────────

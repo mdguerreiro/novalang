@@ -163,33 +163,44 @@ def analyze(facts: Facts, matches: list[SpecMatch], knowledge: list[KnowledgeFac
 
 # ── building findings ──────────────────────────────────────────────────────────────────
 
+def _tail(name: str, parts: int = 2) -> str:
+    return ".".join(str(name).removeprefix("call:").split(".")[-parts:])
+
+
+GUARD_NAMES = {"in_allowlist": "allow-list check", "host_allowlist": "host allow-list"}
+
+
 def _why_label(why, facts: Facts) -> str:
+    """Short label for a mitigation, as shown in the UI checklist and trace."""
     if isinstance(why, tuple):
         kind, *args = why
         if kind == "api":
-            return f"sanitized by {args[0]}"
+            return f"Sanitizer: {_tail(args[0])}"
         if kind == "guard":
-            return f"validated by guard {args[0]}"
+            pred = str(args[0])
+            name = GUARD_NAMES.get(pred, f"{_tail(pred)}()" if not pred.startswith("regex") else pred)
+            return f"Validation: {name}"
         if kind == "type":
-            return f"value is typed {args[0]}"
+            return f"Type cast: {args[0]}"
         if kind == "dead":
-            return f"dead code: {args[0]} is never executed"
+            return f"Dead code: {_tail(args[0], 1)}()"
         if kind == "exposure":
-            return f"{args[0]} is not externally exposed"
+            return f"Internal only: {_tail(args[0], 1)}()"
     if isinstance(why, str) and why.startswith("spec."):
-        return f"sanitized ({why})"
+        return f"Sanitizer: {why.split('.', 3)[-1]}"
     return str(why)
 
 
 def _asm_label(asm) -> str:
+    """Short label for an open assumption."""
     if isinstance(asm, tuple):
         kind, *args = asm
         return {
-            "unknown_api": f"assumed `{args[0]}` passes tainted data through (library call not modelled)",
-            "unknown_guard": f"assumed guard `{args[0]}` does not validate the input",
-            "maybe_sanitizer": f"assumed `{args[0]}` does not sanitize (looks like a sanitizer)",
-            "weak_source": f"source kind `{args[0]}` may not be attacker-controlled",
-            "unreachable": f"`{args[0]}` is not reachable from any entrypoint",
+            "unknown_api": f"Unmodelled call: {args[0]}",
+            "unknown_guard": f"Unverified validation: {_tail(args[0])}",
+            "maybe_sanitizer": f"Unverified sanitizer: {_tail(args[0])}",
+            "weak_source": f"Weak source: {args[0]}",
+            "unreachable": f"No route or caller: {_tail(args[0], 1)}()",
         }.get(kind, str(asm))
     return str(asm)
 

@@ -28,10 +28,10 @@ function groupLabel(key: string) {
   const [kind, ...rest] = key.split(":");
   const subject = rest.join(":");
   switch (kind) {
-    case "maybe_sanitizer": return `Possible sanitizer · ${short(subject)}`;
-    case "unknown_api": return `Unmodelled API · ${subject}`;
-    case "unknown_guard": return `Unverified guard · ${short(subject.replace(/^call:/, ""))}`;
-    case "via": return `Through ${short(rest[0])}() · ${rest[1]?.toUpperCase()}`;
+    case "maybe_sanitizer": return `Unverified sanitizer: ${short(subject)}()`;
+    case "unknown_api": return `Unmodelled call: ${subject}`;
+    case "unknown_guard": return `Unverified validation: ${short(subject.replace(/^call:/, ""))}()`;
+    case "via": return `Sink in ${short(rest[0])}() · ${rest[1]?.toUpperCase()}`;
     default: return `${short(rest[0])} · ${rest[1]?.toUpperCase()}`;
   }
 }
@@ -119,7 +119,7 @@ export function Inbox({ repo, toast, refreshOverview }: { repo: string | null; t
       await api.triage(fid, { state: "confirmed" });
       undoStack.current.push(async () => { await api.triage(fid, { state: "untriaged" }); });
       const rel = detail.related.length;
-      toast(`Confirmed ${detail.title.toLowerCase()} in ${short(detail.source_fn)}${rel ? ` · re-ranked ${rel} related finding${rel > 1 ? "s" : ""}` : ""}`,
+      toast(`True positive: ${detail.title}, ${short(detail.source_fn)}()${rel ? `. ${rel} related re-ranked` : ""}`,
         { icon: "check", undo: () => undoLast() });
       await afterChange(fid);
       advance(fid);
@@ -139,17 +139,17 @@ export function Inbox({ repo, toast, refreshOverview }: { repo: string | null; t
       });
       if (k && k.status === "active") {
         const repos = res.rescanned.length;
-        toast(`Taught the engine ${k.id}: ${k.pred}(${k.args.join(", ")}) · re-scanned ${repos} repo${repos === 1 ? "" : "s"}`, { icon: "brain", undo: () => undoLast() });
+        toast(`${k.id} active: ${k.pred}(${k.args.join(", ")}). ${repos} repo${repos === 1 ? "" : "s"} re-evaluated.`, { icon: "brain", undo: () => undoLast() });
       } else if (k) {
-        toast(`${k.id} is in ${k.status} mode. Approve it in Knowledge once you're confident.`, { icon: "brain", undo: () => undoLast() });
+        toast(`${k.id} in ${k.status}. Approve in Knowledge.`, { icon: "brain", undo: () => undoLast() });
       } else {
-        toast(state === "accepted_risk" ? "Risk accepted (nothing learned)" : "Marked not exploitable", { icon: "check", undo: () => undoLast() });
+        toast(state === "accepted_risk" ? "Risk accepted" : "Not exploitable", { icon: "check", undo: () => undoLast() });
       }
       await afterChange(fid);
       setMode(null);
       advance(fid);
     } catch (e) {
-      toast(`Could not save: ${(e as Error).message}`);
+      toast(`Save failed: ${(e as Error).message}`);
     } finally { setBusy(false); }
   }, [detail, busy]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -164,14 +164,14 @@ export function Inbox({ repo, toast, refreshOverview }: { repo: string | null; t
   }, [load, refreshOverview, sel, toast]);
 
   const applyToGroup = useCallback(async () => {
-    if (!detail || detail.triage_state === "untriaged") { toast("Triage this finding first, then press . to apply the same verdict to its group"); return; }
+    if (!detail || detail.triage_state === "untriaged") { toast("Triage this finding first, then press ."); return; }
     const last = [...detail.verdicts].reverse().find((v) => v.kind === "human");
     const ids = visible.filter((f) => f.group_key === detail.group_key && f.id !== detail.id && f.triage_state === "untriaged").map((f) => f.id);
-    if (!ids.length || !last) { toast("No other untriaged findings in this group"); return; }
+    if (!ids.length || !last) { toast("No other untriaged findings in group"); return; }
     const state = detail.triage_state as "confirmed" | "not_exploitable" | "accepted_risk";
     await api.bulk(ids, state, last.reason_code, (last.evidence.detail ?? {}) as Record<string, string>);
     undoStack.current.push(async () => { for (const id of ids) await api.triage(id, { state: "untriaged" }); });
-    toast(`Applied "${state.replace("_", " ")}" to ${ids.length} more finding${ids.length > 1 ? "s" : ""} in ${groupLabel(detail.group_key)}`, { icon: "layers", undo: () => undoLast() });
+    toast(`${state.replace("_", " ")}: ${ids.length} more in ${groupLabel(detail.group_key)}`, { icon: "layers", undo: () => undoLast() });
     await load();
     refreshOverview();
   }, [detail, visible, toast, load, refreshOverview, undoLast]);
@@ -223,7 +223,6 @@ export function Inbox({ repo, toast, refreshOverview }: { repo: string | null; t
     return () => window.removeEventListener("keydown", onKey);
   }, [move, confirm, undoLast, applyToGroup, detail, mode, reasonIdx, commit, lane]);
 
-  const laneMeta = LANES.find((l) => l.id === lane)!;
   const inboxTotal = all.filter((f) => f.lane === "review" || (f.audit === 1 && f.lane === "suppressed_ai")).length;
   const inboxDone = all.filter((f) => (f.lane === "review" || (f.audit === 1 && f.lane === "suppressed_ai")) && f.triage_state !== "untriaged").length;
   let lastGroup = "";
@@ -239,16 +238,14 @@ export function Inbox({ repo, toast, refreshOverview }: { repo: string | null; t
           ))}
         </div>
         <div className="queue-tools">
-          <input ref={searchRef} className="search" placeholder="Filter findings…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Filter findings" />
+          <input ref={searchRef} className="search" placeholder="Filter" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Filter findings" />
           <button className={`btn sm${grouped ? "" : " ghost"}`} onClick={() => setGrouped((g) => !g)} title="Group by root cause (G)"><Icon name="layers" size={13} /> Root cause</button>
         </div>
-        <div className="muted" style={{ padding: "8px 14px 6px", fontSize: 12 }}>{laneMeta.hint}</div>
         <div className="queue-list">
           {visible.length === 0 && (
             <div className="empty">
               <Icon name="check" size={28} />
-              <h3>{lane === "review" ? "Inbox zero" : "Nothing here"}</h3>
-              <span>{lane === "review" ? "Everything was decided by the engine, the AI tiers or you." : "No findings in this lane."}</span>
+              <h3>{lane === "review" ? "Nothing to review" : "Empty"}</h3>
             </div>
           )}
           {visible.map((f) => {
@@ -278,13 +275,13 @@ export function Inbox({ repo, toast, refreshOverview }: { repo: string | null; t
           })}
         </div>
         <div className="progress">
-          <div className="row"><span>Review progress</span><span className="grow" /><b>{inboxDone}/{inboxTotal}</b></div>
+          <div className="row"><span>Reviewed</span><span className="grow" /><b>{inboxDone}/{inboxTotal}</b></div>
           <div className="progress-track"><i style={{ width: `${inboxTotal ? (inboxDone / inboxTotal) * 100 : 100}%` }} /></div>
           <div className="row muted" style={{ marginTop: 8, fontSize: 11.5, gap: 10 }}>
             <span><span className="kbd">J</span><span className="kbd">K</span> move</span>
-            <span><span className="kbd">C</span> confirm</span>
-            <span><span className="kbd">X</span> not expl.</span>
-            <span><span className="kbd">?</span> all keys</span>
+            <span><span className="kbd">C</span> TP</span>
+            <span><span className="kbd">X</span> not exploitable</span>
+            <span><span className="kbd">?</span> keys</span>
           </div>
         </div>
       </section>
@@ -316,10 +313,10 @@ export function Inbox({ repo, toast, refreshOverview }: { repo: string | null; t
       {help && (
         <div className="overlay" onClick={() => setHelp(false)}>
           <div className="modal" style={{ width: 620 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-h"><Icon name="keyboard" /> <b>Keyboard shortcuts</b><span className="grow" /><button className="btn ghost sm" onClick={() => setHelp(false)}><Icon name="x" /></button></div>
+            <div className="modal-h"><Icon name="keyboard" /> <b>Shortcuts</b><span className="grow" /><button className="btn ghost sm" onClick={() => setHelp(false)}><Icon name="x" /></button></div>
             <div className="shortcuts">
-              {[["Next / previous finding", "J / K"], ["Confirm (true positive)", "C"], ["Not exploitable…", "X"], ["Pick reason", "1–9"], ["Commit decision", "↵"],
-                ["Accept risk", "A"], ["Apply verdict to root-cause group", "."], ["Undo", "U"], ["Toggle root-cause grouping", "G"], ["Switch lane", "[ / ]"],
+              {[["Next / previous", "J / K"], ["True positive", "C"], ["Not exploitable", "X"], ["Reason", "1-9"], ["Commit", "↵"],
+                ["Accept risk", "A"], ["Apply to group", "."], ["Undo", "U"], ["Group by root cause", "G"], ["Switch lane", "[ / ]"],
                 ["Search", "/"], ["Close", "Esc"]].map(([l, k]) => <div key={l}><span>{l}</span><span className="kbd">{k}</span></div>)}
             </div>
           </div>

@@ -35,7 +35,7 @@ export function highlightLine(line: string, hl?: [number, number]): ReactNode {
 }
 
 export const short = (fn: string) => (fn ? fn.split(".").pop()! : "");
-export const pct = (x: number | null | undefined, digits = 0) => (x == null ? "–" : `${(x * 100).toFixed(digits)}%`);
+export const pct = (x: number | null | undefined, digits = 0) => (x == null ? "n/a" : `${(x * 100).toFixed(digits)}%`);
 export const ago = (ts: number) => {
   const s = Date.now() / 1000 - ts;
   if (s < 60) return "just now";
@@ -45,27 +45,27 @@ export const ago = (ts: number) => {
 };
 
 export const LANES: { id: string; label: string; hint: string }[] = [
-  { id: "review", label: "Needs review", hint: "Undecided after the engine and the agent; a human must judge." },
-  { id: "confirmed", label: "Confirmed", hint: "Proved exploitable paths with no open assumptions; ready for developers." },
-  { id: "audit", label: "Audit AI", hint: "A random sample of AI suppressions, reviewed to measure the false-negative rate." },
-  { id: "suppressed_ai", label: "AI-suppressed", hint: "Suppressed by the oracle or agent; the engine reproduced the argument." },
-  { id: "suppressed", label: "Proved safe", hint: "The engine derived a named mitigation (sanitizer, guard, type, learned fact)." },
-  { id: "test", label: "Test code", hint: "Flows that only exist in tests or tooling." },
+  { id: "review", label: "Review", hint: "Undecided. Needs an analyst." },
+  { id: "confirmed", label: "Open", hint: "Exploitable path, no open assumptions." },
+  { id: "audit", label: "Audit", hint: "Random sample of AI closures." },
+  { id: "suppressed_ai", label: "Closed by AI", hint: "Closed by oracle or agent, re-derived by the engine." },
+  { id: "suppressed", label: "Closed by engine", hint: "Mitigation proven by the engine." },
+  { id: "test", label: "Tests", hint: "Flow only in test code." },
 ];
 
 /** Human-readable statement of a knowledge fact. */
 export function knowledgeStatement(pred: string, args: string[]): string {
-  const cls = (c: string) => (c === "all" ? "every vulnerability class" : c.toUpperCase());
+  const cls = (c: string) => (c === "all" ? "all classes" : c.toUpperCase());
   const name = (s: string) => s.replace(/^call:/, "");
   switch (pred) {
     case "sanitizer_api": return `${name(args[0])} sanitizes ${cls(args[1])}`;
-    case "propagator_api": return `${name(args[0])} passes data through unchanged`;
-    case "safe_pred": return `Guard ${name(args[0])} validates input against ${cls(args[1])}`;
-    case "not_safe_pred": return `Guard ${name(args[0])} does NOT validate input`;
-    case "safe_type": return `Values of type ${args[0]} are safe for ${cls(args[1])}`;
-    case "dead_fn": return `${short(args[0])} is dead code`;
-    case "internal_only": return `${short(args[0])} is not externally exposed`;
-    case "not_sanitizer": return `${short(args[0])} is not a sanitizer`;
+    case "propagator_api": return `${name(args[0])} propagates taint`;
+    case "safe_pred": return `${name(args[0])} validates ${cls(args[1])}`;
+    case "not_safe_pred": return `${name(args[0])} is not a validator`;
+    case "safe_type": return `Type ${args[0]} is safe for ${cls(args[1])}`;
+    case "dead_fn": return `${short(args[0])}() is dead code`;
+    case "internal_only": return `${short(args[0])}() is internal only`;
+    case "not_sanitizer": return `${short(args[0])}() is not a sanitizer`;
     default: return `${pred}(${args.join(", ")})`;
   }
 }
@@ -73,8 +73,8 @@ export function knowledgeStatement(pred: string, args: string[]): string {
 export function originLabel(origin: string): { who: string; kind: "human" | "agent" | "oracle" | "curated" } {
   const [k, rest] = origin.split(":");
   if (k === "human") return { who: rest === "you" ? "You" : rest, kind: "human" };
-  if (k === "agent") return { who: "Verifier agent", kind: "agent" };
-  if (k === "oracle") return { who: "Spec oracle", kind: "oracle" };
+  if (k === "agent") return { who: "Agent", kind: "agent" };
+  if (k === "oracle") return { who: "Oracle", kind: "oracle" };
   return { who: "Curated", kind: "curated" };
 }
 
@@ -85,7 +85,7 @@ export function Sev({ s }: { s: string }) {
 export function Conf({ p }: { p: number | null }) {
   if (p == null) return null;
   return (
-    <span className="conf" title="Posterior probability that this is a true positive (Bayesian, over shared derivations)">
+    <span className="conf" title="Probability of true positive">
       <span className="conf-bar"><i style={{ width: `${Math.round(p * 100)}%` }} /></span>
       {Math.round(p * 100)}%
     </span>

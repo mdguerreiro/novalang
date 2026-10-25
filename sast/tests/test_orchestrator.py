@@ -61,7 +61,7 @@ def test_tampered_citation_is_rejected(shop, tools):
     res = gate(_verdict(f.fingerprint, "FALSE_POSITIVE", "sqli", [_san_claim(tools, cite=bad)]), tools)
     assert not res.accepted and res.lane == "review"
     assert _checks(res, "citation")[0]["ok"] is False
-    assert "does NOT match" in _checks(res, "citation")[0]["detail"]
+    assert "hash mismatch" in _checks(res, "citation")[0]["detail"]
 
 
 def test_fp_without_checkable_fact_is_rejected(shop, tools):
@@ -86,7 +86,7 @@ def test_fp_whose_fact_does_not_discharge_is_rejected(shop, tools):
                       {"pred": "sanitizer_api", "args": [QUOTE_SQL, "xss"]})
     res = gate(_verdict(f.fingerprint, "FALSE_POSITIVE", "sqli", [wrong_cls]), tools)
     assert not res.accepted
-    assert "did not reproduce" in _checks(res, "discharge")[0]["detail"]
+    assert "not re-derived" in _checks(res, "discharge")[0]["detail"]
 
 
 def test_tp_whose_own_facts_mitigate_is_rejected(shop, tools):

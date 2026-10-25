@@ -117,7 +117,11 @@ export interface FindingDetail extends FindingSummary {
   knowledge: Knowledge[];
   related: { hypothesis: string; finding: FindingSummary }[];
   events: { id: number; ts: number; actor: string; type: string; payload: Record<string, unknown> }[];
-  explanation: { why: string[]; why_not: string[]; counterfactual: string | null };
+  explanation: {
+    summary: { k: string; v: string; loc: string; note: string }[];
+    checks: { state: "applies" | "unverified" | "missing" | "other_class"; text: string }[];
+    fix: { k: string; v: string } | null;
+  };
   suggestions: Suggestion[];
   calibration: { n: number; confirmed: number; rate: number | null; calibrated: boolean };
 }

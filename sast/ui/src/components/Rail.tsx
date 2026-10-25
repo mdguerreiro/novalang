@@ -43,7 +43,7 @@ export function Rail({ f, mode, setMode, reasonIdx, setReasonIdx, onConfirm, onC
   return (
     <aside className="rail" aria-label="Triage">
       <div className="rail-sec">
-        <div className="section-title">Your verdict</div>
+        <div className="section-title">Triage</div>
         {triaged && humanVerdict && (
           <div className="t-note info" style={{ marginBottom: 10 }}>
             <Icon name="check" size={13} />
@@ -53,20 +53,16 @@ export function Rail({ f, mode, setMode, reasonIdx, setReasonIdx, onConfirm, onC
         )}
         <div className="actions">
           <button className="action" onClick={onConfirm} disabled={busy}>
-            <span className="a-top"><span style={{ color: "var(--critical-text)" }}><Icon name="alert" /></span>Confirm<span className="kbd">C</span></span>
-            <small>Real vulnerability</small>
+            <span className="a-top"><span style={{ color: "var(--critical-text)" }}><Icon name="alert" /></span>True positive<span className="kbd">C</span></span>
           </button>
           <button className={`action${mode === "not_exploitable" ? " on" : ""}`} onClick={() => setMode(mode === "not_exploitable" ? null : "not_exploitable")} disabled={busy}>
             <span className="a-top"><span style={{ color: "var(--good-text)" }}><Icon name="shield" /></span>Not exploitable<span className="kbd">X</span></span>
-            <small>Teaches the engine why</small>
           </button>
           <button className={`action${mode === "accepted_risk" ? " on" : ""}`} onClick={() => setMode(mode === "accepted_risk" ? null : "accepted_risk")} disabled={busy}>
             <span className="a-top"><Icon name="lock" />Accept risk<span className="kbd">A</span></span>
-            <small>Governance only</small>
           </button>
           <button className="action" onClick={() => window.dispatchEvent(new CustomEvent("sentinel:next"))}>
             <span className="a-top"><Icon name="arrow" />Skip<span className="kbd">J</span></span>
-            <small>Next in queue</small>
           </button>
         </div>
 
@@ -77,13 +73,13 @@ export function Rail({ f, mode, setMode, reasonIdx, setReasonIdx, onConfirm, onC
                 <button key={i} role="radio" aria-checked={reasonIdx === i} className={`reason${reasonIdx === i ? " on" : ""}`} onClick={() => setReasonIdx(i)}>
                   <span className="num">{i + 1}</span>
                   <span className="grow ellipsis" title={s.label}>{s.label}</span>
-                  {LEARNS.has(s.reason) ? <span className="chip accent learn"><Icon name="brain" size={11} />learns</span> : <span className="chip learn">no learning</span>}
+                  {LEARNS.has(s.reason) ? <span className="learn" title="Adds engine knowledge" style={{ color: "var(--accent-text)" }}><Icon name="brain" size={13} /></span> : null}
                 </button>
               ))}
             </div>
             {chosen && LEARNS.has(chosen.reason) && (
               <div className="impact" aria-live="polite">
-                <div className="impact-h"><Icon name="brain" /> The engine will learn {loading && <span className="spinner" style={{ marginLeft: "auto" }} />}</div>
+                <div className="impact-h"><Icon name="brain" /> Engine change {loading && <span className="spinner" style={{ marginLeft: "auto" }} />}</div>
                 <div className="impact-b">
                   {preview?.knowledge && (
                     <>
@@ -98,12 +94,12 @@ export function Rail({ f, mode, setMode, reasonIdx, setReasonIdx, onConfirm, onC
                       <div className="impact-row">
                         <Icon name={preview.canary === "pass" ? "check" : "x"} size={14} />
                         <span style={{ color: preview.canary === "pass" ? "var(--good-text)" : "var(--critical-text)" }}>
-                          {preview.canary === "pass" ? "Canary corpus and confirmed findings unaffected" : preview.canary}
+                          {preview.canary === "pass" ? "Canaries pass" : preview.canary}
                         </span>
                       </div>
                       <div className="impact-row">
                         <Icon name="layers" size={14} />
-                        <span><b>{changed.length}</b> finding{changed.length === 1 ? "" : "s"} re-decided across <b>{new Set(changed.map((c) => c.repo)).size}</b> repo{new Set(changed.map((c) => c.repo)).size === 1 ? "" : "s"}</span>
+                        <span><b>{changed.length}</b> finding{changed.length === 1 ? "" : "s"} closed in <b>{new Set(changed.map((c) => c.repo)).size}</b> repo{new Set(changed.map((c) => c.repo)).size === 1 ? "" : "s"}</span>
                       </div>
                       {changed.slice(0, 5).map((c, i) => (
                         <div key={i} className="impact-row muted" style={{ paddingLeft: 20 }}>
@@ -112,25 +108,25 @@ export function Rail({ f, mode, setMode, reasonIdx, setReasonIdx, onConfirm, onC
                           {c.finding && c.finding.id === f.id && <span className="chip accent" style={{ height: 18 }}>this</span>}
                         </div>
                       ))}
-                      {preview.over_budget && <div className="t-note warn"><Icon name="alert" size={13} /> Large blast radius: it will start in shadow mode until approved.</div>}
+                      {preview.over_budget && <div className="t-note warn"><Icon name="alert" size={13} /> Over impact budget. Starts in shadow until approved.</div>}
                     </>
                   )}
                   {!preview && <div className="skeleton" style={{ height: 64 }} />}
                 </div>
               </div>
             )}
-            <textarea className="note" placeholder="Optional note for the audit trail…" value={note} onChange={(e) => setNote(e.target.value)} style={{ marginTop: 10 }} />
+            <textarea className="note" placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} style={{ marginTop: 10 }} />
             <button className="btn primary" style={{ width: "100%", marginTop: 8, height: 34, justifyContent: "center" }}
               disabled={!chosen || busy || !!blocked} onClick={() => onCommit("not_exploitable", chosen, scope, note)}>
               {busy ? <span className="spinner" /> : <Icon name={chosen && LEARNS.has(chosen.reason) ? "brain" : "check"} />}
-              {chosen && LEARNS.has(chosen.reason) ? "Mark not exploitable & teach engine" : "Mark not exploitable"}
+              Mark not exploitable
               <span className="kbd" style={{ marginLeft: 6, background: "transparent", color: "white", borderColor: "rgb(255 255 255 / .4)" }}>↵</span>
             </button>
           </>
         )}
         {mode === "accepted_risk" && (
           <>
-            <textarea className="note" placeholder="Why is this risk acceptable? Who owns it?" value={note} onChange={(e) => setNote(e.target.value)} style={{ marginTop: 12 }} autoFocus />
+            <textarea className="note" placeholder="Reason and owner" value={note} onChange={(e) => setNote(e.target.value)} style={{ marginTop: 12 }} autoFocus />
             <button className="btn primary" style={{ width: "100%", marginTop: 8, height: 34, justifyContent: "center" }} disabled={busy}
               onClick={() => onCommit("accepted_risk", null, null, note)}>Accept risk</button>
           </>
@@ -139,7 +135,7 @@ export function Rail({ f, mode, setMode, reasonIdx, setReasonIdx, onConfirm, onC
 
       {f.knowledge.length > 0 && (
         <div className="rail-sec">
-          <div className="section-title">Knowledge involved</div>
+          <div className="section-title">Knowledge</div>
           {f.knowledge.map((k) => (
             <div key={`${k.id}-${k.relation}`} style={{ padding: "6px 0" }}>
               <div className="row"><span className="mono muted" style={{ fontSize: 11 }}>{k.id}</span>
@@ -160,10 +156,10 @@ export function Rail({ f, mode, setMode, reasonIdx, setReasonIdx, onConfirm, onC
             <div key={v.id} className="tl">
               <span className="dot" style={{ background: v.kind === "human" ? "var(--accent)" : "var(--border-strong)" }} />
               <div><b>{originLabel(v.actor).who}</b> <span className="text-2">{v.verdict.replace("_", " ").toLowerCase()}{v.reason_code ? ` · ${v.reason_code.toLowerCase()}` : ""}</span>
-                <div className="muted" style={{ fontSize: 11 }}>{ago(v.created_at)}{v.gate?.accepted === false && v.kind !== "human" ? " · not accepted by gates" : ""}</div></div>
+                <div className="muted" style={{ fontSize: 11 }}>{ago(v.created_at)}{v.gate?.accepted === false && v.kind !== "human" ? " · rejected by checks" : ""}</div></div>
             </div>
           ))}
-          {f.verdicts.length === 0 && <span className="muted">Decided by the engine at scan time.</span>}
+          {f.verdicts.length === 0 && <span className="muted">Engine decision at scan time.</span>}
         </div>
       </div>
     </aside>
