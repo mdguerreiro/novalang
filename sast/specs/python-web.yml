@@ -53,7 +53,10 @@ rules:
     severity: INFO
     message: source
     metadata: {sentinel: {role: source, kind: cli}}
-    pattern: sys.argv
+    pattern-either:
+      - pattern: sys.argv
+      - pattern: $P.parse_args(...)
+      - pattern: input(...)
 
   # ───────────────────────────── sinks ─────────────────────────────
   - id: spec.sink.sqli.dbapi-execute

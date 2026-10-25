@@ -51,6 +51,7 @@ CURATED: list[KnowledgeFact] = [
     KnowledgeFact("K-cur-isalnum", "safe_pred", ("isalnum", "all")),
     KnowledgeFact("K-cur-allowlist", "safe_pred", ("in_allowlist", "all")),
     KnowledgeFact("K-cur-hostallow", "safe_pred", ("host_allowlist", "ssrf")),
+    KnowledgeFact("K-cur-contained", "safe_pred", ("path_contained", "path")),
     KnowledgeFact("K-cur-isinst-int", "safe_pred", ("isinstance_int", "all")),
     KnowledgeFact("K-cur-int", "safe_type", ("int", "all")),
     KnowledgeFact("K-cur-float", "safe_type", ("float", "all")),
@@ -151,6 +152,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out += [fact("decorated", f, d) for f, d in facts.decorated]
     out += [fact("fn_ref", k, i, f) for k, i, f in facts.fn_refs]
     out += [fact("attrname", n, q) for n, q in facts.attrnames]
+    out += [fact("sink", n, c) for n, c in facts.extra_sinks]
     out += [fact("self_param", p) for q, i, p in facts.params if i == 0 and facts.functions[q].cls
             and facts.functions[q].params[:1] in (["self"], ["cls"])]
     out += [fact("lookup", k, m) for k, m in facts.lookups]
@@ -216,7 +218,7 @@ def _tail(name: str, parts: int = 2) -> str:
     return ".".join(str(name).removeprefix("call:").split(".")[-parts:])
 
 
-GUARD_NAMES = {"in_allowlist": "allow-list check", "host_allowlist": "host allow-list"}
+GUARD_NAMES = {"in_allowlist": "allow-list check", "host_allowlist": "host allow-list", "path_contained": "path stays in base directory"}
 
 
 def _why_label(why, facts: Facts) -> str:

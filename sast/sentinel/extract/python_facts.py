@@ -54,6 +54,9 @@ IDENTITY_PARAMS = {"current_user", "user_identity", "auth_user"}  # FastAPI-styl
 OWNER_FIELD_RE = re.compile(r"^(owner|user|author|created_by|account|tenant|customer|patient|member|uploader)(_id)?$")
 LOOKUP_RE = re.compile(r"^(?P<m>.+)\.(query\.(get|get_or_404|filter_by|filter|first_or_404)|objects\.(get|filter))$")
 CHA_MAX_TARGETS = 12
+MUTATORS = {"append", "extend", "insert", "add", "update", "setdefault", "appendleft", "put", "push"}
+NORMALIZERS = {"os.path.abspath", "os.path.realpath", "os.path.normpath", "posixpath.abspath", "posixpath.realpath",
+               "posixpath.normpath", "werkzeug.security.safe_join", "flask.safe_join"}
 HTTP_VERBS = ("get", "post", "put", "patch", "delete", "head", "options")
 CONFIG_BARE_RE = re.compile(r"\s*-?\s*[\"']?([A-Za-z_][\w-]*)[\"']?\s*[:=]\s*[\"']?([A-Za-z_][\w.]*)[\"']?\s*,?\s*$")
 CONFIG_SUFFIXES = {".yml", ".yaml", ".json", ".toml", ".ini", ".cfg"}
@@ -111,6 +114,7 @@ class Facts:
     lib_args: set[tuple[int, int | str, int]] = field(default_factory=set)  # library call, position or keyword, arg node
     decorated: set[tuple[str, str]] = field(default_factory=set)  # function, resolved decorator
     classes: dict[str, list[str]] = field(default_factory=dict)  # project class -> resolved bases
+    extra_sinks: set[tuple[int, str]] = field(default_factory=set)  # sinks found by the extractor (template escaping off)
     lookups: set[tuple[int, str]] = field(default_factory=set)  # call node -> project model it loads a record of
     lookup_deps: set[tuple[int, int]] = field(default_factory=set)  # lookup call -> value node used in its arguments
     user_refs: set[int] = field(default_factory=set)  # nodes reading the current user's identity
@@ -166,6 +170,7 @@ class _Module:
         self.imports: dict[str, str] = {}
         self.local_defs: set[str] = set()
         self.global_calls: dict[str, str] = {}  # module-level `x = Something(...)`: x -> dotted callee
+        self.global_names: set[str] = set()  # module-level variables (shared state between handlers)
         self.tree = tree
         for stmt in tree.body:
             self._collect(stmt)
@@ -194,7 +199,11 @@ class _Module:
                 self.imports[a.asname or a.name] = f"{base}.{a.name}" if base else a.name
         elif isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             self.local_defs.add(stmt.name)
-        elif isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name) \
+        if isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+            for t in (stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]):
+                if isinstance(t, ast.Name):
+                    self.global_names.add(t.id)
+        if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name) \
                 and isinstance(stmt.value, ast.Call):
             callee = PythonExtractor._dotted(stmt.value.func)
             if callee:
@@ -208,6 +217,7 @@ class PythonExtractor:
         self._next = 1
         self._modules: dict[str, _Module] = {}
         self._by_name: dict[str, _Module] = {}
+        self._heap: dict[str, int] = {}
 
     # ── public API ──────────────────────────────────────────────────────────
     def run(self) -> Facts:
@@ -416,6 +426,23 @@ class PythonExtractor:
                                                     and t.value.id == "self"}
         return self._self_attrs.get(cls, set())
 
+    def template_files(self) -> dict[str, str]:
+        if not hasattr(self, "_templates"):
+            self._templates = {}
+            for p in self.root.rglob("*"):
+                if p.suffix in (".html", ".htm", ".jinja", ".jinja2", ".j2") and p.is_file() and p.stat().st_size < 500_000:
+                    try:
+                        self._templates[p.relative_to(self.root).as_posix()] = p.read_text(errors="replace")
+                    except OSError:
+                        pass
+        return self._templates
+
+    def heap_node(self, key: str, file: str) -> int:
+        """One abstract cell per module global / class field (field-based, context-insensitive heap)."""
+        if key not in self._heap:
+            self._heap[key] = self.new_node("<heap>", file, None, "heap", label=key, span=(1, 1, 1, 1))
+        return self._heap[key]
+
     def view_refs(self, mod: _Module, a: ast.expr) -> list[str]:
         """`ManageForum.as_view("manage")` (Flask MethodView, Django class-based views): the class's HTTP-verb
         methods are what the framework calls."""
@@ -486,6 +513,8 @@ class _FunctionWalker:
         self.file = mod.relpath
         self.hosts: dict[str, str] = {}  # var holding urlparse(<url>).hostname -> url var
         self.types: dict[str, str] = {}  # local var -> project class (from `x = Class(...)`)
+        self.aliases: dict[str, str] = {}  # local bound from shared state -> its heap cell
+        self.normalized: set[str] = set()  # locals holding a normalised path (abspath/realpath/normpath/resolve)
 
     def walk(self) -> None:
         env: Env = {}
@@ -520,6 +549,10 @@ class _FunctionWalker:
             v = self.expr(s.value, env)
             for t in s.targets:
                 if isinstance(t, ast.Name):
+                    if self._is_normalizer(s.value):
+                        self.normalized.add(t.id)
+                    else:
+                        self.normalized.discard(t.id)
                     cls = self._ctor_class(s.value)
                     if cls:
                         self.types[t.id] = cls
@@ -679,6 +712,10 @@ class _FunctionWalker:
             return None
         if isinstance(test, ast.Call):
             func = test.func
+            # `full = abspath(join(base, x)); if full.startswith(base_abs)`: containment of a normalised path.
+            if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and \
+                    func.attr in ("startswith", "is_relative_to") and func.value.id in self.normalized:
+                return [(func.value.id, "path_contained")]
             if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and func.attr in (
                     "isdigit", "isalnum", "isnumeric", "isdecimal", "isalpha", "isidentifier"):
                 pred = {"isnumeric": "isdigit", "isdecimal": "isdigit"}.get(func.attr, func.attr)
@@ -755,6 +792,11 @@ class _FunctionWalker:
             did = self.ex.new_node(self.fn.qname, self.file, target, "def", label=target.id)
             for v in srcs:
                 self.f.edges.add((v, did))
+            alias = self._heap_key(value_expr, env) if isinstance(value_expr, (ast.Name, ast.Subscript, ast.Attribute)) else None
+            if alias:
+                self.aliases[target.id] = alias
+            else:
+                self.aliases.pop(target.id, None)
             env[target.id] = frozenset({did})
             host_src = _host_of(value_expr)
             if host_src:
@@ -765,6 +807,9 @@ class _FunctionWalker:
             for elt in target.elts:
                 env = self.bind(elt, set(srcs), env, None)
         elif isinstance(target, (ast.Attribute, ast.Subscript)):
+            # `self.f = v`, `obj.f = v`, `G[k] = v`, `self.items[k] = v`: the value reaches the shared cell.
+            self._heap_store(self._heap_key(target, env) if isinstance(target, ast.Attribute)
+                             else self._heap_key(target.value, env), srcs)
             base = target.value
             while isinstance(base, (ast.Attribute, ast.Subscript)):
                 base = base.value
@@ -787,6 +832,10 @@ class _FunctionWalker:
             return None
         if isinstance(e, ast.Name):
             defs = env.get(e.id)
+            if not defs and e.id in self.mod.global_names and e.id not in self.mod.global_calls:
+                nid = new("use", e.id)  # read of a module global: whatever any function stored in it
+                self.f.edges.add((self.ex.heap_node(f"{self.mod.name}.{e.id}", self.file), nid))
+                return nid
             if not defs:
                 if IDENTITY_RE.search(self.ex.resolve(self.mod, e.id)):
                     nid = new("use", e.id)
@@ -802,6 +851,9 @@ class _FunctionWalker:
             nid = new("attr", ast.unparse(e))
             if b:
                 self.f.edges.add((b, nid))
+            hk = self._heap_key(e, env)
+            if hk and hk.split(".")[-1] == e.attr and not hk.startswith(self.mod.name + "." + e.attr):
+                self.f.edges.add((self.ex.heap_node(hk, self.file), nid))
             d = self.ex._dotted(e)
             if d and b is None and d.split(".")[0] in self.mod.imports:  # `request.args` read from a library object
                 q = self.ex.resolve(self.mod, d)
@@ -900,6 +952,72 @@ class _FunctionWalker:
         """Some method of `cls` assigns `self.attr` (then it is project state, not a library attribute)."""
         return attr in self.ex.self_attrs(cls)
 
+    def _heap_key(self, e: ast.expr, env: Env) -> str | None:
+        """Shared state a value can be stored into / read from: a module global, `self.f`, `obj.f` of a known
+        project type, or anything reached through them (`posts[i]['comments']`, a loop variable over `posts`).
+        Plain locals are not heap."""
+        while isinstance(e, ast.Subscript) or (isinstance(e, ast.Attribute) and not self._direct_field(e)):
+            e = e.value
+        if isinstance(e, ast.Name) and e.id in self.aliases:
+            return self.aliases[e.id]
+        if isinstance(e, ast.Name) and e.id not in env and e.id in self.mod.global_names:
+            if e.id in self.mod.global_calls and self.ex.resolve(self.mod, e.id) != f"{self.mod.name}.{e.id}":
+                pass  # module-level library objects (`app = Flask()`) are still shared state
+            return f"{self.mod.name}.{e.id}"
+        if isinstance(e, ast.Attribute) and isinstance(e.value, ast.Name):
+            if e.value.id == "self" and self.fn.cls and self.fn.params[:1] == ["self"]:
+                return f"{self.fn.cls}.{e.attr}"
+            if e.value.id in self.types:
+                return f"{self.types[e.value.id]}.{e.attr}"
+        return None
+
+    def _direct_field(self, e: ast.Attribute) -> bool:
+        return isinstance(e.value, ast.Name) and (e.value.id == "self" or e.value.id in self.types)
+
+    def _heap_store(self, key: str | None, srcs) -> None:
+        if key:
+            h = self.ex.heap_node(key, self.file)
+            for v in srcs:
+                if v:
+                    self.f.edges.add((v, h))
+
+    def _template_sinks(self, e: ast.Call, qual: str, arg_nodes, kw_nodes) -> None:
+        """`render_template_string(TPL, x=v)` / `render_template("t.html", x=v)` where the template turns escaping off
+        for a variable (`{{ x|safe }}`, `{% autoescape false %}`): that variable's value is an XSS sink."""
+        name = qual.rsplit(".", 1)[-1]
+        if name not in ("render_template_string", "render_template", "render") or not kw_nodes:
+            return
+        tpl = self._template_text(e.args[0] if e.args else None, name)
+        if not tpl:
+            return
+        off = "autoescape false" in tpl.replace("  ", " ").lower()
+        for k, a in kw_nodes:
+            if a and k and (off or re.search(r"\{\{[^}]*\b" + re.escape(k) + r"\b[^}]*\|\s*safe", tpl)
+                            or re.search(r"\bfor\s+(\w+)\s+in\s+" + re.escape(k) + r"\b", tpl) and "|safe" in tpl):
+                self.f.extra_sinks.add((a, "xss"))
+
+    def _template_text(self, arg: ast.expr | None, how: str) -> str:
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            if how == "render_template_string":
+                return arg.value
+            for rel in self.f.files and [p for p in self.ex.template_files() if p.endswith("/" + arg.value) or p == arg.value]:
+                return self.ex.template_files()[rel]
+            return ""
+        if isinstance(arg, ast.Name) and how == "render_template_string":
+            for st in self.mod.tree.body:
+                if isinstance(st, ast.Assign) and any(isinstance(t, ast.Name) and t.id == arg.id for t in st.targets) \
+                        and isinstance(st.value, ast.Constant) and isinstance(st.value.value, str):
+                    return st.value.value
+        return ""
+
+    def _is_normalizer(self, value: ast.expr) -> bool:
+        if not isinstance(value, ast.Call):
+            return False
+        if isinstance(value.func, ast.Attribute) and value.func.attr in ("resolve", "absolute"):
+            return True  # pathlib
+        d = self.ex._dotted(value.func)
+        return bool(d) and self.ex.resolve(self.mod, d) in NORMALIZERS
+
     def _ctor_class(self, value: ast.expr) -> str | None:
         if isinstance(value, ast.Call):
             d = self.ex._dotted(value.func)
@@ -989,11 +1107,15 @@ class _FunctionWalker:
         for i, a in enumerate(e.args):
             arg_nodes.append((i, self.expr(a, env)))
         kw_nodes: list[tuple[str | None, int | None]] = [(k.arg, self.expr(k.value, env)) for k in e.keywords]
+        if isinstance(func, ast.Attribute) and func.attr in MUTATORS:
+            # `G.append(x)`, `self.items.add(x)`, `cache.update(d)`: x reaches the shared cell.
+            self._heap_store(self._heap_key(func.value, env), [a for _, a in arg_nodes] + [a for _, a in kw_nodes])
 
         nid = self.ex.new_node(self.fn.qname, self.file, e, "call", label=ast.unparse(e)[:80], callee=qual)
         self.f.callnames.add((nid, qual))
         if isinstance(func, ast.Attribute) and func.attr == "format" and isinstance(func.value, ast.Constant):
             self._mark_url_prefix(nid, func.value.value if isinstance(func.value.value, str) else None)
+        self._template_sinks(e, qual, arg_nodes, kw_nodes)
         model = self._lookup_model(e, dotted)
         if model:
             self.f.lookups.add((nid, model))
@@ -1019,6 +1141,13 @@ class _FunctionWalker:
                 qual, offset, how = hit, 1, "global-type"
         if how:
             self.f.resolved[nid] = how
+        if qual not in self.f.functions and dotted and "." not in dotted:
+            scope = self.fn.qname  # a function defined inside this (or an enclosing) function
+            while "." in scope:
+                if f"{scope}.{dotted}" in self.f.functions:
+                    qual = f"{scope}.{dotted}"
+                    break
+                scope = scope.rpartition(".")[0]
         targets = [qual] if qual in self.f.functions else []
         if not targets and qual.startswith("*.") and method and method not in PROPAGATOR_METHODS | NEUTRAL_METHODS:
             # Receiver type unknown (`attack.run(handler)` with `attack` picked at runtime): class-hierarchy
