@@ -88,14 +88,17 @@ def main() -> None:
                 fp += flagged
                 tn += not flagged
             res.append({"case": case, "variant": variant, "cls": cls, "target": target, "flagged": flagged,
-                        "questions": stats.get("frontier_questions"), "cached": stats.get("frontier_cached")})
+                        "questions": stats.get("frontier_questions"), "cached": stats.get("frontier_cached"),
+                        "tier1": stats.get("tier1_calls"), "tier2": stats.get("tier2_calls"),
+                        "lanes": stats.get("lanes")})
         print(f"{case:12} tp={tp} fp={fp} fn={fn} tn={tn}", flush=True)
     p = tp / max(tp + fp, 1)
     rc = tp / max(tp + fn, 1)
     summary = {"mode": a.mode, "files": len(res), "tp": tp, "fp": fp, "fn": fn, "tn": tn, "precision": round(p, 3),
                "recall": round(rc, 3), "f1": round(2 * p * rc / max(p + rc, 1e-9), 3),
                "accuracy": round((tp + tn) / max(len(res), 1), 3), "minutes": round((time.time() - t0) / 60, 1),
-               "questions": sum(x["questions"] or 0 for x in res), "cached": sum(x["cached"] or 0 for x in res)}
+               "questions": sum(x["questions"] or 0 for x in res), "cached": sum(x["cached"] or 0 for x in res),
+               "tier1": sum(x.get("tier1") or 0 for x in res), "tier2": sum(x.get("tier2") or 0 for x in res)}
     by = {}
     for x in res:
         d = by.setdefault(x["cls"], {"tp": 0, "fp": 0, "fn": 0, "tn": 0})
