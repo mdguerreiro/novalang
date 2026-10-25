@@ -66,6 +66,14 @@ export function knowledgeStatement(pred: string, args: string[]): string {
     case "dead_fn": return `${short(args[0])}() is dead code`;
     case "internal_only": return `${short(args[0])}() is internal only`;
     case "not_sanitizer": return `${short(args[0])}() is not a sanitizer`;
+    case "sink_api": return `${name(args[0])} arg ${args[1]} is a ${cls(args[2])} sink`;
+    case "not_sink_api": return `${name(args[0])} is not a sink`;
+    case "framework_source": return `@${name(args[0])} handlers take request input`;
+    case "not_framework_source": return `@${name(args[0])} is not a request handler`;
+    case "entry_source": return `${short(args[0])}() param ${args[1]} is ${args[2]} input`;
+    case "not_entry": return `${short(args[0])}() is not an entry point`;
+    case "registrar": return `${name(args[0])} registers request handlers`;
+    case "not_registrar": return `${name(args[0])} does not register handlers`;
     case "spec_rule": return `${args[1][0].toUpperCase()}${args[1].slice(1)} rule: ${args[0].replace(/^spec\.(learned\.)?(R-\d+\.)?/, "")}${args[2] ? ` (${args[2].toUpperCase()})` : ""}`;
     default: return `${pred}(${args.join(", ")})`;
   }

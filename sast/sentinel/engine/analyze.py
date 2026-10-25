@@ -21,13 +21,16 @@ from .datalog import Model, Program, fact
 
 CLASSES = ["sqli", "cmdi", "path", "xss", "ssti", "ssrf", "deser", "code", "redirect", "xxe"]
 CWE = {"sqli": "CWE-89", "cmdi": "CWE-78", "path": "CWE-22", "xss": "CWE-79", "ssti": "CWE-1336",
-       "ssrf": "CWE-918", "deser": "CWE-502", "code": "CWE-95", "redirect": "CWE-601", "xxe": "CWE-611"}
+       "ssrf": "CWE-918", "deser": "CWE-502", "code": "CWE-95", "redirect": "CWE-601", "xxe": "CWE-611",
+       "idor": "CWE-639"}
 TITLE = {"sqli": "SQL injection", "cmdi": "OS command injection", "path": "Path traversal",
          "xss": "Cross-site scripting", "ssti": "Server-side template injection",
          "ssrf": "Server-side request forgery", "deser": "Unsafe deserialization",
-         "code": "Code injection", "redirect": "Open redirect", "xxe": "XML external entity"}
+         "code": "Code injection", "redirect": "Open redirect", "xxe": "XML external entity",
+         "idor": "Missing object-level authorization"}
 SEVERITY = {"sqli": "critical", "cmdi": "critical", "code": "critical", "deser": "critical",
-            "ssti": "high", "path": "high", "ssrf": "high", "xss": "medium", "redirect": "medium", "xxe": "high"}
+            "ssti": "high", "path": "high", "ssrf": "high", "xss": "medium", "redirect": "medium", "xxe": "high",
+            "idor": "high"}
 SANITIZER_LIKE = re.compile(r"(quote|escape|sanitiz|clean|safe|valid|filter|strip_tags|encode_for)", re.I)
 
 
@@ -54,6 +57,12 @@ CURATED: list[KnowledgeFact] = [
     KnowledgeFact("K-cur-uuid", "safe_type", ("uuid", "all")),
     KnowledgeFact("K-cur-bool", "safe_type", ("bool", "all")),
     KnowledgeFact("K-cur-cli-weak", "weak_kind", ("cli",)),
+    # Authentication is not authorization; permission/role decorators are.
+    KnowledgeFact("K-cur-login-req", "not_authz_decorator", ("flask_login.login_required",)),
+    KnowledgeFact("K-cur-login-req2", "not_authz_decorator", ("flask_login.utils.login_required",)),
+    KnowledgeFact("K-cur-dj-login-req", "not_authz_decorator", ("django.contrib.auth.decorators.login_required",)),
+    KnowledgeFact("K-cur-dj-perm", "authz_decorator", ("django.contrib.auth.decorators.permission_required",)),
+    KnowledgeFact("K-cur-fs-roles", "authz_decorator", ("flask_security.roles_required",)),
 ]
 
 
@@ -137,7 +146,18 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out += [fact("lib_arg", k, i, a) for k, i, a in facts.lib_args]
     out += [fact("decorated", f, d) for f, d in facts.decorated]
     out += [fact("fn_ref", k, i, f) for k, i, f in facts.fn_refs]
-    out += [fact("generic_api", q) for q in set(facts.libcalls.values()) if q.startswith("*.") or q == "<dynamic>"]
+    out += [fact("lookup", k, m) for k, m in facts.lookups]
+    out += [fact("lookup_dep", k, n) for k, n in facts.lookup_deps]
+    out += [fact("user_ref", n) for n in facts.user_refs]
+    out += [fact("scoped", k) for k in facts.scoped]
+    out += [fact("compare", a, b) for a, b in facts.compares]
+    out += [fact("owner_field", m, n) for m, n in facts.owner_fields]
+    out += [fact("id_param", q, i) for q, fn in facts.functions.items() for i, p in enumerate(fn.params) if ID_PARAM_RE.match(p)]
+    out += [fact("route_dec", d) for _f, d in facts.decorated if ROUTE_DEC_RE.search(d)]
+    out += [fact("generic_reg", q) for q in {q for _k, q in facts.callnames}
+            if q.startswith("*.") and q[2:] in GENERIC_METHODS or q in BUILTIN_CALLS]
+    out += [fact("generic_api", q) for q in set(facts.libcalls.values())
+            if q.startswith("*.") or q == "<dynamic>" or q in _BUILTINS]  # builtin sinks are curated
     out += [fact("test_fn", q) for q, fn in facts.functions.items() if is_test_path(fn.file)]
     for fn, _name, conv, pid in facts.route_params:
         out.append(fact("src", pid, "route"))
@@ -156,8 +176,18 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     return out
 
 
+ID_PARAM_RE = re.compile(r"^(id|pk|uuid|slug|.+_(id|pk|uuid))$")
+ROUTE_DEC_RE = re.compile(r"\.(route|get|post|put|patch|delete|api_route|websocket)$|^functools\.wraps$")
+_BUILTINS = set(dir(__import__("builtins")))
+# Callbacks handed to these are not request handlers (and builtins are never registrars).
+GENERIC_METHODS = {"append", "extend", "insert", "add", "update", "setdefault", "get", "pop", "remove", "sort",
+                   "connect", "submit", "map", "apply_async", "start", "register"}
+BUILTIN_CALLS = {"map", "filter", "sorted", "min", "max", "list", "tuple", "set", "dict", "partial",
+                 "functools.partial", "functools.wraps", "functools.reduce", "atexit.register", "threading.Thread",
+                 "signal.signal"}
 KEEP = {"cand", "alarm", "mitigated", "undecided", "confirmed", "test_only", "asm", "mit", "assume_at",
-        "kill", "reach", "safe", "open", "sink_frontier", "src_frontier", "learned_sink", "learned_src", "reg_frontier"}
+        "kill", "reach", "safe", "open", "sink_frontier", "src_frontier", "learned_sink", "learned_src", "reg_frontier",
+        "authz_frontier"}
 
 
 def analyze(facts: Facts, matches: list[SpecMatch], knowledge: list[KnowledgeFact] | None = None,
@@ -193,6 +223,12 @@ def _why_label(why, facts: Facts) -> str:
             return f"Dead code: {_tail(args[0], 1)}()"
         if kind == "exposure":
             return f"Internal only: {_tail(args[0], 1)}()"
+        if kind == "authz":
+            return f"Authorization: @{_tail(args[0])}"
+    if why == "owner_check":
+        return "Owner checked against current user"
+    if why == "scoped_query":
+        return "Query scoped to current user"
     if isinstance(why, str) and why.startswith("spec."):
         return f"Sanitizer: {why.split('.', 3)[-1]}"
     return str(why)
@@ -208,6 +244,7 @@ def _asm_label(asm) -> str:
             "maybe_sanitizer": f"Unverified sanitizer: {_tail(args[0])}",
             "weak_source": f"Weak source: {args[0]}",
             "unreachable": f"No route or caller: {_tail(args[0], 1)}()",
+            "unknown_authz": f"Unverified decorator: @{_tail(args[0])}",
         }.get(kind, str(asm))
     return str(asm)
 
@@ -217,7 +254,8 @@ def knowledge_for(why, kn: list[KnowledgeFact]) -> list[str]:
         return []
     kind, *args = why
     want = {"api": ("sanitizer_api", 0), "guard": ("safe_pred", 0), "type": ("safe_type", 0),
-            "dead": ("dead_fn", 0), "exposure": ("internal_only", 0)}.get(kind)
+            "dead": ("dead_fn", 0), "exposure": ("internal_only", 0),
+            "authz": ("authz_decorator", 0)}.get(kind)
     if not want:
         return []
     pred, idx = want

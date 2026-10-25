@@ -44,6 +44,11 @@ NEUTRAL_METHODS = {
     "cursor", "fetchall", "fetchone", "close", "commit", "isdigit", "isalnum", "isnumeric",
     "isdecimal", "isalpha", "startswith", "endswith", "count", "index", "find",
 }
+# Current-user identity (object-level authorization).
+IDENTITY_RE = re.compile(r"^(flask_login(\.utils)?\.current_user|flask\.g\.user|flask\.session|flask_jwt_extended\.get_jwt_identity|"
+                         r"django\.contrib\.auth\.get_user)(\.|\(|$)")
+OWNER_FIELD_RE = re.compile(r"^(owner|user|author|created_by|account|tenant|customer|patient|member|uploader)(_id)?$")
+LOOKUP_RE = re.compile(r"^(?P<m>.+)\.(query\.(get|get_or_404|filter_by|filter|first_or_404)|objects\.(get|filter))$")
 EXIT_CALLS = {"abort", "flask.abort", "sys.exit", "exit", "os._exit"}
 SAFE_CONVERTERS = {"int", "float", "uuid"}
 TEST_PATH_RE = re.compile(r"(^|/)(tests?|testing)/|(^|/)test_[^/]*\.py$|_test\.py$|(^|/)conftest\.py$")
@@ -96,6 +101,12 @@ class Facts:
     lib_args: set[tuple[int, int | str, int]] = field(default_factory=set)  # library call, position or keyword, arg node
     decorated: set[tuple[str, str]] = field(default_factory=set)  # function, resolved decorator
     classes: dict[str, list[str]] = field(default_factory=dict)  # project class -> resolved bases
+    lookups: set[tuple[int, str]] = field(default_factory=set)  # call node -> project model it loads a record of
+    lookup_deps: set[tuple[int, int]] = field(default_factory=set)  # lookup call -> value node used in its arguments
+    user_refs: set[int] = field(default_factory=set)  # nodes reading the current user's identity
+    scoped: set[int] = field(default_factory=set)  # lookup calls whose arguments mention the current user
+    compares: set[tuple[int, int]] = field(default_factory=set)  # operand nodes compared with each other
+    owner_fields: set[tuple[str, str]] = field(default_factory=set)  # model class, owner-like column
     fn_refs: set[tuple[int, int | str, str]] = field(default_factory=set)  # call, arg position/keyword, project fn passed
     resolved: dict[int, str] = field(default_factory=dict)  # call node -> how it was resolved (cha | self | import | ctor)
     pred_sources: dict[str, str] = field(default_factory=dict)  # predicate -> source text (for the oracle)
@@ -144,6 +155,15 @@ class _Module:
         self.tree = tree
         for stmt in tree.body:
             self._collect(stmt)
+        # Imports inside function bodies (`from PIL import ImageMath` in a handler): module-wide is a close
+        # enough approximation, and never shadows a module-level import of the same name.
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                for st in ast.walk(node):
+                    if isinstance(st, (ast.Import, ast.ImportFrom)):
+                        saved = dict(self.imports)
+                        self._collect(st)
+                        self.imports.update(saved)
 
     def _collect(self, stmt: ast.stmt) -> None:
         if isinstance(stmt, ast.Import):
@@ -247,6 +267,10 @@ class PythonExtractor:
                 self._index_functions(mod, stmt.body, q)
             elif isinstance(stmt, ast.ClassDef):
                 cq = f"{prefix}.{stmt.name}"
+                for st in stmt.body:
+                    names = [t.id for t in (st.targets if isinstance(st, ast.Assign) else [st.target] if isinstance(st, ast.AnnAssign) else [])
+                             if isinstance(t, ast.Name)]
+                    self.facts.owner_fields.update((cq, n) for n in names if OWNER_FIELD_RE.match(n))
                 self.facts.classes[cq] = [self.resolve(mod, d) for d in (self._dotted(b) for b in stmt.bases) if d]
                 self._index_functions(mod, stmt.body, cq)
                 for q, fn in self.facts.functions.items():
@@ -642,6 +666,10 @@ class _FunctionWalker:
         if isinstance(e, ast.Name):
             defs = env.get(e.id)
             if not defs:
+                if IDENTITY_RE.match(self.ex.resolve(self.mod, e.id)):
+                    nid = new("use", e.id)
+                    self.f.user_refs.add(nid)
+                    return nid
                 return None
             nid = new("use", e.id)
             for d in defs:
@@ -652,6 +680,10 @@ class _FunctionWalker:
             nid = new("attr", ast.unparse(e))
             if b:
                 self.f.edges.add((b, nid))
+            d = self.ex._dotted(e)
+            if b in self.f.user_refs or (d and (IDENTITY_RE.match(self.ex.resolve(self.mod, d))
+                                                or d.startswith("request.user") and "request" in env)):
+                self.f.user_refs.add(nid)
             return nid
         if isinstance(e, ast.Subscript):
             b = self.expr(e.value, env)
@@ -663,9 +695,10 @@ class _FunctionWalker:
         if isinstance(e, ast.Call):
             return self.call(e, env)
         if isinstance(e, ast.Compare):
-            self.expr(e.left, env)
-            for c in e.comparators:
-                self.expr(c, env)
+            ops = [self.expr(e.left, env)] + [self.expr(c, env) for c in e.comparators]
+            for a, b in zip(ops, ops[1:]):
+                if a and b:
+                    self.f.compares.add((a, b))
             return None  # booleans carry no attacker-controlled data
         if isinstance(e, (ast.BinOp, ast.BoolOp, ast.JoinedStr, ast.FormattedValue, ast.IfExp,
                           ast.List, ast.Tuple, ast.Set, ast.Dict, ast.Starred, ast.UnaryOp,
@@ -735,7 +768,22 @@ class _FunctionWalker:
             return self.types.get(name)
         return None
 
+    def _lookup_model(self, e: ast.Call, dotted: str | None) -> str | None:
+        """`Doc.query.get(x)`, `Doc.objects.get(pk=x)`, `session.get(Doc, x)`, `get_object_or_404(Doc, pk=x)`."""
+        if not dotted:
+            return None
+        m = LOOKUP_RE.match(self.ex.resolve(self.mod, dotted))
+        if m and m.group("m") in self.f.classes:
+            return m.group("m")
+        if dotted.rsplit(".", 1)[-1] in ("get", "get_or_404", "get_object_or_404", "one_or_404") and e.args:
+            d = self.ex._dotted(e.args[0])
+            q = self.ex.resolve(self.mod, d) if d else None
+            if q in self.f.classes:
+                return q
+        return None
+
     def call(self, e: ast.Call, env: Env) -> int:
+        first_node = self.ex._next
         func = e.func
         receiver = None
         dotted = self.ex._dotted(func)
@@ -782,6 +830,16 @@ class _FunctionWalker:
 
         nid = self.ex.new_node(self.fn.qname, self.file, e, "call", label=ast.unparse(e)[:80], callee=qual)
         self.f.callnames.add((nid, qual))
+        model = self._lookup_model(e, dotted)
+        if model:
+            self.f.lookups.add((nid, model))
+            for x in range(first_node, nid):
+                if self.f.nodes[x].kind in ("use", "attr", "sub", "call", "expr"):
+                    self.f.lookup_deps.add((nid, x))
+                if x in self.f.user_refs:
+                    self.f.scoped.add(nid)
+        if IDENTITY_RE.match(qual):
+            self.f.user_refs.add(nid)
 
         for key, a in [(i, x) for i, x in enumerate(e.args)] + [(k.arg, k.value) for k in e.keywords if k.arg]:
             d = self.ex._dotted(a) if isinstance(a, (ast.Name, ast.Attribute)) else None

@@ -1,7 +1,7 @@
 """Finding explanations as structured data (no prose): what flows where, and which mitigations were checked."""
 from __future__ import annotations
 
-KIND = {"http": "HTTP parameter", "cookie": "Cookie", "header": "HTTP header", "route": "URL path segment",
+KIND = {"event": "Event payload", "http": "HTTP parameter", "cookie": "Cookie", "header": "HTTP header", "route": "URL path segment",
         "cli": "CLI argument"}
 
 
@@ -28,6 +28,9 @@ def explain(f: dict) -> dict:
             name = _short(st["fn"])
             if st["fn"] != f["source_fn"] and name not in via:
                 via.append(name)
+        for x in d.get("learned", []):
+            summary.append({"k": "Learned " + x["kind"], "v": x["subject"], "loc": "",
+                            "note": ", ".join(x.get("knowledge", []))})
         summary.append({"k": "Path", "v": f"{len(path)} steps" + (f" via {', '.join(via)}" if via else ""), "loc": "", "note": ""})
 
     checks = []

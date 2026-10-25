@@ -78,3 +78,14 @@ acme-etl:
   - {fn: import_feed,          cls: xxe,      label: tp, why: "lxml resolve_entities=True on request body"}
   - {fn: restore,              cls: deser,    label: tp, why: "dill.loads of request body"}
   - {fn: job_status,           cls: sqli,     label: fp, why: "bound params", expect_flow: false}
+
+# acme-docs: missing object-level authorization (IDOR, CWE-639).
+acme-docs:
+  - {fn: get_document,         cls: idor,     label: tp, why: "any logged-in user reads any document"}
+  - {fn: get_document_checked, cls: idor,     label: fp, why: "owner compared with current_user"}
+  - {fn: get_invoice,          cls: idor,     label: fp, why: "query scoped by current_user"}
+  - {fn: invoice_pdf,          cls: idor,     label: tp, why: "audit_log decorator does not authorize"}
+  - {fn: admin_invoice,        cls: idor,     label: fp, why: "admin_required"}
+  - {fn: delete_comment,       cls: idor,     label: fp, why: "can_edit compares author with user"}
+  - {fn: comment_raw,          cls: idor,     label: tp, why: "lookup through helper, no check"}
+  - {fn: get_product,          cls: idor,     label: fp, why: "products are public (no owner field)", expect_flow: false}

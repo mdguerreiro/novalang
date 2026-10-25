@@ -11,6 +11,8 @@ Stages
       pack does not model. Semgrep OSS, the engine without the frontier, and the engine with it (oracle asked
       only where a tainted path meets an unmodelled API or entry point), then acme-etl after acme-reports
       (answers transfer). Cost compared with an LLM that reads every function.
+  S7  Missing object-level authorization (acme-docs): Semgrep OSS, engine only, full pipeline.
+  S8  Pull-request scan (acme-etl + a 3-endpoint patch): new findings and model calls for the diff.
   S5  Learned spec rules: acme-admin (acme_common installed, not vendored) scanned cold, then after
       shop and billing were triaged and the synthesized spec rules approved; plus Semgrep OSS on
       acme-admin with the curated pack vs the exported pack (curated + learned)
@@ -181,6 +183,11 @@ class CountingOracle:
         self.calls.append(("reg", api, len(ClaudeSpecOracle._registrar_prompt(api, arg, usage))))
         return self.inner.classify_registrar(api, arg, usage)
 
+    def classify_authz(self, dec, source):
+        from .agent.claude import ClaudeSpecOracle
+        self.calls.append(("authz", dec, len(ClaudeSpecOracle._authz_prompt(dec, source))))
+        return self.inner.classify_authz(dec, source)
+
     def classify_entry(self, fn, decorators, params, source):
         from .agent.claude import ClaudeSpecOracle
         self.calls.append(("entry", fn, len(ClaudeSpecOracle._entry_prompt(fn, decorators, params, source))))
@@ -221,6 +228,69 @@ def run_frontier() -> dict:
             "tier2_calls": stats["tier2_calls"],
         }
     return out
+
+
+def run_authz(repo: str = "acme-docs") -> dict:
+    """S7: missing object-level authorization. Engine only (unknown decorators left open) vs the full pipeline."""
+    sc = fresh_scanner(repos=[repo])
+    sc.oracle = counting = CountingOracle(sc.oracle)
+    facts, matches = sc.inputs(repo)
+    from .engine.analyze import CURATED
+    engine = {(repo, _short(f.source_fn), f.cls) for f in analyze(facts, matches, list(CURATED), sc.program).findings
+              if f.status in ("confirmed", "undecided")}
+    stats = sc.scan(repo)
+    return {"Semgrep OSS": score(baseline_reported(sc, repo), [repo]).row(),
+            "engine only": score(engine, [repo]).row(),
+            "engine + oracle + verifier": score(lanes_reported(sc.store, repo), [repo]).row(),
+            "questions": len(counting.calls) + stats["tier1_calls"], "tier2_calls": stats["tier2_calls"],
+            "read-every-function LLM (input only)": read_everything_cost(sc, repo)}
+
+
+PR_PATCH = '''
+
+@router.post("/jobs/export")
+def export_job(dest: str):
+    return {"out": subprocess.getoutput("rsync -a /data " + dest)}
+
+
+@router.post("/jobs/thumbnail")
+def thumbnail(expr: str):
+    from PIL import ImageMath
+    return {"v": str(ImageMath.eval(expr))}
+
+
+@router.post("/jobs/{job_id}/note")
+def add_note(job_id: int, note: str):
+    df = pd.read_sql("SELECT * FROM notes WHERE job = %(j)s", engine, params={"j": note})
+    return df.to_dict()
+'''
+
+
+def run_diff() -> dict:
+    """S8: pull-request scan. acme-etl is scanned once (after acme-reports taught the org its libraries); a PR then
+    adds three endpoints: one through a known sink, one through a library never seen before, one safe. Only the
+    diff's new API costs a model call; an LLM reviewer re-reads every changed file."""
+    import shutil
+    import tempfile
+    sc = fresh_scanner(repos=["acme-reports", "acme-etl"])
+    sc.oracle = counting = CountingOracle(sc.oracle)
+    sc.scan("acme-reports")
+    with tempfile.TemporaryDirectory() as td:
+        base, head = Path(td) / "base", Path(td) / "head"
+        shutil.copytree(DEMO / "acme-etl", base)
+        shutil.copytree(DEMO / "acme-etl", head)
+        sc.store.upsert_repo("acme-etl", "acme", "acme-etl", str(head))
+        sc.scan("acme-etl")
+        api = head / "etl" / "api.py"
+        api.write_text(api.read_text() + PR_PATCH)
+        n0 = len(counting.calls)
+        out = sc.scan_diff("acme-etl", base)
+        changed_tokens = sum(len((head / p).read_text()) for p in out["changed_files"]) // 4
+    return {"changed_files": out["changed_files"],
+            "new_findings": [f"{_short(r['source_fn'])}/{r['cls']} ({r['lane']})" for r in out["new"]],
+            "expected_new": ["export_job/cmdi", "thumbnail/code"],
+            "model_calls": out["model_calls"], "frontier_subjects": [c[1] for c in counting.calls[n0:]],
+            "llm_reviewer_input_tokens": changed_tokens}
 
 
 def run(write: Path | None = None) -> dict:
@@ -278,6 +348,8 @@ def run(write: Path | None = None) -> dict:
     }
     results["spec_rules"] = run_spec_rules(cold)
     results["frontier"] = run_frontier()
+    results["authz"] = run_authz()
+    results["diff"] = run_diff()
     if write:
         write.write_text(json.dumps(results, indent=2, default=str))
     return results

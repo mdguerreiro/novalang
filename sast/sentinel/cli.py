@@ -36,7 +36,8 @@ def cmd_demo(args) -> None:
     if args.cold:
         onboard("acme-billing")
     sc = Scanner(st)
-    keys = ("lanes", "tier0_rate", "auto_rate", "tier1_calls", "tier2_calls", "resolved_by_learned_knowledge")
+    keys = ("lanes", "tier0_rate", "auto_rate", "tier1_calls", "tier2_calls", "resolved_by_learned_knowledge",
+            "frontier_questions", "found_by_frontier")
     show = lambda label, stats: print(f"{label:34} {json.dumps({k: stats[k] for k in keys})}")
     if args.cold:
         for r in ("acme-shop", "acme-billing"):
@@ -51,6 +52,10 @@ def cmd_demo(args) -> None:
         show("acme-shop scan 2", sc.scan("acme-shop", refresh=False))
         onboard("acme-billing")
         show("acme-billing scan 1 (warm)", sc.scan("acme-billing"))
+    # Repos built on libraries and frameworks the curated pack does not model: found through the frontier.
+    for r in ("acme-reports", "acme-etl"):
+        onboard(r)
+        show(f"{r} scan", sc.scan(r))
     print(f"database: {db}")
 
 
@@ -58,6 +63,21 @@ def cmd_scan(args) -> None:
     from .pipeline import Scanner
     from .store.db import Store
     print(json.dumps(Scanner(Store(_db(args))).scan(args.repo), indent=2))
+
+
+def cmd_diff(args) -> None:
+    """Scan a pull request: `sentinel diff <repo> --base <git ref>` (repo root must be a git checkout)."""
+    import subprocess
+    import tempfile
+    from .pipeline import Scanner
+    from .store.db import Store
+    st = Store(_db(args))
+    root = Path(st.repo(args.repo)["root"])
+    with tempfile.TemporaryDirectory() as td:
+        subprocess.run(f"git -C {root} archive {args.base} | tar -x -C {td}", shell=True, check=True)
+        out = Scanner(st).scan_diff(args.repo, Path(td))
+    print(json.dumps({k: out[k] for k in ("changed_files", "new", "fixed", "model_calls")}, indent=2, default=str))
+    raise SystemExit(1 if any(r["lane"] == "confirmed" for r in out["new"]) else 0)
 
 
 def cmd_serve(args) -> None:
@@ -101,6 +121,10 @@ def main() -> None:
     s = sub.add_parser("scan")
     s.add_argument("repo")
     s.set_defaults(fn=cmd_scan)
+    s = sub.add_parser("diff", help="pull-request scan: findings the diff adds or fixes (exit 1 on a new confirmed one)")
+    s.add_argument("repo")
+    s.add_argument("--base", required=True, help="git ref of the base snapshot")
+    s.set_defaults(fn=cmd_diff)
     s = sub.add_parser("serve")
     s.add_argument("--host", default="127.0.0.1")
     s.add_argument("--port", type=int, default=8077)

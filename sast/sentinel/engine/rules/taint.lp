@@ -117,7 +117,7 @@ asm(S,K,C,Asm) :- t(X,S,C,any), arg_in(Y,J,X), call(Y,G), p2a_s(G,J,K,C,Asm).
 
 reach(F) :- entry(F).
 reach(F) :- entry_source(F,_,_).
-reach(F) :- decorated(F,D), framework_source(D).
+reach(F) :- decorated(F,D), framework_source(D,_).
 reach(F) :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I).
 reach(G) :- reach(F), node(X,F), call(X,G).
 asm(S,K,C,weak_source(Kd)) :- alarm(S,K,C,any), src(S,Kd), weak_kind(Kd).
@@ -130,9 +130,9 @@ learned_sink(A,Q)  :- lib_arg(K,I,A), callname(K,Q), sink_api(Q,I,_).
 modeled_api(Q)     :- sink_api(Q,_,_).
 % Functions registered with a framework decorator learned to deliver request data, or a specific
 % entrypoint parameter learned to be attacker-controlled (e.g. an AWS Lambda event).
-src(P,"http")      :- decorated(F,D), framework_source(D), param(F,_,P).
+src(P,K)           :- decorated(F,D), framework_source(D,K), param(F,_,P).
 src(P,K)           :- entry_source(F,I,K), param(F,I,P).
-learned_src(P,D)   :- decorated(F,D), framework_source(D), param(F,_,P).
+learned_src(P,D)   :- decorated(F,D), framework_source(D,_), param(F,_,P).
 learned_src(P,F)   :- entry_source(F,I,_), param(F,I,P).
 
 % ── the taint frontier: where tainted data meets something the engine does not understand ──
@@ -140,14 +140,15 @@ answered_api(Q)    :- modeled_api(Q).
 answered_api(Q)    :- not_sink_api(Q).
 answered_api(Q)    :- propagator_api(Q).
 answered_api(Q)    :- sanitizer_api(Q,_).
-has_caller(F)      :- call(_,F).
+% A caller that takes no parameters (`_local_test()`, `main()`) cannot feed F external input: F is still a root.
+has_caller(F)      :- call(X,F), node(X,H), param(H,_,_).
 spec_call(K)       :- lib_arg(K,_,A), sink(A,_).
 spec_call(K)       :- modeled_node(K).
 sink_frontier(Q,I) :- lib_arg(K,I,A), traw(A,_), libcall(K,Q), not answered_api(Q), not spec_call(K), not generic_api(Q).
 
 answered_entry(F)  :- not_entry(F).
 answered_entry(F)  :- entry_source(F,_,_).
-answered_entry(F)  :- decorated(F,D), framework_source(D).
+answered_entry(F)  :- decorated(F,D), framework_source(D,_).
 answered_entry(F)  :- decorated(F,D), not_framework_source(D).
 has_src_param(F)   :- param(F,_,P), src(P,_).
 src_frontier(F,I)  :- entry(F), param(F,I,P), p2s_raw(F,I,_), not has_src_param(F), not typed(P,_), not answered_entry(F).

@@ -13,7 +13,7 @@ import re
 import yaml
 
 from ..engine.analyze import CWE
-from .interfaces import (AgentTools, ApiLabel, Citation, Claim, EntryLabel, GuardLabel, ProposedKnowledge, RegistrarLabel,
+from .interfaces import (AgentTools, ApiLabel, AuthzLabel, Citation, Claim, EntryLabel, GuardLabel, ProposedKnowledge, RegistrarLabel,
                          RuleContext, RuleProposal, SinkLabel, VerificationCase, Verdict)
 
 # What a well-read model "knows" about common library APIs.
@@ -42,6 +42,7 @@ SINK_TABLE: dict[str, tuple[list[tuple], float, str]] = {
     "pandas.read_sql_query": ([(0, "sqli"), ("sql", "sqli")], 0.95, "Executes the SQL string."),
     "urllib3.PoolManager().request": ([(1, "ssrf"), ("url", "ssrf")], 0.93, "Fetches the URL given as 2nd argument."),
     "marshal.loads": ([(0, "deser")], 0.9, "Deserialises code objects from untrusted bytes."),
+    "PIL.ImageMath.eval": ([(0, "code")], 0.93, "Evaluates the expression with Python eval()."),
     "dill.loads": ([(0, "deser")], 0.97, "Pickle superset; arbitrary code on load."),
     "flask.Flask().logger.info": ([], 0.9, "Logging is not a sink for the tracked classes."),
     "jinja2.Environment().from_string().render": ([], 0.9, "Template variables are data, not template source."),
@@ -92,6 +93,18 @@ class MockSpecOracle:
         if re.search(r"(add_route|add_url_rule|add_api_route|add_view|add_get|add_post|register_handler|django\.urls\.(path|re_path)|django\.conf\.urls\.url)$", api):
             return RegistrarLabel(api, arg, True, "http", 0.92, "Registers the function as a request handler.", self.name)
         return RegistrarLabel(api, arg, False, "", 0.8, "Not a handler registration.", self.name)
+
+    def classify_authz(self, decorator: str, source: str) -> AuthzLabel:
+        code = "\n".join(l.split("#")[0] for l in source.splitlines())  # comments are not code
+        user = re.search(r"current_user|request\.user|g\.user", code)
+        denies = re.search(r"abort\(\s*40[13]|raise\s+\w*(Forbidden|PermissionDenied|Unauthorized)|return\s+.*40[13]", code)
+        if user and denies and re.search(r"is_admin|role|permission|has_perm|is_staff|is_superuser", code):
+            return AuthzLabel(decorator, "role", 0.9, "Denies unless the user has a privileged role.", self.name)
+        if user and denies and re.search(r"owner|author|user_id", code):
+            return AuthzLabel(decorator, "object", 0.85, "Compares the record owner with the current user.", self.name)
+        if user and denies:
+            return AuthzLabel(decorator, "authn", 0.8, "Checks that a user is logged in only.", self.name)
+        return AuthzLabel(decorator, "none", 0.85 if source else 0.5, "No access decision in the decorator.", self.name)
 
     def judge_guard(self, pred: str, source: str) -> GuardLabel:
         """Judge a validation predicate by *executing* the regex it relies on against payloads."""
@@ -156,8 +169,33 @@ class MockVerifier:
                 return self._judge_sanitizer(case, tools, args[0])
             if kind == "unreachable":
                 return self._judge_reachability(case, tools, args[0])
+            if kind == "unknown_authz":
+                return self._judge_authz(case, tools, args[0])
         return Verdict(case.fingerprint, "ABSTAIN", case.cls, None, [], [], {"k": self.k, "agree": self.k},
                        0.0, "Open assumptions are about library behavior not visible in this repository.", self.name)
+
+    # ── does decorator D authorize access to the record? ─────────────────────────────────
+    def _judge_authz(self, case: VerificationCase, tools: AgentTools, dec: str) -> Verdict:
+        found = tools.function_source(dec)
+        if found is None:
+            return self._abstain(case, f"Could not read {dec}.")
+        file, l1, l2, text, _sha = found
+        label = MockSpecOracle().classify_authz(dec, text)
+        name = dec.rsplit(".", 1)[-1]
+        if label.authorizes:
+            at = next((l1 + i for i, ln in enumerate(text.splitlines()) if "abort" in ln or "raise" in ln), l1)
+            claims = [Claim("c1", "guard", f"@{name} returns 403 unless {label.rationale[0].lower()}{label.rationale[1:]}",
+                            _cite(tools, file, at - 1, at), {"pred": "authz_decorator", "args": [dec]})]
+            return Verdict(case.fingerprint, "FALSE_POSITIVE", case.cls, "GUARDED", claims,
+                           [ProposedKnowledge("authz_decorator", [dec], _scope_for(dec), f"@{name} denies unprivileged users.", ["c1"])],
+                           {"k": self.k, "agree": self.k, "dissent": []}, 0.9, f"@{name} restricts the endpoint.",
+                           self.name, _cost(self.k))
+        claims = [Claim("c1", "context", f"@{name} makes no access decision.", _cite(tools, file, l1, l2),
+                        {"pred": "not_authz_decorator", "args": [dec]})]
+        return Verdict(case.fingerprint, "TRUE_POSITIVE", case.cls, "EXPLOITABLE", claims,
+                       [ProposedKnowledge("not_authz_decorator", [dec], _scope_for(dec), f"@{name} does not authorize.", ["c1"])],
+                       {"k": self.k, "agree": self.k, "dissent": []}, 0.88, f"@{name} does not check access.",
+                       self.name, _cost(self.k))
 
     # ── does F neutralise this vulnerability class? ──────────────────────────────────────
     def _judge_sanitizer(self, case: VerificationCase, tools: AgentTools, fn: str) -> Verdict:

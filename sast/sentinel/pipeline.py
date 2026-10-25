@@ -13,7 +13,7 @@ from pathlib import Path
 from .agent.interfaces import RuleContext, RuleSynthesizer, SpecOracle, VerificationCase, Verifier
 from .agent.mock import MockRuleSynthesizer, MockSpecOracle, MockVerifier, _scope_for
 from .agent.orchestrator import Tools, gate
-from .engine.analyze import CWE, Analysis, Finding, KnowledgeFact, analyze
+from .engine.analyze import CLASSES, CWE, Analysis, Finding, KnowledgeFact, analyze
 from .engine.datalog import Program
 from .extract.python_facts import Facts, content_hash, extract
 from .extract.semgrep_specs import SpecMatch, match_specs
@@ -38,6 +38,9 @@ def make_synth() -> RuleSynthesizer:
         from .agent.claude import ClaudeRuleSynthesizer
         return ClaudeRuleSynthesizer()
     return MockRuleSynthesizer()
+
+
+VERIFY_LEARNED = float(os.environ.get("SENTINEL_VERIFY_LEARNED", "0.9"))  # oracle confidence that skips verification
 
 
 class Scanner:
@@ -136,13 +139,26 @@ class Scanner:
             else:
                 outcome[f.fingerprint]["finding"] = g
 
+        # Findings that exist only because of a learned sink/source the oracle was not sure about are not
+        # auto-confirmed: the verifier reads them like any undecided finding.
+        conf = {k["id"]: k["confidence"] or 0 for k in self.store.q("SELECT id, confidence FROM knowledge WHERE origin LIKE 'oracle:%'")}
+        verify_learned = set()
+        for fp, o in outcome.items():
+            f = o["finding"]
+            low = [x for x in f.learned if x["knowledge"] and min(conf.get(k, 1) for k in x["knowledge"]) < VERIFY_LEARNED]
+            if o["lane"] == "confirmed" and o["decided_by"] == "engine" and low:
+                o.update(lane="review", decided_by=None)
+                f.assumptions = f.assumptions + [{"asm": ["learned_spec", x["subject"]],
+                                                  "label": f"Learned {x['kind']}, unverified: {x['subject']}"} for x in low]
+                verify_learned.add(fp)
+
         # Tier 2: the verifier agent on what is still undecided, behind symbolic gates.
         rerun = lambda extra: self.analyze_repo(repo_id, t1_facts + extra)
         tools = Tools(facts, a1, rerun)
         t2_calls, t2_hits, t2_cost = 0, 0, {"tokens_in": 0, "tokens_out": 0, "tool_calls": 0}
         for fp, o in outcome.items():
             f: Finding = o["finding"]
-            if o["lane"] != "review" or f.status != "undecided":
+            if o["lane"] != "review" or (f.status != "undecided" and fp not in verify_learned):
                 continue
             # Unchanged code is never re-verified: reuse the last verdict for the same evidence.
             key = self._evidence_key(f, facts)
@@ -269,9 +285,9 @@ class Scanner:
         for (kind, subject), label in labels.items():
             origin = f"oracle:{label.model}"
             # A model may enumerate every class instead of saying "all": store one fact, not nine.
-            if kind == "unknown_api" and set(CWE) <= set(label.classes):
+            if kind == "unknown_api" and set(CLASSES) <= set(label.classes):
                 label.classes = ["all"]
-            if kind == "unknown_guard" and set(CWE) <= set(label.safe_for):
+            if kind == "unknown_guard" and set(CLASSES) <= set(label.safe_for):
                 label.safe_for = ["all"]
             if kind == "unknown_api":
                 if label.role == "sanitizer":
@@ -289,6 +305,26 @@ class Scanner:
                     admit(self.ks.propose("not_safe_pred", [subject], scope, org, repo_id, origin, label.confidence, label.rationale))
         return out, len(todo), hits
 
+    def scan_diff(self, repo_id: str, base_root: Path) -> dict:
+        """Pull-request mode. The base snapshot is analysed by the engine alone (no model calls); the head is
+        scanned normally, so the only model calls are frontier questions about APIs/entry points the diff
+        introduces and verification of findings whose evidence changed. Reports what the diff adds and fixes."""
+        repo = self.store.repo(repo_id)
+        bf = extract(base_root)
+        bm = match_specs(base_root, bf)
+        kn = self.ks.engine_facts(repo["org_id"], repo_id)
+        base = {f.fingerprint for f in analyze(bf, bm, kn, self.program).findings if f.status in ("confirmed", "undecided")}
+        stats = self.scan(repo_id)
+        head_facts, _ = self.inputs(repo_id)
+        changed = sorted(p for p in set(bf.files) | set(head_facts.files) if bf.files.get(p) != head_facts.files.get(p))
+        rows = self.store.q("SELECT id, fingerprint, cls, lane, source_fn, file, line FROM findings WHERE repo_id=? AND is_open=1",
+                            repo_id)
+        reported = [r for r in rows if r["lane"] in ("confirmed", "review")]
+        new = [r for r in reported if r["fingerprint"] not in base]
+        head_fps = {r["fingerprint"] for r in reported}
+        return {"changed_files": changed, "new": new, "fixed": sorted(base - head_fps),
+                "model_calls": stats["frontier_questions"] + stats["tier1_calls"] + stats["tier2_calls"], "stats": stats}
+
     def _frontier(self, repo_id: str, org: str, facts: Facts, rounds: int = 3) -> dict:
         """Recall without reading the repository: the engine names the few places where its model of the code
         runs out on a tainted path, and only those become oracle questions. Answers are ordinary knowledge
@@ -303,7 +339,9 @@ class Scanner:
                 sinks[q].add(i)
             entries = sorted({fn for fn, _i in a.model.get("src_frontier")})
             regs = sorted(set(a.model.get("reg_frontier")), key=str)
-            todo = [("sink", q) for q in sorted(sinks)] + [("reg", r) for r in regs] + [("entry", fn) for fn in entries]
+            decs = sorted({d for (d,) in a.model.get("authz_frontier")})
+            todo = [("sink", q) for q in sorted(sinks)] + [("reg", r) for r in regs] + [("entry", fn) for fn in entries] \
+                + [("authz", d) for d in decs]
             todo = [t for t in todo if t not in asked]
             if not todo:
                 break
@@ -312,7 +350,8 @@ class Scanner:
             for kind, subj in todo:
                 asked.add((kind, subj))
                 preds = {"sink": ("sink_api", "not_sink_api"), "entry": ("entry_source", "not_entry"),
-                         "reg": ("registrar", "not_registrar")}[kind]
+                         "reg": ("registrar", "not_registrar"),
+                         "authz": ("authz_decorator", "not_authz_decorator")}[kind]
                 key = subj[0] if kind == "reg" else subj
                 if any(self._known(p, key, org, repo_id) for p in preds) or (
                         kind == "entry" and any(self._known(p, d, org, repo_id)
@@ -323,6 +362,7 @@ class Scanner:
                 stats["questions"] += 1
                 items = (self._ask_sink(subj, sorted(sinks[subj], key=str), facts) if kind == "sink"
                          else self._ask_registrar(*subj, facts) if kind == "reg"
+                         else self._ask_authz(subj, facts, org) if kind == "authz"
                          else self._ask_entry(subj, facts, org, repo_id))
                 for item in items:
                     item = self._gate_item(item["id"])
@@ -365,6 +405,16 @@ class Scanner:
             return [self.ks.propose("not_registrar", [api], scope, org, repo, origin, label.confidence, label.rationale)]
         return []
 
+    def _ask_authz(self, dec: str, facts: Facts, org: str) -> list[dict]:
+        label = self.oracle.classify_authz(dec, self._source_of(facts, dec))
+        origin = f"oracle:{label.model}"
+        # A project decorator is org knowledge; a library one (flask_security...) holds everywhere.
+        scope, o = ("org", org) if dec in facts.functions else ("global", None)
+        if label.confidence < 0.7:
+            return []
+        pred = "authz_decorator" if label.authorizes else "not_authz_decorator"
+        return [self.ks.propose(pred, [dec], scope, o, None, origin, label.confidence, label.rationale)]
+
     def _ask_entry(self, fn: str, facts: Facts, org: str, repo_id: str) -> list[dict]:
         decorators = sorted(d for f, d in facts.decorated if f == fn)
         f = facts.functions.get(fn)
@@ -372,7 +422,8 @@ class Scanner:
         origin = f"oracle:{label.model}"
         out = []
         if label.kind == "framework" and label.decorator and label.confidence >= 0.7:
-            out.append(self.ks.propose("framework_source", [label.decorator], "global", None, None, origin,
+            kind = label.source_kind if label.source_kind in ("http", "event", "queue", "cli") else "http"
+            out.append(self.ks.propose("framework_source", [label.decorator, kind], "global", None, None, origin,
                                        label.confidence, label.rationale))
         elif label.kind == "handler" and label.params and label.confidence >= 0.7:
             out += [self.ks.propose("entry_source", [fn, i, label.source_kind or "event"], "repo", org, repo_id, origin,

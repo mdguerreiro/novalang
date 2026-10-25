@@ -106,6 +106,20 @@ class RegistrarLabel:
 
 
 @dataclass
+class AuthzLabel:
+    """Frontier question: a decorator sits on a handler that loads a per-user record by id. Does it authorize?"""
+    subject: str
+    kind: Literal["object", "role", "authn", "none"]  # object/role checks authorize; authn-only and none do not
+    confidence: float
+    rationale: str
+    model: str
+
+    @property
+    def authorizes(self) -> bool:
+        return self.kind in ("object", "role")
+
+
+@dataclass
 class GuardLabel:
     pred: str
     safe_for: list[str]  # [] = does not validate; ["all"] = blocks every payload class
@@ -178,6 +192,7 @@ class SpecOracle(Protocol):
     def classify_sink(self, api: str, args: list, usage: str) -> SinkLabel: ...
     def classify_entry(self, fn: str, decorators: list[str], params: list[str], source: str) -> EntryLabel: ...
     def classify_registrar(self, api: str, arg: int | str, usage: str) -> RegistrarLabel: ...
+    def classify_authz(self, decorator: str, source: str) -> AuthzLabel: ...
 
 
 class Verifier(Protocol):

@@ -23,6 +23,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Callable
 
+import yaml
+
 from ..engine.analyze import Analysis, KnowledgeFact, analyze
 from ..extract.python_facts import extract
 from ..extract.semgrep_specs import match_specs
@@ -32,11 +34,12 @@ PREDICATES = {  # pred -> arity
     "sanitizer_api": 2, "propagator_api": 1, "safe_pred": 2, "not_safe_pred": 1, "safe_type": 2,
     "dead_fn": 1, "internal_only": 1, "not_sanitizer": 1, "weak_kind": 1,
     # Frontier answers (recall): what an unmodelled library call or entry point is.
-    "sink_api": 3, "not_sink_api": 1, "framework_source": 1, "not_framework_source": 1,
+    "sink_api": 3, "not_sink_api": 1, "framework_source": 2, "not_framework_source": 1,
     "entry_source": 3, "not_entry": 1, "registrar": 2, "not_registrar": 1,
+    "authz_decorator": 1, "not_authz_decorator": 1,
 }
 ADDING = {"sink_api", "framework_source", "entry_source", "registrar"}  # can only add findings (which are then verified)
-SUPPRESSING = {"sanitizer_api", "safe_pred", "safe_type", "dead_fn", "internal_only"}
+SUPPRESSING = {"sanitizer_api", "safe_pred", "safe_type", "dead_fn", "internal_only", "authz_decorator"}
 SPEC_RULE = "spec_rule"  # a learned Semgrep spec rule (learn/rules.py), not a Datalog fact
 CANARY_ROOT = Path(__file__).resolve().parents[2] / "canaries"
 
@@ -61,6 +64,18 @@ def gate_passed(report: dict) -> bool:
 def _canary_inputs():
     facts = extract(CANARY_ROOT)
     return facts, match_specs(CANARY_ROOT, facts)
+
+
+def rule_text_key(yaml_text: str) -> str | None:
+    """What a spec rule matches, without its id, message and metadata."""
+    try:
+        rules = (yaml.safe_load(yaml_text) or {}).get("rules", [])
+    except yaml.YAMLError:
+        return None
+    if not rules:
+        return None
+    body = [{k: v for k, v in r.items() if k not in ("id", "message", "metadata", "severity")} for r in rules]
+    return json.dumps(body, sort_keys=True)
 
 
 def to_fact(item: dict) -> KnowledgeFact:
@@ -124,7 +139,8 @@ class KnowledgeService:
         elif scope == "org":
             repo_id = None
         args = [payload["rule_id"], payload["role"], payload.get("cls")]
-        existing = self.store.find_knowledge(SPEC_RULE, args, scope, org_id, repo_id)
+        existing = self.store.find_knowledge(SPEC_RULE, args, scope, org_id, repo_id) or \
+            self._same_rule(payload, org_id)
         now = time.time()
         if existing:
             if finding_id is not None or verdict_id is not None:
@@ -140,6 +156,18 @@ class KnowledgeService:
         if finding_id is not None or verdict_id is not None:
             self.store.link(kid, "created_from" if not existing else "corroborated_by", finding_id, verdict_id)
         return self.store.knowledge(kid)
+
+    def _same_rule(self, payload: dict, org_id: str | None) -> dict | None:
+        """A rule with the same matching logic already known in this org (any scope): proposing it again,
+        from another finding or repo, is corroboration of that item, not a new rule."""
+        key = rule_text_key(payload.get("yaml", ""))
+        if not key:
+            return None
+        for k in self.store.q("SELECT * FROM knowledge WHERE pred=? AND status != 'retired' AND "
+                              "(scope='global' OR org_id IS ? OR org_id=?) ORDER BY id", SPEC_RULE, org_id, org_id):
+            if k["args"][1:] == [payload["role"], payload.get("cls")] and rule_text_key(k["payload"].get("yaml", "")) == key:
+                return k
+        return None
 
     # ── gates ────────────────────────────────────────────────────────────────────────────
     def gate(self, item: dict, analyses: dict[str, Analysis], confirmed_fps: set[str],
