@@ -42,3 +42,12 @@ Running plan/status, updated every loop iteration so work can resume from here.
 - E2E Playwright triage flow test (x -> reason -> commit -> knowledge active -> other repo resolved).
 - Remaining UX: diff lenses (new since last scan), suppression-health view, PR-time surface.
 - Engine: method resolution on objects, context-sensitive summaries, Soufflé backend for scale.
+
+## Recall roadmap (loop 2)
+- [x] A taint frontier: sink/source/registrar/entry questions only where a tainted path meets unmodelled code; answers are gated, scoped, cached knowledge (acme-reports, acme-etl corpora).
+- [x] B symbolic call resolution: script-style imports, self/local/global instance methods through the project class hierarchy, library attributes named by base class, module-level registrations.
+- [ ] C variant analysis: deferred; learned sink rules + global sink facts already transfer to variants. Revisit only if held-out repos show missed variants of confirmed findings.
+- [x] D IDOR: authz.lp (lookups of per-user models by request ids; scoped query / owner check / authz decorator), oracle questions for unknown decorators and model privacy, always verifier-decided.
+- [x] E PR scans: `sentinel diff --base`, base by engine only, model calls only for what the diff introduces.
+- [x] Duplicate learned spec rules merge (same rule text = corroboration).
+- Overfitting guard: code frozen before each held-out run; held-out set 1 (Vulnerable-Flask-App, DSVW, flask-realworld, microblog, full-stack-fastapi-template) exposed false alarms on clean apps -> general fixes (opaque guards, fixed-host URLs, IDOR identity/privacy/verification). Held-out set 2 (vulnpy, DSVPWA, flasky, flaskbb, fastapi-realworld) measures those fixes on unseen code.
