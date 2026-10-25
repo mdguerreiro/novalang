@@ -286,6 +286,12 @@ class ClaudeSpecOracle:
 
     @staticmethod
     def _registrar_prompt(api: str, arg, usage: str) -> str:
+        if api.startswith("config:"):
+            return (f"In a configuration file, the key `{api[7:]}` names a project Python function.\n"
+                    f"Example:\n{usage or '(none)'}\n\n"
+                    "Does this key register the function as a handler that a web, RPC, serverless or messaging framework "
+                    "invokes with external input (e.g. OpenAPI operationId under Connexion, serverless `handler`)? Say "
+                    "false for settings, CLI entry points, plugin hooks or scheduled jobs.")
         return (f"Python call `{api}` (`*.name` = a method whose receiver type is unknown; judge by the call site). "
                 f"A project function is passed as argument {arg} (integer = 0-based position, name = keyword).\n"
                 f"Call site:\n{usage or '(none)'}\n\n"

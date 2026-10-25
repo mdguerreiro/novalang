@@ -90,7 +90,7 @@ class MockSpecOracle:
         return EntryLabel(fn, "none", None, [], "", 0.6, "No sign of an entry point.", self.name)
 
     def classify_registrar(self, api: str, arg, usage: str) -> RegistrarLabel:
-        if re.search(r"(add_route|add_url_rule|add_api_route|add_view|add_get|add_post|register_handler|django\.urls\.(path|re_path)|django\.conf\.urls\.url)$", api):
+        if re.search(r"(add_route|add_url_rule|add_api_route|add_view|add_get|add_post|register_handler|config:(operationId|handler|Handler)|django\.urls\.(path|re_path)|django\.conf\.urls\.url)$", api):
             return RegistrarLabel(api, arg, True, "http", 0.92, "Registers the function as a request handler.", self.name)
         return RegistrarLabel(api, arg, False, "", 0.8, "Not a handler registration.", self.name)
 

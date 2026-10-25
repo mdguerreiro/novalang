@@ -431,11 +431,12 @@ class Scanner:
 
     def _ask_registrar(self, api: str, arg, facts: Facts) -> list[dict]:
         site = next(((facts.nodes[k].file, facts.nodes[k].l1) for k, q in sorted(facts.callnames) if q == api), None)
-        usage = f"{site[0]}:{site[1]}: {facts.files[site[0]].splitlines()[site[1] - 1].strip()}" if site else ""
+        usage = facts.config_sites.get(api) or (
+            f"{site[0]}:{site[1]}: {facts.files[site[0]].splitlines()[site[1] - 1].strip()}" if site else "")
         label = self.oracle.classify_registrar(api, arg, usage)
         origin = f"oracle:{label.model}"
         # `*.add_route` names a method, not a type: such facts stay in the org that taught them.
-        scope = "org" if api.startswith("*.") else "global"
+        scope = "org" if api.startswith(("*.", "config:")) else "global"  # config keys mean different things per project
         org, repo = (self._org_of_facts, None) if scope == "org" else (None, None)
         if label.registers and label.confidence >= 0.7:
             return [self.ks.propose("registrar", [api, arg], scope, org, repo, origin, label.confidence, label.rationale)]

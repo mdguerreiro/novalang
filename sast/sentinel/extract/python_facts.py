@@ -18,6 +18,8 @@ from __future__ import annotations
 import ast
 import hashlib
 import re
+import textwrap
+import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -52,6 +54,8 @@ IDENTITY_PARAMS = {"current_user", "user_identity", "auth_user"}  # FastAPI-styl
 OWNER_FIELD_RE = re.compile(r"^(owner|user|author|created_by|account|tenant|customer|patient|member|uploader)(_id)?$")
 LOOKUP_RE = re.compile(r"^(?P<m>.+)\.(query\.(get|get_or_404|filter_by|filter|first_or_404)|objects\.(get|filter))$")
 CHA_MAX_TARGETS = 12
+CONFIG_SUFFIXES = {".yml", ".yaml", ".json", ".toml", ".ini", ".cfg"}
+CONFIG_REF_RE = re.compile(r"[\"']?([A-Za-z_][\w-]*)[\"']?\s*[:=]\s*[\"']?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*[.:][A-Za-z_]\w*)[\"']?\s*,?\s*$")
 FIXED_HOST_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/?#{}%@]+[/?#]")
 EXIT_CALLS = {"abort", "flask.abort", "sys.exit", "exit", "os._exit"}
 SAFE_CONVERTERS = {"int", "float", "uuid"}
@@ -112,6 +116,8 @@ class Facts:
     compares: set[tuple[int, int]] = field(default_factory=set)  # operand nodes compared with each other
     owner_fields: set[tuple[str, str]] = field(default_factory=set)  # model class, owner-like column
     fn_refs: set[tuple[int, int | str, str]] = field(default_factory=set)  # call, arg position/keyword, project fn passed
+    config_sites: dict[str, str] = field(default_factory=dict)  # config:<key> -> one example line
+    skipped: list[tuple[str, str]] = field(default_factory=list)  # functions the extractor could not analyse
     ambiguous: set[tuple[int, str, int]] = field(default_factory=set)  # call, method name, candidate count
     resolved: dict[int, str] = field(default_factory=dict)  # call node -> how it was resolved (cha | self | import | ctor)
     pred_sources: dict[str, str] = field(default_factory=dict)  # predicate -> source text (for the oracle)
@@ -209,7 +215,9 @@ class PythonExtractor:
             src = path.read_text(encoding="utf-8")
             self.facts.files[rel] = src
             try:
-                tree = ast.parse(src, filename=rel)
+                with warnings.catch_warnings():  # customer code: invalid escapes etc. are not our business
+                    warnings.simplefilter("ignore")
+                    tree = ast.parse(src, filename=rel)
             except SyntaxError:
                 continue
             self._modules[rel] = _Module(rel, tree)
@@ -221,7 +229,41 @@ class PythonExtractor:
         for rel, mod in self._modules.items():
             self._walk_defs(mod, mod.tree.body, mod.name)
             self._module_registrations(mod)
+        self._config_registrations()
         return self.facts
+
+    def _config_registrations(self) -> None:
+        """Handlers declared in configuration rather than code: OpenAPI `operationId: pkg.views.get_user`
+        (Connexion), serverless/SAM `handler: app.main`, task routes... Every `key: dotted.name` that resolves to a
+        project function becomes a function reference under the registrar `config:<key>`; whether that key
+        registers request handlers is one frontier question per key."""
+        for path in sorted(self.root.rglob("*")):
+            if path.suffix.lower() not in CONFIG_SUFFIXES or not path.is_file() or path.stat().st_size > 1_000_000:
+                continue
+            rel = path.relative_to(self.root).as_posix()
+            if any(part.startswith(".") or part in ("node_modules", "venv", ".venv") for part in rel.split("/")):
+                continue
+            try:
+                text = path.read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            for ln, line in enumerate(text.splitlines(), 1):
+                for m in CONFIG_REF_RE.finditer(line):
+                    key, ref = m.group(1), m.group(2).replace(":", ".")
+                    target = self._config_target(ref)
+                    if not target:
+                        continue
+                    nid = self.new_node("<config>", rel, None, "call", label=line.strip()[:80], callee=f"config:{key}",
+                                        span=(ln, 1, ln, len(line) + 1))
+                    self.facts.callnames.add((nid, f"config:{key}"))
+                    self.facts.fn_refs.add((nid, 0, target))
+                    self.facts.config_sites[f"config:{key}"] = f"{rel}:{ln}: {line.strip()[:160]}"
+
+    def _config_target(self, ref: str) -> str | None:
+        if ref in self.facts.functions:
+            return ref
+        hits = [q for q in self.facts.functions if q.endswith("." + ref)]  # path prefix omitted in config
+        return hits[0] if len(hits) == 1 else None
 
     def _module_registrations(self, mod: _Module) -> None:
         """Module-level calls that hand project functions to a framework (`urlpatterns = [path("x", views.x)]`,
@@ -286,7 +328,10 @@ class PythonExtractor:
         for stmt in body:
             if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 q = f"{prefix}.{stmt.name}"
-                _FunctionWalker(self, mod, self.facts.functions[q], stmt).walk()
+                try:
+                    _FunctionWalker(self, mod, self.facts.functions[q], stmt).walk()
+                except (RecursionError, SyntaxError, ValueError, KeyError) as e:  # one odd function never aborts a scan
+                    self.facts.skipped.append((q, f"{type(e).__name__}: {e}"[:200]))
                 self._walk_defs(mod, stmt.body, q)
             elif isinstance(stmt, ast.ClassDef):
                 self._walk_defs(mod, stmt.body, f"{prefix}.{stmt.name}")
@@ -647,7 +692,10 @@ class _FunctionWalker:
         lines = src.splitlines()
         body = "\n".join(lines[fn.line - 1: fn.end_line])
         mod = self.ex._modules.get(fn.file)
-        names = {n.id for n in ast.walk(ast.parse(body)) if isinstance(n, ast.Name)} if body else set()
+        try:  # methods are indented; decorators may sit above fn.line
+            names = {n.id for n in ast.walk(ast.parse(textwrap.dedent(body))) if isinstance(n, ast.Name)} if body else set()
+        except SyntaxError:
+            names = {m for m in re.findall(r"[A-Za-z_]\w*", body)}
         consts = []
         for stmt in mod.tree.body if mod else []:
             if isinstance(stmt, ast.Assign) and any(isinstance(t, ast.Name) and t.id in names for t in stmt.targets):

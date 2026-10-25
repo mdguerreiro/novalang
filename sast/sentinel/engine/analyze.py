@@ -155,7 +155,11 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out += [fact("scoped", k) for k in facts.scoped]
     out += [fact("compare", a, b) for a, b in facts.compares]
     out += [fact("owner_field", m, n) for m, n in facts.owner_fields]
-    out += [fact("id_param", q, i) for q, fn in facts.functions.items() for i, p in enumerate(fn.params) if ID_PARAM_RE.match(p)]
+    # Any handler parameter can be a record key (`book_title`, `username`, `doc_id`); `self`/`request` cannot.
+    out += [fact("id_param", q, i) for q, fn in facts.functions.items() for i, p in enumerate(fn.params)
+            if p not in ("self", "cls", "request", "req")]
+    # A user/account model is owned by the user it represents.
+    out += [fact("owner_field", c, "<self>") for c in facts.classes if SELF_OWNED_RE.search(c.rsplit(".", 1)[-1])]
     out += [fact("route_dec", d) for _f, d in facts.decorated if ROUTE_DEC_RE.search(d)]
     out += [fact("generic_reg", q) for q in {q for _k, q in facts.callnames}
             if q.startswith("*.") and q[2:] in GENERIC_METHODS or q in BUILTIN_CALLS]
@@ -179,7 +183,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     return out
 
 
-ID_PARAM_RE = re.compile(r"^(id|pk|uuid|slug|.+_(id|pk|uuid))$")
+SELF_OWNED_RE = re.compile(r"^(User|Account|Profile|Member|Customer)(Model)?$")
 ROUTE_DEC_RE = re.compile(r"\.(route|get|post|put|patch|delete|api_route|websocket)$|^functools\.wraps$")
 _BUILTINS = set(dir(__import__("builtins")))
 # Callbacks handed to these are not request handlers (and builtins are never registrars).
