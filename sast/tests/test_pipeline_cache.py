@@ -32,3 +32,23 @@ def test_tier1_cache_respects_knowledge_scope():
     assert row is not None
     used = {kid for m in row["data"].get("mitigations", []) for kid in m.get("knowledge", [])}
     assert item["id"] not in used
+
+
+def test_oracle_class_lists_collapse_to_all():
+    from sentinel.agent.interfaces import ApiLabel
+    from sentinel.engine.analyze import CWE
+
+    class EnumeratingOracle:
+        name = "enum"
+
+        def classify_api(self, api, usage):
+            return ApiLabel(api, "sanitizer", sorted(CWE), 0.9, "hex output", "enum")
+
+        def judge_guard(self, pred, source):
+            raise AssertionError("not used")
+
+    sc = fresh_scanner(repos=["acme-shop"])
+    sc.oracle = EnumeratingOracle()
+    sc.scan("acme-shop")
+    rows = sc.store.q("SELECT args FROM knowledge WHERE pred='sanitizer_api' AND json_extract(args, '$[0]')='slugify.slugify'")
+    assert [r["args"] for r in rows] == [["slugify.slugify", "all"]]

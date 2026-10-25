@@ -259,6 +259,11 @@ class Scanner:
                       for k, s, ctx in todo}
         for (kind, subject), label in labels.items():
             origin = f"oracle:{label.model}"
+            # A model may enumerate every class instead of saying "all": store one fact, not nine.
+            if kind == "unknown_api" and set(CWE) <= set(label.classes):
+                label.classes = ["all"]
+            if kind == "unknown_guard" and set(CWE) <= set(label.safe_for):
+                label.safe_for = ["all"]
             if kind == "unknown_api":
                 if label.role == "sanitizer":
                     for c in label.classes:
