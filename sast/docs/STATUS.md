@@ -52,6 +52,10 @@ Running plan/status, updated every loop iteration so work can resume from here.
   heap cells and argument->parameter flow, plus parameters of every function touched; registrations and reachability
   pinned from the whole-program model). Checked equal to whole-program what-if on flaskbb (29 findings, 19 hypotheses),
   redash, microblog, flasky, Mycodo; redash 25 s -> 0.03 s, Mycodo ~72 s -> ~9 s, flaskbb 3.3x. IDOR stays whole-program.
+- Done: the knowledge gate for suppressing facts (tier-1 sanitizer / validator answers) re-analysed every repo in scope per
+  answer. It now re-analyses only the chops of findings that hold a node the fact acts on (call to the API, the guard,
+  the typed node, the dead function); other findings keep their status. Same result as whole-program on 15 hypotheses
+  (flaskbb, redash, Mycodo); redash 83 s -> 0.4 s, Mycodo 215 s -> 39 s, flaskbb 31 s -> 9 s.
 - Soufflé backend: port the .lp rules behind the Program interface, compiled once; learned knowledge stays EDB facts
   (learned spec rules become rows, not rule text) so the compiled binary never changes; clingo kept as the reference
   for result equivalence on the demo corpora and held-out repos. Expected 10-100x per solve (unmeasured).

@@ -9,7 +9,7 @@ import re
 import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 
 from .agent.interfaces import RuleContext, RuleSynthesizer, SpecOracle, VerificationCase, Verifier
@@ -778,7 +778,52 @@ class Scanner:
             return report
         cache = self._base_cache if self._base_cache is not None else {}
         analyses = {r: cache[r] if r in cache else cache.setdefault(r, self.analyze_repo(r)) for r in repos}
-        return self.ks.gate(item, analyses, self.confirmed_fps(), lambda r, extra: self.analyze_repo(r, extra))
+        return self.ks.gate(item, analyses, self.confirmed_fps(),
+                            lambda r, extra: self._rerun_affected(r, extra, analyses[r]))
+
+    # Which nodes a knowledge fact can act on (the engine rules that read it): findings whose chop holds none
+    # of them cannot change status, so the gate re-analyses only the chops that do.
+    def _fact_nodes(self, facts, k: KnowledgeFact) -> set[int] | None:
+        if k.pred in ("sanitizer_api", "propagator_api", "not_sanitizer"):
+            return {n for n, q in facts.callnames if q == k.args[0]}
+        if k.pred in ("safe_pred", "not_safe_pred"):
+            return {g for g, p, _v in facts.guards if p == k.args[0]}
+        if k.pred == "safe_type":
+            return {n for n, t in facts.typed if t == k.args[0]}
+        if k.pred in ("dead_fn", "internal_only"):
+            return {n for n, nd in facts.nodes.items() if nd.fn == k.args[0]}
+        return None  # anything else (authz, privacy, sources, sinks): whole program
+
+    def _rerun_affected(self, repo_id: str, extra: list[KnowledgeFact], base: Analysis) -> Analysis:
+        facts, _ = self.inputs(repo_id)
+        hit: set[int] = set()
+        for k in extra:
+            nodes = self._fact_nodes(facts, k)
+            if nodes is None:
+                return self.analyze_repo(repo_id, extra)
+            hit |= nodes
+        chops = facts.__dict__.setdefault("_chops", {})
+        affected = []
+        for f in base.findings:
+            if f.cls == "idor":
+                continue  # suppressing facts above never act on IDOR rules
+            if f.key not in chops:
+                chops[f.key] = facts.chop([(f.source, f.sink)])
+            fns, heap = chops[f.key]
+            if hit & heap or any(facts.nodes[n].fn in fns for n in hit if n in facts.nodes):
+                affected.append(f)
+        if not affected:
+            return base
+        fns = set().union(*(chops[f.key][0] for f in affected))
+        heap = set().union(*(chops[f.key][1] for f in affected))
+        if len(fns) > Tools.SLICE_MAX * max(len(facts.functions), 1):
+            return self.analyze_repo(repo_id, extra)
+        reach = {r[0] for r in base.model.atoms.get("reach", [])}
+        pinned = [KnowledgeFact("SLICE-src", "src", (f.source, f.source_kind or "http")) for f in affected]
+        pinned += [KnowledgeFact("SLICE-reach", "reach", (q,)) for q in sorted(fns & reach)]
+        part = {f.key: f for f in self.analyze_repo(repo_id, extra + pinned, slice_=(fns, heap)).findings}
+        keys = {f.key for f in affected}
+        return replace(base, findings=[part.get(f.key, f) if f.key in keys else f for f in base.findings])
 
     def _gate_item(self, kid: str, approved_by: str | None = None) -> dict:
         item = self.store.knowledge(kid)
