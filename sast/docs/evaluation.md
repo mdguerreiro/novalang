@@ -182,6 +182,23 @@ Cost on real repositories (one scan, cold, same model):
 Cross-repository reuse: flaskbb, scanned after four other repositories, answered 14 of its 50 frontier questions from
 knowledge learned elsewhere. Unchanged rescans: PENDING (live). With the mock: 3 frontier questions, 0 tier-1, 0 tier-2.
 
+## Engine cost at repository scale
+
+Measured with no model calls (mock oracle), one process, 4 cores.
+
+| Repository | Input facts | Full solve | Solves per first scan | What-if, whole program | What-if, sliced |
+|---|---|---|---|---|---|
+| redash | 230k | 20-25 s | 2 full + 69 tiny gate checks (1 s) | 25 s | 0.03 s |
+| flaskbb | | 4-5 s | | 1.5 s mean | 0.46 s mean |
+| Mycodo | 403k | 64-74 s | 2 full + 192 tiny | ~72 s | ~9 s |
+
+- 95% of a full solve is clingo grounding; provenance instrumentation costs ~5%. The ground program has no
+  derivation blowup (atoms = rules), so the remaining lever per solve is the backend (Soufflé, backlog).
+- Live scans were CPU-bound in the verifier's `what_if` (a whole-program solve per call). It now re-analyses only the
+  finding's chop and gives the same answers as the whole program on every finding and hypothesis tested.
+- Solves are memoised on their exact input: an unchanged rescan in the same process runs no solve (flaskbb 25 s ->
+  5 s, redash 60 s -> 7 s, the rest is parsing).
+
 ## Generalization: no framework knowledge at all
 
 `SENTINEL_SPECS=minimal` keeps only Python stdlib sinks and sanitizers (no Flask/FastAPI/Django/pandas/jinja2 specs).
