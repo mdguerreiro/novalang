@@ -97,8 +97,9 @@ def demo_tier0(demo_inputs):
 
 @pytest.fixture(scope="session")
 def ground_truth():
+    """Ground truth of the two repos the Tier-0 fixtures analyse (acme-admin is only used by eval stage S5)."""
     from sentinel.eval import ground_truth as gt
-    return gt()
+    return {k: v for k, v in gt().items() if k[0] in REPOS}
 
 
 @pytest.fixture(scope="session")

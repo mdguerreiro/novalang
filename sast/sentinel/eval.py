@@ -7,6 +7,9 @@ Stages
   S3  + Tier 2: verifier agent (mock) behind symbolic gates  [what humans see]
   S4  Flywheel transfer: acme-billing scanned *after* acme-shop was triaged and the AppSec team
       approved the knowledge proposals that cleared their gates
+  S5  Learned spec rules: acme-admin (acme_common installed, not vendored) scanned cold, then after
+      shop and billing were triaged and the synthesized spec rules approved; plus Semgrep OSS on
+      acme-admin with the curated pack vs the exported pack (curated + learned)
 
 With a mocked agent these numbers validate the machinery, not model quality (architecture §8).
 """
@@ -19,7 +22,9 @@ from pathlib import Path
 import yaml
 
 from .engine.analyze import analyze
-from .extract.semgrep_specs import run_baseline
+from .extract.semgrep_specs import load_rules, run_baseline
+from .learn.knowledge import gate_passed
+from .learn.rules import active_rules, materialize
 from .pipeline import Scanner
 from .store.db import Store
 from .triage import Triage
@@ -27,6 +32,7 @@ from .triage import Triage
 SAST_ROOT = Path(__file__).resolve().parents[1]
 DEMO = SAST_ROOT / "demo"
 REPOS = ["acme-shop", "acme-billing"]
+ADMIN = "acme-admin"  # third repo of the org: installs acme_common as a package (S5 only)
 
 
 @dataclass
@@ -81,11 +87,12 @@ def _short(fn: str) -> str:
     return fn.rsplit(".", 1)[-1]
 
 
-def baseline_reported(sc: Scanner, repo: str) -> set:
+def baseline_reported(sc: Scanner, repo: str, rules: list[dict] | None = None) -> set:
+    """Semgrep OSS taint mode built from `rules` (default: the curated pack)."""
     facts, _ = sc.inputs(repo)
     root = Path(sc.store.repo(repo)["root"])
     out = set()
-    for b in run_baseline(root, sorted(facts.files)):
+    for b in run_baseline(root, sorted(facts.files), rules):
         fn = next((q for q, f in facts.functions.items() if f.file == b.file and f.line <= b.line <= f.end_line), "?")
         out.add((repo, _short(fn), b.cls))
     return out
@@ -110,14 +117,20 @@ def fresh_scanner(db: str = ":memory:", repos: list[str] | None = None) -> Scann
     return sc
 
 
-def simulate_appsec_review(sc: Scanner, repo: str, actor: str = "human:appsec-lead") -> dict:
+def simulate_appsec_review(sc: Scanner, repo: str, actor: str = "human:appsec-lead", validate_confirmed: bool = False,
+                           approve_rules: bool = False) -> dict:
     """An AppSec engineer works the queue using ground truth as their judgement:
     triage every finding in `review`, audit the sampled AI suppressions, and approve shadow
-    knowledge whose impact preview is clean."""
+    knowledge whose impact preview is clean.
+    validate_confirmed: also confirm the engine-confirmed findings (filing tickets), which is what
+                        triggers sink-rule synthesis for flows through shared helpers.
+    approve_rules:      also approve shadow spec rules (off for the S4 stage, which predates them)."""
     tr = Triage(sc)
     gt = ground_truth()
     done = {"triaged": 0, "approved": [], "audited": 0}
-    for f in sc.store.q("SELECT * FROM findings WHERE repo_id=? AND is_open=1 AND (lane='review' OR audit=1)", repo):
+    lanes = "(lane='review' OR audit=1 OR (lane='confirmed' AND triage_state='untriaged'))" if validate_confirmed \
+        else "(lane='review' OR audit=1)"
+    for f in sc.store.q(f"SELECT * FROM findings WHERE repo_id=? AND is_open=1 AND {lanes}", repo):
         e = gt.get((repo, _short(f["source_fn"]), f["cls"]))
         if e is None:
             continue
@@ -134,8 +147,10 @@ def simulate_appsec_review(sc: Scanner, repo: str, actor: str = "human:appsec-le
         done["audited"] += f["audit"]
     org = sc.store.repo(repo)["org_id"]
     for k in sc.store.knowledge_in_scope(org, repo, ("shadow",)):
+        if k["pred"] == "spec_rule" and not approve_rules:
+            continue
         report = sc.preview(k)
-        if report["canary"] == "pass" and not report["conflicts"]:
+        if gate_passed(report) and not report["conflicts"]:
             tr.set_knowledge(k["id"], "active", actor)
             done["approved"].append(k["id"])
     return done
@@ -194,6 +209,41 @@ def run(write: Path | None = None) -> dict:
         "active learned knowledge": [{"id": k["id"], "pred": k["pred"], "args": k["args"], "scope": k["scope"], "origin": k["origin"]}
                                      for k in warm.store.q("SELECT * FROM knowledge WHERE status='active' ORDER BY id")],
     }
+    results["spec_rules"] = run_spec_rules(cold)
     if write:
         write.write_text(json.dumps(results, indent=2, default=str))
     return results
+
+
+def run_spec_rules(sc: Scanner) -> dict:
+    """S5: learned spec rules on a repo that installs the shared package instead of vendoring it.
+    `sc` has scanned acme-shop and acme-billing (the S3 scanner). acme-admin is scanned cold by a fresh
+    scanner, then warm by `sc` after AppSec triaged both repos (confirming reported findings, which
+    triggers sink-rule synthesis) and approved the knowledge, spec rules included, that passed its gates."""
+    keep = ("tier0_rate", "auto_rate", "tier1_calls", "tier2_calls", "found_by_learned_rules", "lanes")
+    cold = fresh_scanner(repos=[ADMIN])
+    cold_stats = cold.scan(ADMIN)
+    review = {r: simulate_appsec_review(sc, r, validate_confirmed=True, approve_rules=True) for r in REPOS}
+    onboard(sc, ADMIN)
+    warm_stats = sc.scan(ADMIN)
+    rules = active_rules(sc.store, "acme")
+    exported = load_rules() + [materialize(k) for k in rules]
+    attribution = {}
+    for row in sc.store.q("SELECT source_fn, cls, engine_status, data FROM findings WHERE repo_id=? AND is_open=1", ADMIN):
+        used = sorted(set(row["data"].get("spec_knowledge", [])) | {k for m in row["data"]["mitigations"] for k in m["knowledge"]})
+        attribution[f"{_short(row['source_fn'])}/{row['cls']}"] = {"status": row["engine_status"], "knowledge": used}
+    return {
+        "acme-admin cold (no org knowledge)": {**{k: cold_stats[k] for k in keep},
+                                               "score": score(lanes_reported(cold.store, ADMIN), [ADMIN]).row()},
+        "review of acme-shop and acme-billing": review,
+        "learned spec rules": [{"id": k["id"], "rule": k["args"][0], "role": k["args"][1], "cls": k["args"][2],
+                                "status": k["status"], "origin": k["origin"], "scope": k["scope"],
+                                "gates": {g: k["gate"].get(g) for g in ("sanity", "differential", "generalization", "canary")},
+                                "support": sc.ks.support(k["id"])}
+                               for k in sc.store.q("SELECT * FROM knowledge WHERE pred='spec_rule' ORDER BY id")],
+        "acme-admin warm (after review, rules approved)": {**{k: warm_stats[k] for k in keep},
+                                                          "score": score(lanes_reported(sc.store, ADMIN), [ADMIN]).row()},
+        "acme-admin warm decisions": attribution,
+        "acme-admin Semgrep OSS, curated pack": score(baseline_reported(sc, ADMIN), [ADMIN]).row(),
+        "acme-admin Semgrep OSS, exported pack (curated + learned)": score(baseline_reported(sc, ADMIN, exported), [ADMIN]).row(),
+    }

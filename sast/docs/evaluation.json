@@ -215,5 +215,231 @@
     "findings": 31,
     "human_queue": 1,
     "auto_decided": 0.968
+  },
+  "spec_rules": {
+    "acme-admin cold (no org knowledge)": {
+      "tier0_rate": 0.5,
+      "auto_rate": 0.5,
+      "tier1_calls": 1,
+      "tier2_calls": 1,
+      "found_by_learned_rules": 0,
+      "lanes": {
+        "review": 1,
+        "confirmed": 1,
+        "suppressed": 0,
+        "suppressed_ai": 0,
+        "test": 0
+      },
+      "score": {
+        "tp": 1,
+        "fp": 1,
+        "fn": 4,
+        "precision": 0.5,
+        "recall": 0.2,
+        "missed": [
+          "acme-admin/audit_log/sqli",
+          "acme-admin/backup/cmdi",
+          "acme-admin/health_probe/ssrf",
+          "acme-admin/user_search/sqli"
+        ],
+        "false_alarms": [
+          "acme-admin/user_lookup/sqli"
+        ],
+        "unlabeled": []
+      }
+    },
+    "review of acme-shop and acme-billing": {
+      "acme-shop": {
+        "triaged": 10,
+        "approved": [
+          "K-001",
+          "K-003",
+          "K-004",
+          "K-005",
+          "K-006",
+          "R-001",
+          "R-002",
+          "R-003"
+        ],
+        "audited": 1
+      },
+      "acme-billing": {
+        "triaged": 5,
+        "approved": [
+          "R-004"
+        ],
+        "audited": 0
+      }
+    },
+    "learned spec rules": [
+      {
+        "id": "R-001",
+        "rule": "learned.sanitizer.sqli.acme_common.db.quote_sql",
+        "role": "sanitizer",
+        "cls": "sqli",
+        "status": "active",
+        "origin": "agent:mock-synth-v1",
+        "scope": "org",
+        "gates": {
+          "sanity": "pass",
+          "differential": "pass",
+          "generalization": "pass",
+          "canary": "pass"
+        },
+        "support": 2
+      },
+      {
+        "id": "R-002",
+        "rule": "learned.sink.sqli.acme_common.db.run_query",
+        "role": "sink",
+        "cls": "sqli",
+        "status": "active",
+        "origin": "agent:mock-synth-v1",
+        "scope": "org",
+        "gates": {
+          "sanity": "pass",
+          "differential": "pass",
+          "generalization": "pass",
+          "canary": "pass"
+        },
+        "support": 2
+      },
+      {
+        "id": "R-003",
+        "rule": "learned.sink.ssrf.acme_common.net.fetch",
+        "role": "sink",
+        "cls": "ssrf",
+        "status": "active",
+        "origin": "agent:mock-synth-v1",
+        "scope": "org",
+        "gates": {
+          "sanity": "pass",
+          "differential": "pass",
+          "generalization": "pass",
+          "canary": "pass"
+        },
+        "support": 2
+      },
+      {
+        "id": "R-004",
+        "rule": "learned.sink.cmdi.acme_common.shell.run_shell",
+        "role": "sink",
+        "cls": "cmdi",
+        "status": "active",
+        "origin": "agent:mock-synth-v1",
+        "scope": "org",
+        "gates": {
+          "sanity": "pass",
+          "differential": "pass",
+          "generalization": "pass",
+          "canary": "pass"
+        },
+        "support": 1
+      }
+    ],
+    "acme-admin warm (after review, rules approved)": {
+      "tier0_rate": 1.0,
+      "auto_rate": 1.0,
+      "tier1_calls": 0,
+      "tier2_calls": 0,
+      "found_by_learned_rules": 6,
+      "lanes": {
+        "review": 0,
+        "confirmed": 5,
+        "suppressed": 3,
+        "suppressed_ai": 0,
+        "test": 0
+      },
+      "score": {
+        "tp": 5,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "missed": [],
+        "false_alarms": [],
+        "unlabeled": []
+      }
+    },
+    "acme-admin warm decisions": {
+      "backup/cmdi": {
+        "status": "confirmed",
+        "knowledge": [
+          "R-004"
+        ]
+      },
+      "backup_safe/cmdi": {
+        "status": "mitigated",
+        "knowledge": [
+          "R-004"
+        ]
+      },
+      "user_search/sqli": {
+        "status": "confirmed",
+        "knowledge": [
+          "R-002"
+        ]
+      },
+      "user_by_ref/sqli": {
+        "status": "mitigated",
+        "knowledge": [
+          "K-004",
+          "R-001",
+          "R-002"
+        ]
+      },
+      "user_lookup/sqli": {
+        "status": "mitigated",
+        "knowledge": [
+          "K-004",
+          "R-001"
+        ]
+      },
+      "audit_log/sqli": {
+        "status": "confirmed",
+        "knowledge": [
+          "R-002"
+        ]
+      },
+      "health_probe/ssrf": {
+        "status": "confirmed",
+        "knowledge": [
+          "R-003"
+        ]
+      },
+      "export_users/cmdi": {
+        "status": "confirmed",
+        "knowledge": []
+      }
+    },
+    "acme-admin Semgrep OSS, curated pack": {
+      "tp": 1,
+      "fp": 1,
+      "fn": 4,
+      "precision": 0.5,
+      "recall": 0.2,
+      "missed": [
+        "acme-admin/audit_log/sqli",
+        "acme-admin/backup/cmdi",
+        "acme-admin/health_probe/ssrf",
+        "acme-admin/user_search/sqli"
+      ],
+      "false_alarms": [
+        "acme-admin/user_lookup/sqli"
+      ],
+      "unlabeled": []
+    },
+    "acme-admin Semgrep OSS, exported pack (curated + learned)": {
+      "tp": 4,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1.0,
+      "recall": 0.8,
+      "missed": [
+        "acme-admin/audit_log/sqli"
+      ],
+      "false_alarms": [],
+      "unlabeled": []
+    }
   }
 }
