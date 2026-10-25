@@ -356,8 +356,9 @@ class Scanner:
             regs = sorted(set(a.model.get("reg_frontier")), key=str)
             decs = sorted({d for (d,) in a.model.get("authz_frontier")})
             models = sorted({m for (m,) in a.model.get("privacy_frontier")})
+            srcapis = sorted({q for (q,) in a.model.get("srcapi_frontier")})
             todo = [("sink", q) for q in sorted(sinks)] + [("reg", r) for r in regs] + [("entry", fn) for fn in entries] \
-                + [("authz", d) for d in decs] + [("model", m) for m in models]
+                + [("authz", d) for d in decs] + [("model", m) for m in models] + [("srcapi", q) for q in srcapis]
             todo = [t for t in todo if t not in asked]
             if not todo:
                 break
@@ -368,7 +369,8 @@ class Scanner:
                 preds = {"sink": ("sink_api", "not_sink_api"), "entry": ("entry_source", "not_entry"),
                          "reg": ("registrar", "not_registrar"),
                          "authz": ("authz_decorator", "not_authz_decorator"),
-                         "model": ("private_model", "public_model")}[kind]
+                         "model": ("private_model", "public_model"),
+                         "srcapi": ("source_api", "not_source_api")}[kind]
                 key = subj[0] if kind == "reg" else subj
                 if any(self._known(p, key, org, repo_id) for p in preds) or (
                         kind == "entry" and any(self._known(p, d, org, repo_id)
@@ -381,6 +383,7 @@ class Scanner:
                          else self._ask_registrar(*subj, facts) if kind == "reg"
                          else self._ask_authz(subj, facts, org) if kind == "authz"
                          else self._ask_model(subj, facts, org) if kind == "model"
+                         else self._ask_source(subj, facts) if kind == "srcapi"
                          else self._ask_entry(subj, facts, org, repo_id))
                 for item in items:
                     item = self._gate_frontier_item(item)
@@ -447,6 +450,21 @@ class Scanner:
             return [self.ks.propose("registrar", [api, arg], scope, org, repo, origin, label.confidence, label.rationale)]
         if not label.registers and label.confidence >= 0.8:
             return [self.ks.propose("not_registrar", [api], scope, org, repo, origin, label.confidence, label.rationale)]
+        return []
+
+    def _ask_source(self, api: str, facts: Facts) -> list[dict]:
+        node = next((n for n, q in sorted(facts.attrnames | facts.callnames) if q == api), None)
+        usage = ""
+        if node is not None:
+            n = facts.nodes[node]
+            usage = f"{n.file}:{n.l1}: {facts.files.get(n.file, '').splitlines()[n.l1 - 1].strip()}" if n.file in facts.files else ""
+        label = self.oracle.classify_source(api, usage)
+        origin = f"oracle:{label.model}"
+        if label.is_source and label.confidence >= 0.7:
+            return [self.ks.propose("source_api", [api, label.kind or "http"], "global", None, None, origin,
+                                    label.confidence, label.rationale)]
+        if not label.is_source and label.confidence >= 0.8:
+            return [self.ks.propose("not_source_api", [api], "global", None, None, origin, label.confidence, label.rationale)]
         return []
 
     def _public_model(self, f: Finding, org: str) -> bool:

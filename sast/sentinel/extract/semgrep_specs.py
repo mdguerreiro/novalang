@@ -21,7 +21,9 @@ import yaml
 from .python_facts import Facts
 
 SAST_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SPECS = [SAST_ROOT / "specs" / "python-web.yml"]
+# SENTINEL_SPECS=minimal runs with stdlib sinks only (generalization ablation: frameworks must be learned).
+DEFAULT_SPECS = [SAST_ROOT / "specs" / ("minimal/python-stdlib.yml" if os.environ.get("SENTINEL_SPECS") == "minimal"
+                                        else "python-web.yml")]
 
 
 def semgrep_bin() -> str:

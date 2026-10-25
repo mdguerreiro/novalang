@@ -116,6 +116,7 @@ class Facts:
     compares: set[tuple[int, int]] = field(default_factory=set)  # operand nodes compared with each other
     owner_fields: set[tuple[str, str]] = field(default_factory=set)  # model class, owner-like column
     fn_refs: set[tuple[int, int | str, str]] = field(default_factory=set)  # call, arg position/keyword, project fn passed
+    attrnames: set[tuple[int, str]] = field(default_factory=set)  # attribute node -> resolved library name (flask.request.args)
     config_sites: dict[str, str] = field(default_factory=dict)  # config:<key> -> one example line
     skipped: list[tuple[str, str]] = field(default_factory=list)  # functions the extractor could not analyse
     ambiguous: set[tuple[int, str, int]] = field(default_factory=set)  # call, method name, candidate count
@@ -779,6 +780,10 @@ class _FunctionWalker:
             if b:
                 self.f.edges.add((b, nid))
             d = self.ex._dotted(e)
+            if d and b is None and d.split(".")[0] in self.mod.imports:  # `request.args` read from a library object
+                q = self.ex.resolve(self.mod, d)
+                if q.split(".")[0] not in self.ex._tops:  # project modules/classes are not library sources
+                    self.f.attrnames.add((nid, q))
             if b in self.f.user_refs or (d and (IDENTITY_RE.search(self.ex.resolve(self.mod, d))
                                                 or d.startswith(("request.user", "request.auth")) and "request" in env)):
                 self.f.user_refs.add(nid)

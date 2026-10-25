@@ -13,7 +13,7 @@ import re
 import yaml
 
 from ..engine.analyze import CWE
-from .interfaces import (AgentTools, ApiLabel, AuthzLabel, ModelLabel, Citation, Claim, EntryLabel, GuardLabel, ProposedKnowledge, RegistrarLabel,
+from .interfaces import (AgentTools, ApiLabel, AuthzLabel, ModelLabel, SourceLabel, Citation, Claim, EntryLabel, GuardLabel, ProposedKnowledge, RegistrarLabel,
                          RuleContext, RuleProposal, SinkLabel, VerificationCase, Verdict)
 
 # What a well-read model "knows" about common library APIs.
@@ -93,6 +93,13 @@ class MockSpecOracle:
         if re.search(r"(add_route|add_url_rule|add_api_route|add_view|add_get|add_post|register_handler|config:(operationId|handler|Handler)|django\.urls\.(path|re_path)|django\.conf\.urls\.url)$", api):
             return RegistrarLabel(api, arg, True, "http", 0.92, "Registers the function as a request handler.", self.name)
         return RegistrarLabel(api, arg, False, "", 0.8, "Not a handler registration.", self.name)
+
+    def classify_source(self, api: str, usage: str) -> SourceLabel:
+        m = re.search(r"(^|\.)request\.(args|form|values|json|data|files|cookies|headers|query_string|url|path|referrer|get_json|get_data)", api)
+        if m:
+            kind = {"cookies": "cookie", "headers": "header", "referrer": "header"}.get(m.group(2), "http")
+            return SourceLabel(api, True, kind, 0.9, "Request data supplied by the client.", self.name)
+        return SourceLabel(api, False, "", 0.8, "Not client-controlled.", self.name)
 
     def classify_model(self, model: str, source: str) -> ModelLabel:
         if re.search(r"^\s*(slug|published|is_public|public)\s*[:=]", source, re.M):

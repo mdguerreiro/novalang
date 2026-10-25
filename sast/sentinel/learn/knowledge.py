@@ -37,8 +37,9 @@ PREDICATES = {  # pred -> arity
     "sink_api": 3, "not_sink_api": 1, "framework_source": 2, "not_framework_source": 1,
     "entry_source": 3, "not_entry": 1, "registrar": 2, "not_registrar": 1,
     "authz_decorator": 1, "not_authz_decorator": 1, "private_model": 1, "public_model": 1,
+    "source_api": 2, "not_source_api": 1,
 }
-ADDING = {"sink_api", "framework_source", "entry_source", "registrar"}  # can only add findings (which are then verified)
+ADDING = {"sink_api", "framework_source", "entry_source", "registrar", "source_api"}  # can only add findings (which are then verified)
 SUPPRESSING = {"sanitizer_api", "safe_pred", "safe_type", "dead_fn", "internal_only", "authz_decorator", "public_model"}
 SPEC_RULE = "spec_rule"  # a learned Semgrep spec rule (learn/rules.py), not a Datalog fact
 CANARY_ROOT = Path(__file__).resolve().parents[2] / "canaries"

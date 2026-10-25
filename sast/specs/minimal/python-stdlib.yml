@@ -1,0 +1,146 @@
+# Ablation pack: Python stdlib sinks and sanitizers only. No framework sources or sinks:
+# the frontier must learn Flask/Django/FastAPI/etc. by itself (eval: generalization).
+rules:
+- id: spec.sink.sqli.dbapi-execute
+  languages:
+  - python
+  severity: INFO
+  message: sink
+  metadata:
+    sentinel:
+      role: sink
+      cls: sqli
+      cwe: CWE-89
+  patterns:
+  - pattern-either:
+    - pattern: $CUR.execute($Q, ...)
+    - pattern: $CUR.executemany($Q, ...)
+    - pattern: $CUR.executescript($Q)
+  - focus-metavariable: $Q
+- id: spec.sink.cmdi.os
+  languages:
+  - python
+  severity: INFO
+  message: sink
+  metadata:
+    sentinel:
+      role: sink
+      cls: cmdi
+      cwe: CWE-78
+  patterns:
+  - pattern-either:
+    - pattern: os.system($X)
+    - pattern: os.popen($X, ...)
+  - focus-metavariable: $X
+- id: spec.sink.cmdi.subprocess-shell
+  languages:
+  - python
+  severity: INFO
+  message: sink
+  metadata:
+    sentinel:
+      role: sink
+      cls: cmdi
+      cwe: CWE-78
+  patterns:
+  - pattern-either:
+    - pattern: subprocess.$F($X, ..., shell=True, ...)
+  - metavariable-regex:
+      metavariable: $F
+      regex: ^(run|call|check_call|check_output|Popen)$
+  - focus-metavariable: $X
+- id: spec.sink.path.file-access
+  languages:
+  - python
+  severity: INFO
+  message: sink
+  metadata:
+    sentinel:
+      role: sink
+      cls: path
+      cwe: CWE-22
+  patterns:
+  - pattern-either:
+    - pattern: open($P, ...)
+    - pattern: flask.send_file($P, ...)
+    - pattern: os.remove($P)
+    - pattern: shutil.rmtree($P, ...)
+  - focus-metavariable: $P
+- id: spec.sink.deser.pickle
+  languages:
+  - python
+  severity: INFO
+  message: sink
+  metadata:
+    sentinel:
+      role: sink
+      cls: deser
+      cwe: CWE-502
+  patterns:
+  - pattern-either:
+    - pattern: pickle.loads($X, ...)
+    - pattern: pickle.load($X, ...)
+  - focus-metavariable: $X
+- id: spec.sink.code.eval
+  languages:
+  - python
+  severity: INFO
+  message: sink
+  metadata:
+    sentinel:
+      role: sink
+      cls: code
+      cwe: CWE-95
+  patterns:
+  - pattern-either:
+    - pattern: eval($X, ...)
+    - pattern: exec($X, ...)
+  - focus-metavariable: $X
+- id: spec.sanitizer.type-cast
+  languages:
+  - python
+  severity: INFO
+  message: sanitizer
+  metadata:
+    sentinel:
+      role: sanitizer
+      cls: all
+  pattern-either:
+  - pattern: int(...)
+  - pattern: float(...)
+  - pattern: uuid.UUID(...)
+- id: spec.sanitizer.path.basename
+  languages:
+  - python
+  severity: INFO
+  message: sanitizer
+  metadata:
+    sentinel:
+      role: sanitizer
+      cls: path
+  pattern-either:
+  - pattern: os.path.basename(...)
+  - pattern: werkzeug.utils.secure_filename(...)
+- id: spec.sanitizer.xss.escape
+  languages:
+  - python
+  severity: INFO
+  message: sanitizer
+  metadata:
+    sentinel:
+      role: sanitizer
+      cls: xss
+  pattern-either:
+  - pattern: markupsafe.escape(...)
+  - pattern: html.escape(...)
+  - pattern: flask.escape(...)
+- id: spec.sanitizer.cmdi.shlex-quote
+  languages:
+  - python
+  severity: INFO
+  message: sanitizer
+  metadata:
+    sentinel:
+      role: sanitizer
+      cls: cmdi
+  pattern: shlex.quote(...)

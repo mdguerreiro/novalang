@@ -176,3 +176,29 @@ answered_entry(F)  :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I).
 dec_frontier(D) :- decorated(F,D), route_dec(D), param(F,_,_), not answered_dec_src(D), not test_fn(F).
 answered_dec_src(D) :- framework_source(D,_).
 answered_dec_src(D) :- not_framework_source(D).
+
+% Sources from library reads (`flask.request.args`, `bottle.request.query`, `event_bus.receive()`): the mirror of
+% the sink frontier. A library call or attribute whose value reaches a sink while nothing upstream is a known
+% source is asked about once ("is this attacker-controlled?"); the answer is a global source_api fact.
+src(N,K) :- attrname(N,Q), source_api(Q,K).
+src(N,K) :- callname(N,Q), source_api(Q,K), not lib_input(N).
+learned_src(N,Q) :- attrname(N,Q), source_api(Q,_).
+learned_src(N,Q) :- callname(N,Q), source_api(Q,_), not lib_input(N).
+lib_input(N) :- lib_arg(N,_,_).
+rs(N) :- sink(N,_).
+rs(A) :- edge(A,B), rs(B).
+rs(A) :- arg_in(X,J,A), call(X,G), p2s_raw(G,J,_).
+rs(R) :- ret(G,R), call(K,G), rs(K).
+answered_src(Q) :- source_api(Q,_).
+answered_src(Q) :- not_source_api(Q).
+answered_src(Q) :- sink_api(Q,_,_).
+srcapi_frontier(Q) :- attrname(N,Q), rs(N), not traw(N,_), not answered_src(Q), node(N,F), not test_fn(F).
+srcapi_frontier(Q) :- callname(N,Q), libcall(N,Q), rs(N), not traw(N,_), not lib_input(N), not answered_src(Q),
+                      not generic_api(Q), node(N,F), not test_fn(F).
+% Seed for "unknown source + unknown sink": library values read inside a route-shaped handler are asked about
+% directly (bounded: request objects, app config, globals), so either side can be learned first.
+handler_has_src(F) :- traw(N,_), node(N,F).
+srcapi_frontier(Q) :- attrname(N,Q), node(N,F), decorated(F,D), route_dec(D), not answered_src(Q), not test_fn(F),
+                      not handler_has_src(F).
+srcapi_frontier(Q) :- callname(N,Q), node(N,F), decorated(F,D), route_dec(D), not call(N,_), not lib_input(N),
+                      not answered_src(Q), not generic_api(Q), not test_fn(F), not spec_call(N), not handler_has_src(F).

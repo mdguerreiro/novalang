@@ -32,7 +32,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import anthropic
 
-from .interfaces import (AgentTools, ApiLabel, AuthzLabel, ModelLabel, Citation, Claim, EntryLabel, GuardLabel, RegistrarLabel, SinkLabel, ProposedKnowledge, RuleContext,
+from .interfaces import (AgentTools, ApiLabel, AuthzLabel, ModelLabel, SourceLabel, Citation, Claim, EntryLabel, GuardLabel, RegistrarLabel, SinkLabel, ProposedKnowledge, RuleContext,
                          RuleProposal, VerificationCase, Verdict)
 from .orchestrator import StrippedTools
 from ..engine.analyze import CLASSES
@@ -158,6 +158,12 @@ MODEL_SCHEMA = {"type": "object", "properties": {
     "private": {"type": "boolean"}, "confidence": {"type": "number"}, "rationale": {"type": "string"}},
     "required": ["private", "confidence", "rationale"], "additionalProperties": False}
 
+SOURCE_SCHEMA = {"type": "object", "properties": {
+    "is_source": {"type": "boolean"},
+    "kind": {"type": "string", "enum": ["http", "header", "cookie", "event", "queue", "cli", "file", "none"]},
+    "confidence": {"type": "number"}, "rationale": {"type": "string"}},
+    "required": ["is_source", "kind", "confidence", "rationale"], "additionalProperties": False}
+
 
 def _text(resp) -> str:
     return next((b.text for b in resp.content if b.type == "text"), "")
@@ -259,6 +265,20 @@ class ClaudeSpecOracle:
         if d is None:
             return AuthzLabel(decorator, "none", 0.0, "oracle unavailable or declined", self.name)
         return AuthzLabel(decorator, d["kind"], float(d["confidence"]), d["rationale"], self.name)
+
+    def classify_source(self, api: str, usage: str) -> SourceLabel:
+        d = self._ask(self._source_prompt(api, usage), SOURCE_SCHEMA)
+        if d is None:
+            return SourceLabel(api, False, "", 0.0, "oracle unavailable or declined", self.name)
+        return SourceLabel(api, bool(d["is_source"]), d["kind"], float(d["confidence"]), d["rationale"], self.name)
+
+    @staticmethod
+    def _source_prompt(api: str, usage: str) -> str:
+        return (f"Python library value `{api}` (a trailing `()` means: the result of that call). Its value flows into a "
+                f"security-sensitive operation in this code base.\nUse site:\n{usage or '(none)'}\n\n"
+                "Is this value controlled by an external attacker (request parameters, body, headers, cookies, URL, "
+                "uploaded files, messages from a queue or event)? Server configuration, environment variables, "
+                "database query builders, constants and type objects are not attacker-controlled. Give the kind.")
 
     def classify_model(self, model: str, source: str) -> ModelLabel:
         d = self._ask(self._model_prompt(model, source), MODEL_SCHEMA)

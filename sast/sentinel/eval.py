@@ -188,6 +188,16 @@ class CountingOracle:
         self.calls.append(("authz", dec, len(ClaudeSpecOracle._authz_prompt(dec, source))))
         return self.inner.classify_authz(dec, source)
 
+    def classify_source(self, api, usage):
+        from .agent.claude import ClaudeSpecOracle
+        self.calls.append(("srcapi", api, len(ClaudeSpecOracle._source_prompt(api, usage))))
+        return self.inner.classify_source(api, usage)
+
+    def classify_model(self, model, source):
+        from .agent.claude import ClaudeSpecOracle
+        self.calls.append(("model", model, len(ClaudeSpecOracle._model_prompt(model, source))))
+        return self.inner.classify_model(model, source)
+
     def classify_entry(self, fn, decorators, params, source):
         from .agent.claude import ClaudeSpecOracle
         self.calls.append(("entry", fn, len(ClaudeSpecOracle._entry_prompt(fn, decorators, params, source))))

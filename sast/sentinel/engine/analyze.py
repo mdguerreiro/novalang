@@ -149,6 +149,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out += [fact("lib_arg", k, i, a) for k, i, a in facts.lib_args]
     out += [fact("decorated", f, d) for f, d in facts.decorated]
     out += [fact("fn_ref", k, i, f) for k, i, f in facts.fn_refs]
+    out += [fact("attrname", n, q) for n, q in facts.attrnames]
     out += [fact("lookup", k, m) for k, m in facts.lookups]
     out += [fact("lookup_dep", k, n) for k, n in facts.lookup_deps]
     out += [fact("user_ref", n) for n in facts.user_refs]
@@ -163,7 +164,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out += [fact("route_dec", d) for _f, d in facts.decorated if ROUTE_DEC_RE.search(d)]
     out += [fact("generic_reg", q) for q in {q for _k, q in facts.callnames}
             if q.startswith("*.") and q[2:] in GENERIC_METHODS or q in BUILTIN_CALLS]
-    out += [fact("generic_api", q) for q in set(facts.libcalls.values())
+    out += [fact("generic_api", q) for q in {q for _k, q in facts.callnames} | set(facts.libcalls.values())
             if q.startswith("*.") or q == "<dynamic>" or q in _BUILTINS]  # builtin sinks are curated
     out += [fact("test_fn", q) for q, fn in facts.functions.items() if is_test_path(fn.file)]
     for fn, _name, conv, pid in facts.route_params:
@@ -194,7 +195,8 @@ BUILTIN_CALLS = {"map", "filter", "sorted", "min", "max", "list", "tuple", "set"
                  "signal.signal"}
 KEEP = {"cand", "alarm", "mitigated", "undecided", "confirmed", "test_only", "asm", "mit", "assume_at",
         "kill", "reach", "safe", "open", "sink_frontier", "src_frontier", "learned_sink", "learned_src", "reg_frontier",
-        "authz_frontier", "privacy_frontier", "dec_frontier"}
+        "authz_frontier", "privacy_frontier", "dec_frontier",
+        "srcapi_frontier"}
 
 
 def analyze(facts: Facts, matches: list[SpecMatch], knowledge: list[KnowledgeFact] | None = None,
@@ -331,7 +333,7 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
                               "knowledge": [x.kid for x in kn if x.pred == "sink_api" and x.args[0] == q]})
         for x in sorted(learned_src.get(s, ())):
             f.learned.append({"kind": "source", "subject": x,
-                              "knowledge": [y.kid for y in kn if y.pred in ("framework_source", "entry_source", "registrar")
+                              "knowledge": [y.kid for y in kn if y.pred in ("framework_source", "entry_source", "registrar", "source_api")
                                             and y.args[0] == x]})
         if not sm and learned_src.get(s):
             f.source_kind, f.source_rule = "http", "learned-source"

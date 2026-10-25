@@ -130,6 +130,17 @@ class ModelLabel:
 
 
 @dataclass
+class SourceLabel:
+    """Frontier question: is the value of this library call / attribute attacker-controlled?"""
+    api: str
+    is_source: bool
+    kind: str  # http | header | cookie | event | queue | cli | file
+    confidence: float
+    rationale: str
+    model: str
+
+
+@dataclass
 class GuardLabel:
     pred: str
     safe_for: list[str]  # [] = does not validate; ["all"] = blocks every payload class
@@ -204,6 +215,7 @@ class SpecOracle(Protocol):
     def classify_registrar(self, api: str, arg: int | str, usage: str) -> RegistrarLabel: ...
     def classify_authz(self, decorator: str, source: str) -> AuthzLabel: ...
     def classify_model(self, model: str, source: str) -> ModelLabel: ...
+    def classify_source(self, api: str, usage: str) -> SourceLabel: ...
 
 
 class Verifier(Protocol):
