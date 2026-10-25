@@ -218,6 +218,8 @@ class PythonExtractor:
         self._modules: dict[str, _Module] = {}
         self._by_name: dict[str, _Module] = {}
         self._heap: dict[str, int] = {}
+        self._fn_ast: dict[str, tuple] = {}
+        self.pred_summary: dict[str, tuple[int, str]] = {}  # predicate function -> (param index, guard predicate)
 
     # ── public API ──────────────────────────────────────────────────────────
     def run(self) -> Facts:
@@ -239,6 +241,10 @@ class PythonExtractor:
         # Index every function first so calls can be resolved across modules.
         for rel, mod in self._modules.items():
             self._index_functions(mod, mod.tree.body, mod.name)
+        for q, (mod, node) in self._fn_ast.items():
+            summary = self._predicate_summary(mod, node)
+            if summary:
+                self.pred_summary[q] = summary
         for rel, mod in self._modules.items():
             self._walk_defs(mod, mod.tree.body, mod.name)
             self._module_registrations(mod)
@@ -333,6 +339,7 @@ class PythonExtractor:
                         if isinstance(dec, ast.Call) and dec.args and isinstance(dec.args[0], ast.Constant):
                             fn.route = str(dec.args[0].value)
                 self.facts.functions[q] = fn
+                self._fn_ast[q] = (mod, stmt)
                 if fn.is_entry:
                     self.facts.entrypoints.add((q, "http_route"))
                 self._index_functions(mod, stmt.body, q)
@@ -425,6 +432,59 @@ class PythonExtractor:
                                                     and isinstance(t.ctx, ast.Store) and isinstance(t.value, ast.Name)
                                                     and t.value.id == "self"}
         return self._self_attrs.get(cls, set())
+
+    def _predicate_summary(self, mod: _Module, node) -> tuple[int, str] | None:
+        """A project predicate that returns a recognised guard on one of its parameters:
+        `return abspath(p).startswith(base)`, or `if not <guard on p>: return False ... return True`.
+        Calling it then is that guard on the argument (interprocedural guard summary)."""
+        params = [a.arg for a in node.args.posonlyargs + node.args.args]
+        norm: dict[str, str] = {}  # local -> parameter it normalises
+
+        def param_of(e):
+            if isinstance(e, ast.Name):
+                return e.id if e.id in params else norm.get(e.id)
+            if isinstance(e, ast.Call) and self._normalizer_name(mod, e):
+                for a in ast.walk(e):
+                    if isinstance(a, ast.Name) and (a.id in params or a.id in norm):
+                        return a.id if a.id in params else norm[a.id]
+            return None
+
+        def guard(test):
+            if isinstance(test, ast.Call) and isinstance(test.func, ast.Attribute) and \
+                    test.func.attr in ("startswith", "is_relative_to"):
+                pv = param_of(test.func.value)
+                if pv and (test.func.value.id in norm if isinstance(test.func.value, ast.Name) else True):
+                    return pv, "path_contained"
+            return None
+
+        body = [st for st in node.body if not (isinstance(st, ast.Expr) and isinstance(st.value, ast.Constant))]
+        found = None
+        for st in body:
+            if isinstance(st, ast.Assign) and len(st.targets) == 1 and isinstance(st.targets[0], ast.Name) and \
+                    isinstance(st.value, ast.Call) and self._normalizer_name(mod, st.value):
+                pv = param_of(st.value)
+                if pv:
+                    norm[st.targets[0].id] = pv
+            elif isinstance(st, ast.Return) and st.value is not None and found is None:
+                g = guard(st.value)
+                if g:
+                    return params.index(g[0]), g[1]
+            elif isinstance(st, ast.If) and isinstance(st.test, ast.UnaryOp) and isinstance(st.test.op, ast.Not) and \
+                    st.body and isinstance(st.body[-1], ast.Return) and isinstance(st.body[-1].value, ast.Constant) and \
+                    st.body[-1].value.value is False:
+                g = guard(st.test.operand)
+                if g and found is None:
+                    found = g
+        last = body[-1] if body else None
+        if found and isinstance(last, ast.Return) and isinstance(last.value, ast.Constant) and last.value.value is True:
+            return params.index(found[0]), found[1]
+        return None
+
+    def _normalizer_name(self, mod: _Module, call: ast.Call) -> bool:
+        if isinstance(call.func, ast.Attribute) and call.func.attr in ("resolve", "absolute"):
+            return True
+        d = self._dotted(call.func)
+        return bool(d) and self.resolve(mod, d) in NORMALIZERS
 
     def template_files(self) -> dict[str, str]:
         if not hasattr(self, "_templates"):
@@ -734,6 +794,15 @@ class _FunctionWalker:
                 if qual == "isinstance":
                     return None
                 # Call to a (possibly user-defined) predicate function: `if is_safe_slug(x)`.
+                summ = self.ex.pred_summary.get(qual)
+                if summ is None and isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) \
+                        and func.value.id == "self" and self.fn.cls:
+                    m = self.ex.method(self.fn.cls, func.attr)
+                    summ = self.ex.pred_summary.get(m) if m else None
+                    if summ:
+                        summ = (summ[0] - 1, summ[1])  # bound call: `self` is parameter 0
+                if summ is not None and 0 <= summ[0] < len(test.args) and isinstance(test.args[summ[0]], ast.Name):
+                    return [(test.args[summ[0]].id, summ[1])]
                 if qual in self.f.functions or "." in qual:
                     pred = f"call:{qual}"
                     fn = self.f.functions.get(qual)
