@@ -14,6 +14,7 @@ Inference: sum-product loopy belief propagation on the factor graph (exact on tr
 from __future__ import annotations
 
 import itertools
+import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -69,52 +70,44 @@ def posteriors(net: Network, iterations: int = 30, damping: float = 0.3) -> dict
         s = a + b
         return (a / s, b / s) if s > 0 else (0.5, 0.5)
 
+    # Noisy-AND factor: P(F | all parents true) = LEAK_TRUE, otherwise LEAK_FALSE. Its messages have a closed form
+    # (no 2^n enumeration), and hypothesis->factor messages use the product of all incoming messages divided by
+    # the recipient's own (log space), so one iteration is linear in the number of edges.
+    lt = lambda t: LEAK_TRUE * t[0] + (1 - LEAK_TRUE) * t[1]
+    lf = lambda t: LEAK_FALSE * t[0] + (1 - LEAK_FALSE) * t[1]
     for _ in range(iterations):
-        # hypothesis -> factor messages
         for h, fids in by_h.items():
             p = net.priors[h]
+            lt_sum = math.log(max(p, 1e-12)) + sum(math.log(max(f_msgs_to_h[(o, h)][0], 1e-300)) for o in fids)
+            lf_sum = math.log(max(1 - p, 1e-12)) + sum(math.log(max(f_msgs_to_h[(o, h)][1], 1e-300)) for o in fids)
             for fid in fids:
-                t, fl = p, 1 - p
-                for other in fids:
-                    if other != fid:
-                        mt, mf = f_msgs_to_h[(other, h)]
-                        t, fl = t * mt, fl * mf
-                h_msgs_to_f[(h, fid)] = norm(t, fl)
-        # factor -> hypothesis messages (enumerate parent assignments; parents are few)
+                mt, mf = f_msgs_to_h[(fid, h)]
+                a = lt_sum - math.log(max(mt, 1e-300))
+                b = lf_sum - math.log(max(mf, 1e-300))
+                m = max(a, b)
+                h_msgs_to_f[(h, fid)] = norm(math.exp(a - m), math.exp(b - m))
         new_msgs = {}
         for f in net.findings:
-            ev_t, ev_f = (f.evidence, 1 - f.evidence) if f.evidence is not None else (1.0, 1.0)
+            ev = (f.evidence, 1 - f.evidence) if f.evidence is not None else (1.0, 1.0)
             hs = f.hypotheses
+            ins = [h_msgs_to_f[(h, f.fid)][0] for h in hs]  # P(parent true) as seen by this factor
+            allp = math.prod(ins)
             for i, h in enumerate(hs):
-                acc = [0.0, 0.0]  # for h false, h true
-                others = [x for j, x in enumerate(hs) if j != i]
-                for assign in itertools.product((0, 1), repeat=len(others)):
-                    w = 1.0
-                    for x, v in zip(others, assign):
-                        mt, mf = h_msgs_to_f[(x, f.fid)]
-                        w *= mt if v else mf
-                    for hv in (0, 1):
-                        all_true = hv == 1 and all(assign)
-                        pf = LEAK_TRUE if all_true else LEAK_FALSE
-                        acc[hv] += w * (pf * ev_t + (1 - pf) * ev_f)
-                m = norm(acc[1], acc[0])
+                others_true = allp / ins[i] if ins[i] > 0 else math.prod(x for j, x in enumerate(ins) if j != i)
+                # h true: F behaves as LEAK_TRUE iff all others true; h false: always LEAK_FALSE.
+                acc_t = others_true * lt(ev) + (1 - others_true) * lf(ev)
+                acc_f = lf(ev)
+                m = norm(acc_t, acc_f)
                 old = f_msgs_to_h[(f.fid, h)]
                 new_msgs[(f.fid, h)] = norm(damping * old[0] + (1 - damping) * m[0], damping * old[1] + (1 - damping) * m[1])
         f_msgs_to_h.update(new_msgs)
 
     out = {}
     for f in net.findings:
-        ev_t, ev_f = (f.evidence, 1 - f.evidence) if f.evidence is not None else (1.0, 1.0)
-        pt = pf_ = 0.0
-        hs = f.hypotheses
-        for assign in itertools.product((0, 1), repeat=len(hs)):
-            w = 1.0
-            for x, v in zip(hs, assign):
-                mt, mf = h_msgs_to_f[(x, f.fid)]
-                w *= mt if v else mf
-            p = LEAK_TRUE if all(assign) else LEAK_FALSE
-            pt += w * p * ev_t
-            pf_ += w * (1 - p) * ev_f
+        ev = (f.evidence, 1 - f.evidence) if f.evidence is not None else (1.0, 1.0)
+        all_true = math.prod(h_msgs_to_f[(h, f.fid)][0] for h in f.hypotheses)
+        pt = all_true * LEAK_TRUE * ev[0] + (1 - all_true) * LEAK_FALSE * ev[0]
+        pf_ = all_true * (1 - LEAK_TRUE) * ev[1] + (1 - all_true) * (1 - LEAK_FALSE) * ev[1]
         out[f.fid] = pt / (pt + pf_) if pt + pf_ > 0 else 0.5
     return out
 

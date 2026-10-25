@@ -204,10 +204,21 @@ KEEP = {"cand", "alarm", "mitigated", "undecided", "confirmed", "test_only", "as
         "srcapi_frontier"}
 
 
+_DEFAULT_PROGRAM: Program | None = None
+
+
+def default_program() -> Program:
+    """The rule base compiled once per process (instrumenting it is not free)."""
+    global _DEFAULT_PROGRAM
+    if _DEFAULT_PROGRAM is None:
+        _DEFAULT_PROGRAM = Program()
+    return _DEFAULT_PROGRAM
+
+
 def analyze(facts: Facts, matches: list[SpecMatch], knowledge: list[KnowledgeFact] | None = None,
             program: Program | None = None) -> Analysis:
     kn = list(CURATED) + list(knowledge or [])
-    program = program or Program()
+    program = program or default_program()
     model = program.solve(edb(facts, matches) + [k.text() for k in kn], keep=KEEP)
     return Analysis(facts, matches, model, build_findings(facts, matches, model, kn), kn)
 

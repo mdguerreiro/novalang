@@ -79,6 +79,12 @@ def rule_text_key(yaml_text: str) -> str | None:
     return json.dumps(body, sort_keys=True)
 
 
+@lru_cache(maxsize=1)
+def _canary_baseline() -> frozenset:
+    cf, cm = _canary_inputs()
+    return frozenset(f.fingerprint for f in analyze(cf, cm).findings if f.status in ("confirmed", "undecided"))
+
+
 def to_fact(item: dict) -> KnowledgeFact:
     return KnowledgeFact(item["id"], item["pred"], tuple(item["args"]))
 
@@ -188,7 +194,7 @@ class KnowledgeService:
         fact = to_fact(item)
         # Canary corpus: nothing may disappear.
         cf, cm = _canary_inputs()
-        base = {f.fingerprint for f in analyze(cf, cm).findings if f.status in ("confirmed", "undecided")}
+        base = _canary_baseline()
         after = {f.fingerprint for f in analyze(cf, cm, [fact]).findings if f.status in ("confirmed", "undecided")}
         lost = sorted(base - after)
         if lost:

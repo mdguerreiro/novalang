@@ -15,7 +15,7 @@ from pathlib import Path
 from .agent.interfaces import RuleContext, RuleSynthesizer, SpecOracle, VerificationCase, Verifier
 from .agent.mock import MockRuleSynthesizer, MockSpecOracle, MockVerifier, _scope_for
 from .agent.orchestrator import Tools, gate
-from .engine.analyze import CLASSES, CWE, Analysis, Finding, KnowledgeFact, analyze
+from .engine.analyze import CLASSES, CWE, Analysis, default_program, Finding, KnowledgeFact, analyze
 from .engine.datalog import Program
 from .extract.python_facts import Facts, content_hash, extract
 from .extract.semgrep_specs import SpecMatch, match_specs
@@ -56,7 +56,7 @@ class Scanner:
         self.synth = synth or make_synth()
         self.ks = KnowledgeService(store, policy)
         self.rule_gate = RuleGate(self.ks.policy)
-        self.program = Program()
+        self.program = default_program()
         self._inputs: dict[str, tuple[Facts, list[SpecMatch]]] = {}
         self._rule_matches: dict[tuple[str, str, str], list[SpecMatch]] = {}  # (repo, rule item, yaml hash) -> matches
         self.last: dict[str, Analysis] = {}
@@ -101,6 +101,7 @@ class Scanner:
     def scan(self, repo_id: str, refresh: bool = True, trigger: str = "scan") -> dict:
         """`trigger` is "scan" for a real scan, "knowledge" when knowledge changed and decisions are re-derived."""
         t0 = time.time()
+        stage_marks = [("start", t0)]
         repo = self.store.repo(repo_id)
         org = repo["org_id"]
         scan_id = self.store.x("INSERT INTO scans(repo_id, started_at) VALUES (?, ?)", repo_id, t0)
@@ -109,8 +110,10 @@ class Scanner:
 
         # Frontier: where tainted data meets an unmodelled library call or an unknown entry point, ask the
         # oracle about exactly that API / function (cached across repos), gate the answers, re-derive.
+        stage_marks.append(('extract', time.time()))
         fr = self._frontier(repo_id, org, facts) if self.frontier and hasattr(self.oracle, "classify_sink") else {"questions": 0, "cached": 0, "facts": []}
 
+        stage_marks.append(('frontier', time.time()))
         # Tier 0: deterministic decisions from facts + active knowledge.
         a0 = self.analyze_repo(repo_id)
         outcome: dict[str, dict] = {}
@@ -122,6 +125,7 @@ class Scanner:
         auto_by_knowledge = [f for f in a0.findings if f.status == "mitigated"
                              and any(set(m["knowledge"]) & learned for m in f.mitigations)]
 
+        stage_marks.append(('tier0', time.time()))
         # Tier 1: neural predicates for assumption points on undecided findings (lazy, cached).
         undecided = [f for f in a0.findings if f.status == "undecided"]
         t1_facts, t1_calls, t1_hits = self._tier1(undecided, facts, org, repo_id)
@@ -155,6 +159,7 @@ class Scanner:
                                                   "label": f"Learned {x['kind']}, unverified: {x['subject']}"} for x in low]
                 verify_learned.add(fp)
 
+        stage_marks.append(('tier1', time.time()))
         # Tier 2: the verifier agent on what is still undecided, behind symbolic gates.
         rerun = lambda extra: self.analyze_repo(repo_id, t1_facts + extra)
         tools = Tools(facts, a1, rerun)
@@ -195,6 +200,7 @@ class Scanner:
             if o["finding"].cls == "idor" and o["lane"] == "review":
                 o["lane"] = "candidate"
 
+        stage_marks.append(('tier2', time.time()))
         # Shadow evaluation: what would candidate/shadow knowledge change? (shown, never applied)
         # Shadow spec rules are matched the same way; candidate rules never run (they failed a gate, and
         # a rule Semgrep rejects must not reach a scan).
@@ -250,7 +256,9 @@ class Scanner:
 
         self.rank(repo_id)
         self.last[repo_id] = a1
+        stage_marks.append(('shadow+persist', time.time()))
         stats = self._stats(outcome, a0, t1_calls, t1_hits, t2_calls, t2_cost, auto_by_knowledge, time.time() - t0)
+        stats["timings"] = {name: round(t - stage_marks[i][1], 2) for i, (name, t) in enumerate(stage_marks[1:])}
         stats.update(frontier_questions=fr["questions"], frontier_cached=fr["cached"], frontier_facts=len(fr["facts"]),
                      found_by_frontier=sum(1 for o in outcome.values() if o["finding"].learned
                                            and o["finding"].status in ("confirmed", "undecided")))
@@ -287,6 +295,8 @@ class Scanner:
             if cached:
                 hits += 1
                 out += [KnowledgeFact(k["id"], k["pred"], tuple(k["args"])) for k in cached]
+            elif self._asked_before(kind, subject):
+                hits += 1  # asked before with no usable answer: the assumption stays open, no new call
             else:
                 todo.append((kind, subject, "" if kind == "unknown_api" else facts.pred_sources.get(subject, "")))
         if os.environ.get("SENTINEL_ORACLE_BATCH") == "1" and hasattr(self.oracle, "ask_many"):
@@ -294,6 +304,8 @@ class Scanner:
         else:
             labels = {(k, s): (self.oracle.classify_api(s, ctx) if k == "unknown_api" else self.oracle.judge_guard(s, ctx))
                       for k, s, ctx in todo}
+        for kind, subject, _ctx in todo:
+            self._mark_asked(kind, subject)
         for (kind, subject), label in labels.items():
             origin = f"oracle:{label.model}"
             # A model may enumerate every class instead of saying "all": store one fact, not nine.
@@ -375,7 +387,7 @@ class Scanner:
                          "model": ("private_model", "public_model"),
                          "srcapi": ("source_api", "not_source_api")}[kind]
                 key = subj[0] if kind == "reg" else subj
-                if any(self._known(p, key, org, repo_id) for p in preds) or (
+                if self._asked_before(kind, key) or any(self._known(p, key, org, repo_id) for p in preds) or (
                         kind == "entry" and any(self._known(p, d, org, repo_id)
                                                 for f, d in facts.decorated if f == subj
                                                 for p in ("framework_source", "not_framework_source"))):
@@ -403,6 +415,8 @@ class Scanner:
             workers = FRONTIER_WORKERS if getattr(self.oracle, "concurrent", False) else 1
             with ThreadPoolExecutor(max_workers=workers) as pool:
                 answers = list(pool.map(ask, fresh))
+            for kind, subj in fresh:  # inconclusive answers are remembered too: not re-asked on every scan
+                self._mark_asked(kind, subj[0] if kind == "reg" else subj)
             for items in answers:
                 for item in items:
                     item = self._gate_frontier_item(item)
@@ -436,6 +450,15 @@ class Scanner:
                 gate = {**item["gate"], "adds": adds[k], "over_budget": True}
                 self.store.x("UPDATE knowledge SET status='shadow', gate=?, updated_at=? WHERE id=?", json.dumps(gate), time.time(), k)
                 self.store.event("system", "knowledge.shadow", None, k, reason="adds budget", adds=adds[k])
+
+    def _asked_before(self, kind: str, subject) -> bool:
+        """Asked this oracle (model) before, whatever the answer was. A new model asks again."""
+        return bool(self.store.one("SELECT 1 FROM frontier_asked WHERE kind=? AND subject=? AND model=?",
+                                   kind, json.dumps(subject), self.oracle.name))
+
+    def _mark_asked(self, kind: str, subject) -> None:
+        self.store.x("INSERT OR IGNORE INTO frontier_asked(kind, subject, model, asked_at) VALUES (?,?,?,?)",
+                     kind, json.dumps(subject), self.oracle.name, time.time())
 
     def _known(self, pred: str, subject: str, org: str, repo_id: str) -> bool:
         """Already answered (any status but retired): a frontier question is asked once per scope."""

@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS knowledge_links (
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, actor TEXT NOT NULL, type TEXT NOT NULL,
   finding_id INTEGER, knowledge_id TEXT, payload TEXT NOT NULL DEFAULT '{}');
+CREATE TABLE IF NOT EXISTS frontier_asked (
+  kind TEXT NOT NULL, subject TEXT NOT NULL, model TEXT NOT NULL, asked_at REAL NOT NULL,
+  PRIMARY KEY (kind, subject, model));
 CREATE INDEX IF NOT EXISTS idx_findings_repo ON findings(repo_id, is_open);
 CREATE INDEX IF NOT EXISTS idx_verdicts_finding ON verdicts(finding_id);
 CREATE INDEX IF NOT EXISTS idx_links_k ON knowledge_links(knowledge_id);
