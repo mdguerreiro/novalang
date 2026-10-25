@@ -110,7 +110,9 @@ def test_hallucinated_hash_and_split_votes_are_rejected(case_and_tools):
         out["claims"][0]["cite"]["sha256"] = "0" * 64
         return out
 
-    traj_bad = [tool_call("read_span", {"file": "acme_common/db.py", "l1": 11, "l2": 15}), final(bad)]
+    # Cites lines it never read (the read covers other lines) with a made-up hash.
+    tools.served.clear()  # the fixture is shared: earlier tests read these lines
+    traj_bad = [tool_call("read_span", {"file": "acme_common/db.py", "l1": 1, "l2": 3}), final(bad)]
     v = ClaudeVerifier(client=FakeAPI(traj_bad * 4)).verify(case, tools)
     assert not gate(v, tools).accepted
 

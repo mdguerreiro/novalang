@@ -57,11 +57,16 @@ def test_valid_fp_with_discharging_fact_is_accepted(shop, tools):
 def test_tampered_citation_is_rejected(shop, tools):
     f = one_finding(shop[2], "order_lookup", "sqli")
     good = _cite(tools, QUOTE_SQL)
-    bad = Citation(good.file, good.l1, good.l2, "0" * 64)
+    # Lines the agent was never shown, with a made-up hash: rejected.
+    bad = Citation(good.file, good.l2 + 50, good.l2 + 52, "0" * 64)
     res = gate(_verdict(f.fingerprint, "FALSE_POSITIVE", "sqli", [_san_claim(tools, cite=bad)]), tools)
     assert not res.accepted and res.lane == "review"
     assert _checks(res, "citation")[0]["ok"] is False
-    assert "hash mismatch" in _checks(res, "citation")[0]["detail"]
+    assert "lines never read" in _checks(res, "citation")[0]["detail"]
+    # Lines it did read, with a mistyped hash: the tool log proves the read.
+    sloppy = Citation(good.file, good.l1, good.l2, "0" * 64)
+    res = gate(_verdict(f.fingerprint, "FALSE_POSITIVE", "sqli", [_san_claim(tools, cite=sloppy)]), tools)
+    assert _checks(res, "citation")[0]["ok"] is True
 
 
 def test_fp_without_checkable_fact_is_rejected(shop, tools):

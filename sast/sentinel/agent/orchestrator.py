@@ -34,12 +34,24 @@ class Tools(AgentTools):
     def __init__(self, facts: Facts, analysis: Analysis, rerun: Callable[[list[KnowledgeFact]], Analysis]):
         self.facts, self.analysis, self._rerun = facts, analysis, rerun
         self.calls: list[tuple[str, tuple]] = []
+        self.served: dict[str, list[tuple[int, int]]] = {}  # line ranges the agent was actually shown
 
-    def read_span(self, file: str, l1: int, l2: int) -> tuple[str, str]:
-        self.calls.append(("read_span", (file, l1, l2)))
+    def span(self, file: str, l1: int, l2: int) -> tuple[str, str]:
+        """Lines and hash, without recording a read (used by the gate)."""
         lines = self.facts.files.get(file, "").splitlines()
         text = "\n".join(lines[max(l1 - 1, 0): l2])
         return text, span_hash(text)
+
+    def read_span(self, file: str, l1: int, l2: int) -> tuple[str, str]:
+        self.calls.append(("read_span", (file, l1, l2)))
+        if file in self.facts.files:
+            self.served.setdefault(file, []).append((l1, l2))
+        return self.span(file, l1, l2)
+
+    def was_served(self, file: str, l1: int, l2: int) -> bool:
+        """Every cited line was shown to the agent by some tool call (ranges may be merged or narrowed)."""
+        shown = self.served.get(file, [])
+        return l1 <= l2 and all(any(a <= n <= b for a, b in shown) for n in range(l1, l2 + 1))
 
     def function_source(self, qname: str):
         self.calls.append(("function_source", (qname,)))
@@ -52,8 +64,11 @@ class Tools(AgentTools):
     def grep(self, pattern: str) -> list[tuple[str, int, str]]:
         self.calls.append(("grep", (pattern,)))
         rx = re.compile(pattern)
-        return [(f, i, ln) for f, src in sorted(self.facts.files.items())
+        hits = [(f, i, ln) for f, src in sorted(self.facts.files.items())
                 for i, ln in enumerate(src.splitlines(), 1) if rx.search(ln)]
+        for f, i, _ in hits:
+            self.served.setdefault(f, []).append((i, i))
+        return hits
 
     def what_if(self, facts: list[dict]) -> dict:
         self.calls.append(("what_if", (tuple((f["pred"], tuple(f["args"])) for f in facts),)))
@@ -158,9 +173,14 @@ def gate(verdict: Verdict, tools: Tools, never_auto_suppress: set[str] | None = 
     for c in verdict.claims:
         if c.cite is None:
             continue
-        _, sha = tools.read_span(c.cite.file, c.cite.l1, c.cite.l2)
-        ok &= check("citation", sha == c.cite.sha256,
-                    f"{c.id}: {c.cite.file}:{c.cite.l1}-{c.cite.l2} " + ("hash matches" if sha == c.cite.sha256 else "hash mismatch"))
+        # A citation is valid when the agent was shown those exact lines (tool log) or quotes their hash.
+        # The log is the stronger check: models narrow or merge ranges and then copy another range's hash.
+        span = getattr(tools, "span", tools.read_span)
+        _, sha = span(c.cite.file, c.cite.l1, c.cite.l2)
+        seen = getattr(tools, "was_served", lambda *a: False)(c.cite.file, c.cite.l1, c.cite.l2)
+        good = sha == c.cite.sha256 or seen
+        ok &= check("citation", good, f"{c.id}: {c.cite.file}:{c.cite.l1}-{c.cite.l2} " +
+                    ("hash matches" if sha == c.cite.sha256 else "lines were read" if seen else "lines never read"))
     # G2 votes
     k, agree = verdict.votes.get("k", 1), verdict.votes.get("agree", 0)
     if verdict.verdict == "FALSE_POSITIVE":
