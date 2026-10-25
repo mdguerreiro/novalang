@@ -7,6 +7,10 @@ Stages
   S3  + Tier 2: verifier agent (mock) behind symbolic gates  [what humans see]
   S4  Flywheel transfer: acme-billing scanned *after* acme-shop was triaged and the AppSec team
       approved the knowledge proposals that cleared their gates
+  S6  Frontier inference (recall): acme-reports and acme-etl use sinks, sources and frameworks the curated
+      pack does not model. Semgrep OSS, the engine without the frontier, and the engine with it (oracle asked
+      only where a tainted path meets an unmodelled API or entry point), then acme-etl after acme-reports
+      (answers transfer). Cost compared with an LLM that reads every function.
   S5  Learned spec rules: acme-admin (acme_common installed, not vendored) scanned cold, then after
       shop and billing were triaged and the synthesized spec rules approved; plus Semgrep OSS on
       acme-admin with the curated pack vs the exported pack (curated + learned)
@@ -33,6 +37,7 @@ SAST_ROOT = Path(__file__).resolve().parents[1]
 DEMO = SAST_ROOT / "demo"
 REPOS = ["acme-shop", "acme-billing"]
 ADMIN = "acme-admin"  # third repo of the org: installs acme_common as a package (S5 only)
+FRONTIER_REPOS = ["acme-reports", "acme-etl"]  # unmodelled libraries and frameworks (S6)
 
 
 @dataclass
@@ -156,6 +161,63 @@ def simulate_appsec_review(sc: Scanner, repo: str, actor: str = "human:appsec-le
     return done
 
 
+class CountingOracle:
+    """Wraps an oracle; counts frontier questions and the prompt size a real model would get."""
+
+    def __init__(self, inner):
+        self.inner, self.name = inner, inner.name
+        self.calls: list[tuple[str, str, int]] = []
+
+    def __getattr__(self, attr):
+        return getattr(self.inner, attr)
+
+    def classify_sink(self, api, args, usage):
+        from .agent.claude import ClaudeSpecOracle
+        self.calls.append(("sink", api, len(ClaudeSpecOracle._sink_prompt(api, args, usage))))
+        return self.inner.classify_sink(api, args, usage)
+
+    def classify_entry(self, fn, decorators, params, source):
+        from .agent.claude import ClaudeSpecOracle
+        self.calls.append(("entry", fn, len(ClaudeSpecOracle._entry_prompt(fn, decorators, params, source))))
+        return self.inner.classify_entry(fn, decorators, params, source)
+
+
+def read_everything_cost(sc: Scanner, repo: str) -> dict:
+    """What an LLM-reads-every-function scanner sends: every function body once (no fan-out, no retries)."""
+    facts, _ = sc.inputs(repo)
+    chars = sum(len(sc._source_of(facts, q)) for q in facts.functions)
+    return {"functions": len(facts.functions), "prompt_tokens": chars // 4}
+
+
+def run_frontier() -> dict:
+    out: dict = {}
+    sc = fresh_scanner(repos=FRONTIER_REPOS)
+    sc.oracle = counting = CountingOracle(sc.oracle)
+    off = fresh_scanner(repos=FRONTIER_REPOS)
+    off.frontier = False
+    for r in FRONTIER_REPOS:
+        n0 = len(counting.calls)
+        stats = sc.scan(r)
+        off.scan(r)
+        asked = counting.calls[n0:]
+        rep = lanes_reported(sc.store, r)
+        sc_row, off_row = score(rep, [r]).row(), score(lanes_reported(off.store, r), [r]).row()
+        new_tp = sc_row["tp"] - off_row["tp"]
+        llm = read_everything_cost(sc, r)
+        out[r] = {
+            "Semgrep OSS": score(baseline_reported(sc, r), [r]).row(),
+            "engine without frontier": off_row,
+            "engine with frontier": sc_row,
+            "frontier": {"questions": len(asked), "answered_from_cache": stats["frontier_cached"],
+                         "facts": stats["frontier_facts"], "subjects": [s for _k, s, _n in asked],
+                         "prompt_tokens": sum(n for *_x, n in asked) // 4, "new_tps": new_tp,
+                         "questions_per_new_tp": round(len(asked) / new_tp, 2) if new_tp else None},
+            "read-every-function LLM (input only)": llm,
+            "tier2_calls": stats["tier2_calls"],
+        }
+    return out
+
+
 def run(write: Path | None = None) -> dict:
     results: dict = {"stages": {}, "flywheel": {}}
     # S0..S3 on a cold system, each repo scanned independently.
@@ -210,6 +272,7 @@ def run(write: Path | None = None) -> dict:
                                      for k in warm.store.q("SELECT * FROM knowledge WHERE status='active' ORDER BY id")],
     }
     results["spec_rules"] = run_spec_rules(cold)
+    results["frontier"] = run_frontier()
     if write:
         write.write_text(json.dumps(results, indent=2, default=str))
     return results

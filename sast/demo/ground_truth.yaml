@@ -51,3 +51,30 @@ acme-admin:
   - {fn: cdn_probe,            cls: ssrf,     label: fp, why: "fetch_allowed checks a host allow-list", expect_flow: false}
   - {fn: run_report,           cls: cmdi,     label: fp, why: "argv list via run_cmd, no shell", expect_flow: false}
   - {fn: export_users,         cls: cmdi,     label: tp, why: "os.system with concatenated input"}
+# acme-reports uses sinks and sources the curated spec pack does not model (pandas, jinja2.Template,
+# subprocess.getoutput, lxml, urllib3, marshal, FastAPI, AWS Lambda): recall depends on frontier inference.
+acme-reports:
+  - {fn: sales_report,         cls: sqli,     label: tp, why: "pandas.read_sql with concatenated query"}
+  - {fn: team_report,          cls: sqli,     label: fp, why: "pandas.read_sql with bound params", expect_flow: false}
+  - {fn: disk_usage,           cls: cmdi,     label: tp, why: "subprocess.getoutput with concatenated input"}
+  - {fn: render_custom,        cls: ssti,     label: tp, why: "jinja2.Template built from user input"}
+  - {fn: greeting,             cls: ssti,     label: fp, why: "constant template, user value passed as render variable", expect_flow: false}
+  - {fn: import_xml,           cls: xxe,      label: tp, why: "lxml parser with resolve_entities=True on request body"}
+  - {fn: webhook,              cls: ssrf,     label: tp, why: "urllib3 request to user-supplied URL"}
+  - {fn: load_cached,          cls: deser,    label: tp, why: "marshal.loads of request body"}
+  - {fn: page_title,           cls: xss,      label: fp, why: "logged and returned as JSON", expect_flow: false}
+  - {fn: get_report,           cls: cmdi,     label: tp, why: "FastAPI query param into shell=True"}
+  - {fn: search_reports,       cls: sqli,     label: tp, why: "FastAPI query param concatenated into sqlalchemy text()"}
+  - {fn: report_owner,         cls: sqli,     label: fp, why: "FastAPI path param typed int"}
+  - {fn: handler,              cls: cmdi,     label: tp, why: "Lambda event body into os.system"}
+
+# acme-etl reuses libraries acme-reports taught the engine about (pandas, subprocess.getoutput, lxml, FastAPI)
+# plus two it has not seen (dill, FastAPI APIRouter().post): frontier answers should transfer.
+acme-etl:
+  - {fn: preview_job,          cls: sqli,     label: tp, why: "table name from request into pandas.read_sql"}
+  - {fn: count_rows,           cls: sqli,     label: fp, why: "int parameter"}
+  - {fn: archive,              cls: cmdi,     label: fp, why: "shlex.quote"}
+  - {fn: compress,             cls: cmdi,     label: tp, why: "path into subprocess.getoutput"}
+  - {fn: import_feed,          cls: xxe,      label: tp, why: "lxml resolve_entities=True on request body"}
+  - {fn: restore,              cls: deser,    label: tp, why: "dill.loads of request body"}
+  - {fn: job_status,           cls: sqli,     label: fp, why: "bound params", expect_flow: false}

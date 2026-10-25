@@ -116,6 +116,35 @@ asm(S,K,C,Asm) :- ta(X,S,C,Asm), arg_in(Y,J,X), call(Y,G), p2s(G,J,K,C,any).
 asm(S,K,C,Asm) :- t(X,S,C,any), arg_in(Y,J,X), call(Y,G), p2a_s(G,J,K,C,Asm).
 
 reach(F) :- entry(F).
+reach(F) :- entry_source(F,_,_).
+reach(F) :- decorated(F,D), framework_source(D).
 reach(G) :- reach(F), node(X,F), call(X,G).
 asm(S,K,C,weak_source(Kd)) :- alarm(S,K,C,any), src(S,Kd), weak_kind(Kd).
 asm(S,K,C,unreachable(F))  :- alarm(S,K,C,any), node(S,F), not reach(F), not test_node(S), not dead_fn(F).
+
+% ── learned specifications: frontier answers turned into facts ─────────────────────────
+% A library API learned to be a sink for class C at argument position/keyword I.
+sink(A,C)          :- lib_arg(K,I,A), callname(K,Q), sink_api(Q,I,C), cls(C).
+learned_sink(A,Q)  :- lib_arg(K,I,A), callname(K,Q), sink_api(Q,I,_).
+modeled_api(Q)     :- sink_api(Q,_,_).
+% Functions registered with a framework decorator learned to deliver request data, or a specific
+% entrypoint parameter learned to be attacker-controlled (e.g. an AWS Lambda event).
+src(P,"http")      :- decorated(F,D), framework_source(D), param(F,_,P).
+src(P,K)           :- entry_source(F,I,K), param(F,I,P).
+learned_src(P,D)   :- decorated(F,D), framework_source(D), param(F,_,P).
+learned_src(P,F)   :- entry_source(F,I,_), param(F,I,P).
+
+% ── the taint frontier: where tainted data meets something the engine does not understand ──
+answered_api(Q)    :- modeled_api(Q).
+answered_api(Q)    :- not_sink_api(Q).
+spec_call(K)       :- lib_arg(K,_,A), sink(A,_).
+spec_call(K)       :- modeled_node(K).
+sink_frontier(Q,I) :- lib_arg(K,I,A), traw(A,_), libcall(K,Q), not answered_api(Q), not spec_call(K), not generic_api(Q).
+
+answered_entry(F)  :- not_entry(F).
+answered_entry(F)  :- entry_source(F,_,_).
+answered_entry(F)  :- decorated(F,D), framework_source(D).
+answered_entry(F)  :- decorated(F,D), not_framework_source(D).
+has_src_param(F)   :- param(F,_,P), src(P,_).
+src_frontier(F,I)  :- entry(F), param(F,I,P), p2s_raw(F,I,_), not has_src_param(F), not typed(P,_), not answered_entry(F).
+src_frontier(F,I)  :- param(F,I,P), p2s_raw(F,I,_), not reach(F), not test_fn(F), not typed(P,_), not answered_entry(F).

@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import time
+from collections import defaultdict
 from dataclasses import asdict
 from pathlib import Path
 
@@ -53,6 +54,7 @@ class Scanner:
         self._inputs: dict[str, tuple[Facts, list[SpecMatch]]] = {}
         self._rule_matches: dict[tuple[str, str, str], list[SpecMatch]] = {}  # (repo, rule item, yaml hash) -> matches
         self.last: dict[str, Analysis] = {}
+        self.frontier = os.environ.get("SENTINEL_FRONTIER", "1") != "0"  # off = the engine without frontier inference
 
     # ── inputs ───────────────────────────────────────────────────────────────────────────
     def inputs(self, repo_id: str, refresh: bool = False) -> tuple[Facts, list[SpecMatch]]:
@@ -98,6 +100,10 @@ class Scanner:
         scan_id = self.store.x("INSERT INTO scans(repo_id, started_at) VALUES (?, ?)", repo_id, t0)
         facts, matches = self.inputs(repo_id, refresh=refresh)
         self.store.save_files(repo_id, {p: (content_hash(c), c) for p, c in facts.files.items()})
+
+        # Frontier: where tainted data meets an unmodelled library call or an unknown entry point, ask the
+        # oracle about exactly that API / function (cached across repos), gate the answers, re-derive.
+        fr = self._frontier(repo_id, org, facts) if self.frontier and hasattr(self.oracle, "classify_sink") else {"questions": 0, "cached": 0, "facts": []}
 
         # Tier 0: deterministic decisions from facts + active knowledge.
         a0 = self.analyze_repo(repo_id)
@@ -217,6 +223,9 @@ class Scanner:
         self.rank(repo_id)
         self.last[repo_id] = a1
         stats = self._stats(outcome, a0, t1_calls, t1_hits, t2_calls, t2_cost, auto_by_knowledge, time.time() - t0)
+        stats.update(frontier_questions=fr["questions"], frontier_cached=fr["cached"], frontier_facts=len(fr["facts"]),
+                     found_by_frontier=sum(1 for o in outcome.values() if o["finding"].learned
+                                           and o["finding"].status in ("confirmed", "undecided")))
         stats.update(trigger=trigger, tier2_cache_hits=t2_hits,
                      found_by_learned_rules=sum(1 for o in outcome.values() if o["finding"].spec_knowledge),
                      shadow_rule_findings=shadow_new)
@@ -279,6 +288,80 @@ class Scanner:
                 elif label.confidence >= 0.8:
                     admit(self.ks.propose("not_safe_pred", [subject], scope, org, repo_id, origin, label.confidence, label.rationale))
         return out, len(todo), hits
+
+    def _frontier(self, repo_id: str, org: str, facts: Facts, rounds: int = 3) -> dict:
+        """Recall without reading the repository: the engine names the few places where its model of the code
+        runs out on a tainted path, and only those become oracle questions. Answers are ordinary knowledge
+        items (gated, scoped, cached), so the next repository using the same library asks nothing."""
+        stats = {"questions": 0, "cached": 0, "facts": [], "rounds": 0}
+        asked: set[tuple] = set()
+        for _ in range(rounds):
+            a = self.analyze_repo(repo_id)
+            sinks: dict[str, set] = defaultdict(set)
+            for q, i in a.model.get("sink_frontier"):
+                sinks[q].add(i)
+            entries = sorted({fn for fn, _i in a.model.get("src_frontier")})
+            todo = [("sink", q) for q in sorted(sinks)] + [("entry", fn) for fn in entries]
+            todo = [t for t in todo if t not in asked]
+            if not todo:
+                break
+            stats["rounds"] += 1
+            admitted = 0
+            for kind, subj in todo:
+                asked.add((kind, subj))
+                preds = ("sink_api", "not_sink_api") if kind == "sink" else ("entry_source", "not_entry")
+                if any(self._known(p, subj, org, repo_id) for p in preds) or (
+                        kind == "entry" and any(self._known(p, d, org, repo_id)
+                                                for f, d in facts.decorated if f == subj
+                                                for p in ("framework_source", "not_framework_source"))):
+                    stats["cached"] += 1
+                    continue
+                stats["questions"] += 1
+                for item in (self._ask_sink(subj, sorted(sinks[subj], key=str), facts) if kind == "sink"
+                             else self._ask_entry(subj, facts, org, repo_id)):
+                    item = self._gate_item(item["id"])
+                    stats["facts"].append(item["id"])
+                    admitted += item["status"] == "active"
+            if not admitted:
+                break
+        return stats
+
+    def _known(self, pred: str, subject: str, org: str, repo_id: str) -> bool:
+        """Already answered (any status but retired): a frontier question is asked once per scope."""
+        return bool(self.store.one("SELECT 1 FROM knowledge WHERE pred=? AND json_extract(args, '$[0]')=? AND status != 'retired' "
+                                   "AND (scope='global' OR (scope='org' AND org_id=?) OR (scope='repo' AND repo_id=?))",
+                                   pred, subject, org, repo_id))
+
+    def _ask_sink(self, api: str, args: list, facts: Facts) -> list[dict]:
+        site = next(((n.file, n.l1) for k, q in sorted(facts.libcalls.items()) if q == api for n in [facts.nodes[k]]), None)
+        usage = f"{site[0]}:{site[1]}: {facts.files[site[0]].splitlines()[site[1] - 1].strip()}" if site else ""
+        label = self.oracle.classify_sink(api, args, usage)
+        origin = f"oracle:{label.model}"
+        sinks = [x for x in label.sinks if x["cls"] in CWE]
+        if sinks and label.confidence >= 0.7:
+            return [self.ks.propose("sink_api", [api, x["arg"], x["cls"]], "global", None, None, origin, label.confidence,
+                                    label.rationale) for x in sinks]
+        if not sinks and label.confidence >= 0.8:
+            return [self.ks.propose("not_sink_api", [api], "global", None, None, origin, label.confidence, label.rationale)]
+        return []
+
+    def _ask_entry(self, fn: str, facts: Facts, org: str, repo_id: str) -> list[dict]:
+        decorators = sorted(d for f, d in facts.decorated if f == fn)
+        f = facts.functions.get(fn)
+        label = self.oracle.classify_entry(fn, decorators, f.params if f else [], self._source_of(facts, fn))
+        origin = f"oracle:{label.model}"
+        out = []
+        if label.kind == "framework" and label.decorator and label.confidence >= 0.7:
+            out.append(self.ks.propose("framework_source", [label.decorator], "global", None, None, origin,
+                                       label.confidence, label.rationale))
+        elif label.kind == "handler" and label.params and label.confidence >= 0.7:
+            out += [self.ks.propose("entry_source", [fn, i, label.source_kind or "event"], "repo", org, repo_id, origin,
+                                    label.confidence, label.rationale) for i in label.params]
+        elif label.kind == "none" and label.confidence >= 0.8:
+            out.append(self.ks.propose("not_entry", [fn], "repo", org, repo_id, origin, label.confidence, label.rationale))
+            out += [self.ks.propose("not_framework_source", [d], "org", org, repo_id, origin, label.confidence,
+                                    label.rationale) for d in decorators]
+        return out
 
     def _cached(self, pred: str, subject: str, org: str, repo_id: str) -> list[dict]:
         """Earlier answers for the same question, visible from this repo (global, this org, or this repo)."""
@@ -426,7 +509,7 @@ class Scanner:
         data = {"path": [asdict(s) for s in f.path], "proof": f.proof, "mitigations": f.mitigations,
                 "assumptions": f.assumptions, "source_rule": f.source_rule, "sink_rule": f.sink_rule,
                 "decided_by": o.get("decided_by"), "source_node": f.source, "sink_node": f.sink,
-                "spec_knowledge": f.spec_knowledge}
+                "spec_knowledge": f.spec_knowledge, "learned": f.learned}
         audit = 1 if o["lane"] == "suppressed_ai" and (int(hashlib.sha1(f.fingerprint.encode()).hexdigest(), 16) % 1000) < AUDIT_RATE * 1000 else 0
         group = _group_key(f)
         existing = self.store.one("SELECT id, triage_state FROM findings WHERE repo_id=? AND fingerprint=?", repo_id, f.fingerprint)

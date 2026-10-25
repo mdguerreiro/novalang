@@ -31,7 +31,11 @@ from ..store.db import Store
 PREDICATES = {  # pred -> arity
     "sanitizer_api": 2, "propagator_api": 1, "safe_pred": 2, "not_safe_pred": 1, "safe_type": 2,
     "dead_fn": 1, "internal_only": 1, "not_sanitizer": 1, "weak_kind": 1,
+    # Frontier answers (recall): what an unmodelled library call or entry point is.
+    "sink_api": 3, "not_sink_api": 1, "framework_source": 1, "not_framework_source": 1,
+    "entry_source": 3, "not_entry": 1,
 }
+ADDING = {"sink_api", "framework_source", "entry_source"}  # can only add findings (which are then verified)
 SUPPRESSING = {"sanitizer_api", "safe_pred", "safe_type", "dead_fn", "internal_only"}
 SPEC_RULE = "spec_rule"  # a learned Semgrep spec rule (learn/rules.py), not a Datalog fact
 CANARY_ROOT = Path(__file__).resolve().parents[2] / "canaries"
@@ -42,6 +46,7 @@ class Policy:
     corroborations_to_activate: int = 3  # independent machine verdicts before a machine item goes active
     impact_budget: int = 10  # max findings an item may suppress without explicit approval
     machine_global_allowed: bool = True  # oracle facts about public libraries may become global (still gated)
+    adds_budget: int = 25  # max new findings one frontier fact may add before it needs approval
     rule_fp_budget: int = 2  # max new findings a sink/source spec rule may add on the reference corpora
 
 
@@ -162,6 +167,9 @@ class KnowledgeService:
             b2 = rerun(repo_id, [fact])
             for f in b2.findings:
                 old = before.get(f.fingerprint)
+                if old is None and item["pred"] in ADDING and f.status in ("confirmed", "undecided"):
+                    report["impact"].append({"repo": repo_id, "fingerprint": f.fingerprint, "from": None,
+                                             "to": f.status, "cls": f.cls, "source_fn": f.source_fn, "new": True})
                 if old and old.status != f.status:
                     entry = {"repo": repo_id, "fingerprint": f.fingerprint, "from": old.status, "to": f.status,
                              "cls": f.cls, "source_fn": f.source_fn}
@@ -172,7 +180,9 @@ class KnowledgeService:
             report["canary"] = f"fail: would suppress {len(report['conflicts'])} human-confirmed finding(s)"
         suppressed = [i for i in report["impact"] if i["to"] == "mitigated"]
         report["suppresses"] = len(suppressed)
-        report["over_budget"] = len(suppressed) > self.policy.impact_budget
+        report["adds"] = sum(1 for i in report["impact"] if i.get("new"))
+        report["over_budget"] = len(suppressed) > self.policy.impact_budget or \
+            report["adds"] > self.policy.adds_budget
         return report
 
     def decide_status(self, item: dict, report: dict, approved_by: str | None = None) -> str:
@@ -185,7 +195,10 @@ class KnowledgeService:
         # (a sink rule adds findings, a sanitizer rule hides them): approval or corroboration first.
         if item["pred"] not in SUPPRESSING and item["pred"] != SPEC_RULE:
             # Knowledge that only *removes an assumption toward reporting* (not_sanitizer, propagator_api,
-            # not_safe_pred) can never hide a vulnerability, so it activates once its gates pass.
+            # not_safe_pred) can never hide a vulnerability, so it activates once its gates pass. Frontier
+            # facts that add findings activate within the adds budget: every finding they add is verified.
+            if item["pred"] in ADDING and report.get("over_budget"):
+                return "shadow"
             return "active"
         # Only independent evidence counts: re-verifying the same finding on every scan is not corroboration.
         support = self.support(item["id"])

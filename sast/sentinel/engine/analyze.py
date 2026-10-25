@@ -19,15 +19,15 @@ from ..extract.python_facts import Facts, is_test_path
 from ..extract.semgrep_specs import SpecMatch
 from .datalog import Model, Program, fact
 
-CLASSES = ["sqli", "cmdi", "path", "xss", "ssti", "ssrf", "deser", "code", "redirect"]
+CLASSES = ["sqli", "cmdi", "path", "xss", "ssti", "ssrf", "deser", "code", "redirect", "xxe"]
 CWE = {"sqli": "CWE-89", "cmdi": "CWE-78", "path": "CWE-22", "xss": "CWE-79", "ssti": "CWE-1336",
-       "ssrf": "CWE-918", "deser": "CWE-502", "code": "CWE-95", "redirect": "CWE-601"}
+       "ssrf": "CWE-918", "deser": "CWE-502", "code": "CWE-95", "redirect": "CWE-601", "xxe": "CWE-611"}
 TITLE = {"sqli": "SQL injection", "cmdi": "OS command injection", "path": "Path traversal",
          "xss": "Cross-site scripting", "ssti": "Server-side template injection",
          "ssrf": "Server-side request forgery", "deser": "Unsafe deserialization",
-         "code": "Code injection", "redirect": "Open redirect"}
+         "code": "Code injection", "redirect": "Open redirect", "xxe": "XML external entity"}
 SEVERITY = {"sqli": "critical", "cmdi": "critical", "code": "critical", "deser": "critical",
-            "ssti": "high", "path": "high", "ssrf": "high", "xss": "medium", "redirect": "medium"}
+            "ssti": "high", "path": "high", "ssrf": "high", "xss": "medium", "redirect": "medium", "xxe": "high"}
 SANITIZER_LIKE = re.compile(r"(quote|escape|sanitiz|clean|safe|valid|filter|strip_tags|encode_for)", re.I)
 
 
@@ -91,6 +91,7 @@ class Finding:
     file: str = ""
     line: int = 0
     spec_knowledge: list[str] = field(default_factory=list)  # learned spec rules that located this source/sink
+    learned: list[dict] = field(default_factory=list)  # frontier-learned sink/source facts this finding depends on
 
     @property
     def key(self) -> tuple[int, int, str]:
@@ -133,6 +134,10 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out += [fact("guard", g, p) for g, p, _ in facts.guards]
     out += [fact("typed", n, t) for n, t in facts.typed]
     out += [fact("entry", f) for f, _ in facts.entrypoints]
+    out += [fact("lib_arg", k, i, a) for k, i, a in facts.lib_args]
+    out += [fact("decorated", f, d) for f, d in facts.decorated]
+    out += [fact("generic_api", q) for q in set(facts.libcalls.values()) if q.startswith("*.") or q == "<dynamic>"]
+    out += [fact("test_fn", q) for q, fn in facts.functions.items() if is_test_path(fn.file)]
     for fn, _name, conv, pid in facts.route_params:
         out.append(fact("src", pid, "route"))
     for q in facts.functions:
@@ -151,7 +156,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
 
 
 KEEP = {"cand", "alarm", "mitigated", "undecided", "confirmed", "test_only", "asm", "mit", "assume_at",
-        "kill", "reach", "safe", "open"}
+        "kill", "reach", "safe", "open", "sink_frontier", "src_frontier", "learned_sink", "learned_src"}
 
 
 def analyze(facts: Facts, matches: list[SpecMatch], knowledge: list[KnowledgeFact] | None = None,
@@ -254,6 +259,11 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
     src_rule = {m.node: m for m in sorted((m for m in matches if m.role == "source"), key=lambda m: m.knowledge is None)}
     sink_rule = {m.node: m for m in sorted((m for m in matches if m.role == "sink"), key=lambda m: m.knowledge is None)}
     rule_kid = {m.rule_id: m.knowledge for m in matches if m.knowledge}  # learned spec rule id -> knowledge item
+    learned_sink, learned_src = defaultdict(set), defaultdict(set)
+    for n, q in model.get("learned_sink"):
+        learned_sink[n].add(q)
+    for n, x in model.get("learned_src"):
+        learned_src[n].add(x)
     derivs = model.derivations()
 
     findings = []
@@ -268,6 +278,17 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
         f.source_rule = sm.rule_id if sm else "route-parameter"
         f.sink_rule = sink_rule[k].rule_id if k in sink_rule else ""
         f.file, f.line = sn.file, sn.l1
+        for q in sorted(learned_sink.get(k, ())):
+            f.learned.append({"kind": "sink", "subject": q,
+                              "knowledge": [x.kid for x in kn if x.pred == "sink_api" and x.args[0] == q]})
+        for x in sorted(learned_src.get(s, ())):
+            f.learned.append({"kind": "source", "subject": x,
+                              "knowledge": [y.kid for y in kn if y.pred in ("framework_source", "entry_source")
+                                            and y.args[0] == x]})
+        if not sm and learned_src.get(s):
+            f.source_kind, f.source_rule = "http", "learned-source"
+        if k not in sink_rule and learned_sink.get(k):
+            f.sink_rule = "learned:" + sorted(learned_sink[k])[0]
         uniq = []
         for w in mits.get((s, k, c), []):
             if w not in uniq:

@@ -69,6 +69,30 @@ class ApiLabel:
 
 
 @dataclass
+class SinkLabel:
+    """Frontier question: tainted data reaches arguments of an unmodelled library call. Which are sinks?"""
+    api: str
+    sinks: list[dict]  # [{"arg": int | str, "cls": str}]; [] = not a sink for any class we track
+    confidence: float
+    rationale: str
+    model: str
+
+
+@dataclass
+class EntryLabel:
+    """Frontier question: a function with no known caller (or a decorated one) passes a parameter to a sink.
+    Is it an entry point that receives attacker-controlled input?"""
+    fn: str
+    kind: Literal["framework", "handler", "none"]  # framework: the decorator registers it (route, task, ...)
+    decorator: str | None  # framework kind: which decorator makes params untrusted
+    params: list[int]  # handler kind: indexes of untrusted parameters
+    source_kind: str  # http | event | queue | cli
+    confidence: float
+    rationale: str
+    model: str
+
+
+@dataclass
 class GuardLabel:
     pred: str
     safe_for: list[str]  # [] = does not validate; ["all"] = blocks every payload class
@@ -138,6 +162,8 @@ class SpecOracle(Protocol):
 
     def classify_api(self, api: str, usage: str) -> ApiLabel: ...
     def judge_guard(self, pred: str, source: str) -> GuardLabel: ...
+    def classify_sink(self, api: str, args: list, usage: str) -> SinkLabel: ...
+    def classify_entry(self, fn: str, decorators: list[str], params: list[str], source: str) -> EntryLabel: ...
 
 
 class Verifier(Protocol):

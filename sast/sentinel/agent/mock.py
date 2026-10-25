@@ -13,8 +13,8 @@ import re
 import yaml
 
 from ..engine.analyze import CWE
-from .interfaces import (AgentTools, ApiLabel, Citation, Claim, GuardLabel, ProposedKnowledge, RuleContext,
-                         RuleProposal, VerificationCase, Verdict)
+from .interfaces import (AgentTools, ApiLabel, Citation, Claim, EntryLabel, GuardLabel, ProposedKnowledge, RuleContext,
+                         RuleProposal, SinkLabel, VerificationCase, Verdict)
 
 # What a well-read model "knows" about common library APIs.
 API_TABLE: dict[str, tuple[str, list[str], float, str]] = {
@@ -28,6 +28,23 @@ API_TABLE: dict[str, tuple[str, list[str], float, str]] = {
     "bleach.clean": ("sanitizer", ["xss"], 0.92, "Allow-list based HTML sanitizer."),
     "urllib.parse.quote": ("sanitizer", ["redirect", "path"], 0.7, "Percent-encodes reserved characters."),
     "urllib.parse.urlparse": ("propagator", [], 0.95, "Parses the URL; components carry the input."),
+}
+
+# Library sinks the curated pack does not model: (argument, class) pairs.
+SINK_TABLE: dict[str, tuple[list[tuple], float, str]] = {
+    "subprocess.getoutput": ([(0, "cmdi")], 0.97, "Runs the string through a shell."),
+    "subprocess.getstatusoutput": ([(0, "cmdi")], 0.97, "Runs the string through a shell."),
+    "jinja2.Template": ([(0, "ssti")], 0.95, "Compiles the argument as template source."),
+    "jinja2.Environment().from_string": ([(0, "ssti")], 0.95, "Compiles the argument as template source."),
+    "lxml.etree.fromstring": ([(0, "xxe")], 0.85, "Parses XML; entity expansion depends on the parser."),
+    "lxml.etree.parse": ([(0, "xxe")], 0.85, "Parses XML; entity expansion depends on the parser."),
+    "pandas.read_sql": ([(0, "sqli"), ("sql", "sqli")], 0.95, "Executes the SQL string; `params` are bound safely."),
+    "pandas.read_sql_query": ([(0, "sqli"), ("sql", "sqli")], 0.95, "Executes the SQL string."),
+    "urllib3.PoolManager().request": ([(1, "ssrf"), ("url", "ssrf")], 0.93, "Fetches the URL given as 2nd argument."),
+    "marshal.loads": ([(0, "deser")], 0.9, "Deserialises code objects from untrusted bytes."),
+    "dill.loads": ([(0, "deser")], 0.97, "Pickle superset; arbitrary code on load."),
+    "flask.Flask().logger.info": ([], 0.9, "Logging is not a sink for the tracked classes."),
+    "jinja2.Environment().from_string().render": ([], 0.9, "Template variables are data, not template source."),
 }
 
 # `.replace("'", ...)`, `.replace('\'', ...)` or `.replace("\\", ...)`: quote/backslash escaping.
@@ -56,6 +73,20 @@ class MockSpecOracle:
         if api.endswith("().hexdigest") or api == "*.hexdigest":
             return ApiLabel(api, "sanitizer", ["all"], 0.9, "Hex digests only contain [0-9a-f].", self.name)
         return ApiLabel(api, "unknown", [], 0.4, "Unknown API. Assumption kept.", self.name)
+
+    def classify_sink(self, api: str, args: list, usage: str) -> SinkLabel:
+        if api in SINK_TABLE:
+            sinks, conf, why = SINK_TABLE[api]
+            return SinkLabel(api, [{"arg": a, "cls": c} for a, c in sinks], conf, why, self.name)
+        return SinkLabel(api, [], 0.4, "Unknown API.", self.name)
+
+    def classify_entry(self, fn: str, decorators: list[str], params: list[str], source: str) -> EntryLabel:
+        for d in decorators:
+            if re.search(r"(fastapi|starlette|aiohttp|sanic|bottle|falcon).*\.(get|post|put|patch|delete|route|api_route)$", d):
+                return EntryLabel(fn, "framework", d, [], "http", 0.95, "Route decorator: parameters come from the request.", self.name)
+        if params[:2] == ["event", "context"]:
+            return EntryLabel(fn, "handler", None, [0], "event", 0.9, "AWS Lambda handler signature; `event` is caller input.", self.name)
+        return EntryLabel(fn, "none", None, [], "", 0.6, "No sign of an entry point.", self.name)
 
     def judge_guard(self, pred: str, source: str) -> GuardLabel:
         """Judge a validation predicate by *executing* the regex it relies on against payloads."""

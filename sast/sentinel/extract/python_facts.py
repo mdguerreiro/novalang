@@ -92,6 +92,8 @@ class Facts:
     route_params: set[tuple[str, str, str, int]] = field(default_factory=set)  # fn, name, converter, node
     entrypoints: set[tuple[str, str]] = field(default_factory=set)
     callnames: set[tuple[int, str]] = field(default_factory=set)  # every call node -> qualified callee
+    lib_args: set[tuple[int, int | str, int]] = field(default_factory=set)  # library call, position or keyword, arg node
+    decorated: set[tuple[str, str]] = field(default_factory=set)  # function, resolved decorator
     pred_sources: dict[str, str] = field(default_factory=dict)  # predicate -> source text (for the oracle)
 
     def node_at(self, file: str, l1: int, c1: int, l2: int, c2: int) -> Node | None:
@@ -131,6 +133,7 @@ class _Module:
         self.package = self.name if relpath.endswith("__init__.py") else self.name.rpartition(".")[0]
         self.imports: dict[str, str] = {}
         self.local_defs: set[str] = set()
+        self.global_calls: dict[str, str] = {}  # module-level `x = Something(...)`: x -> dotted callee
         self.tree = tree
         for stmt in tree.body:
             self._collect(stmt)
@@ -150,6 +153,11 @@ class _Module:
                 self.imports[a.asname or a.name] = f"{base}.{a.name}" if base else a.name
         elif isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
             self.local_defs.add(stmt.name)
+        elif isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name) \
+                and isinstance(stmt.value, ast.Call):
+            callee = PythonExtractor._dotted(stmt.value.func)
+            if callee:
+                self.global_calls[stmt.targets[0].id] = callee
 
 
 class PythonExtractor:
@@ -158,6 +166,7 @@ class PythonExtractor:
         self.facts = Facts()
         self._next = 1
         self._modules: dict[str, _Module] = {}
+        self._by_name: dict[str, _Module] = {}
 
     # ── public API ──────────────────────────────────────────────────────────
     def run(self) -> Facts:
@@ -172,6 +181,7 @@ class PythonExtractor:
             except SyntaxError:
                 continue
             self._modules[rel] = _Module(rel, tree)
+        self._by_name = {m.name: m for m in self._modules.values()}
         # Index every function first so calls can be resolved across modules.
         for rel, mod in self._modules.items():
             self._index_functions(mod, mod.tree.body, mod.name)
@@ -188,8 +198,10 @@ class PythonExtractor:
                               [a.arg for a in stmt.args.posonlyargs + stmt.args.args])
                 for dec in stmt.decorator_list:
                     target = dec.func if isinstance(dec, ast.Call) else dec
-                    dname = self._dotted(target) or ""
+                    dname = self.resolve(mod, self._dotted(target) or "")
                     fn.decorators.append(dname)
+                    if dname:
+                        self.facts.decorated.add((q, dname))
                     if dname.split(".")[-1] in ("route", "get", "post", "put", "delete", "patch"):
                         fn.is_entry = True
                         if isinstance(dec, ast.Call) and dec.args and isinstance(dec.args[0], ast.Constant):
@@ -232,11 +244,21 @@ class PythonExtractor:
             return ".".join(reversed(parts))
         return None
 
-    def resolve(self, mod: _Module, dotted: str) -> str:
+    def resolve(self, mod: _Module, dotted: str, depth: int = 0) -> str:
+        """Qualified name for a dotted expression. Module-level objects are replaced by the call that
+        created them, so `http.request` in a module with `http = urllib3.PoolManager()` resolves to
+        `urllib3.PoolManager().request` (also across modules: `from .db import engine`)."""
         head, _, rest = dotted.partition(".")
+        tail = f".{rest}" if rest else ""
+        if depth < 4 and head in mod.global_calls:
+            return self.resolve(mod, mod.global_calls[head], depth + 1) + "()" + tail
         if head in mod.imports:
             base = mod.imports[head]
-            return f"{base}.{rest}" if rest else base
+            owner, _, name = base.rpartition(".")
+            other = self._by_name.get(owner)
+            if depth < 4 and other is not None and name in other.global_calls:
+                return self.resolve(other, other.global_calls[name], depth + 1) + "()" + tail
+            return f"{base}{tail}"
         if head in mod.local_defs:
             return f"{mod.name}.{dotted}"
         return dotted
@@ -648,6 +670,12 @@ class _FunctionWalker:
             return nid
 
         # Library call: propagate argument (and receiver) taint into the result.
+        for i, a in arg_nodes:
+            if a:
+                self.f.lib_args.add((nid, i, a))
+        for k, a in kw_nodes:
+            if a and k:
+                self.f.lib_args.add((nid, k, a))
         incoming = [a for _, a in arg_nodes if a] + [a for _, a in kw_nodes if a]
         if receiver:
             incoming.append(receiver)
