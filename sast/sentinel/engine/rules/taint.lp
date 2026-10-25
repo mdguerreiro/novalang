@@ -41,7 +41,9 @@ blocked(N,clean)     :- assume_at(N,_).
 % (directly or through callees). Raw summaries (pr) stay total: they are cheap and feed traw and the frontier.
 needed(G) :- traw(A,_), arg_in(K,_,A), call(K,G).
 needed(G) :- needed(F), node(X,F), call(X,G).
-pc(P,F,I,C,M) :- param(F,I,P), needed(F), cls(C), mode(M), not killed(P,C), not blocked(P,M).
+% Only classes that have a sink somewhere in this program (curated, learned or extractor-found).
+cls_live(C) :- sink(_,C), cls(C).
+pc(P,F,I,C,M) :- param(F,I,P), needed(F), cls_live(C), mode(M), not killed(P,C), not blocked(P,M).
 pc(B,F,I,C,M) :- pc(A,F,I,C,M), edge(A,B), not killed(B,C), not blocked(B,M).
 pc(K,F,I,C,M) :- pc(A,F,I,C,M), arg_in(K,J,A), call(K,G), p2r(G,J,C,M), not killed(K,C), not blocked(K,M).
 p2r(F,I,C,M)   :- pc(R,F,I,C,M), ret(F,R).
@@ -87,7 +89,7 @@ traw(B,S) :- traw(A,S), edge(A,B).
 traw(K,S) :- traw(A,S), arg_in(K,J,A), call(K,G), p2r_raw(G,J).
 traw(K,S) :- call(K,G), ret(G,R), traw(R,S).
 
-t(S,S,C,M) :- src(S,_), cls(C), mode(M), not killed(S,C), not blocked(S,M).
+t(S,S,C,M) :- src(S,_), cls_live(C), mode(M), not killed(S,C), not blocked(S,M).
 t(B,S,C,M) :- t(A,S,C,M), edge(A,B), not killed(B,C), not blocked(B,M).
 t(K,S,C,M) :- t(A,S,C,M), arg_in(K,J,A), call(K,G), p2r(G,J,C,M), not killed(K,C), not blocked(K,M).
 t(K,S,C,M) :- call(K,G), ret(G,R), t(R,S,C,M), not killed(K,C), not blocked(K,M).
@@ -101,7 +103,9 @@ tk(K,S,C,W) :- t(A,S,C,any), arg_in(K,J,A), call(K,G), p2r(G,J,C,any), kill(K,C,
 tk(K,S,C,W) :- call(K,G), ret(G,R), tk(R,S,C,W).
 tk(K,S,C,W) :- call(K,G), ret(G,R), t(R,S,C,any), kill(K,C,W).
 
-ta(N,S,C,Asm) :- t(N,S,C,any), assume_at(N,Asm).
+% Only for (source, class) pairs that reach a sink at all (cand is computed from raw taint, no cycle).
+ta_need(S,C) :- cand(S,_,C).
+ta(N,S,C,Asm) :- t(N,S,C,any), assume_at(N,Asm), ta_need(S,C).
 ta(B,S,C,Asm) :- ta(X,S,C,Asm), edge(X,B), t(B,S,C,any).
 ta(K,S,C,Asm) :- ta(X,S,C,Asm), arg_in(K,J,X), call(K,G), p2r(G,J,C,any), t(K,S,C,any).
 ta(K,S,C,Asm) :- t(X,S,C,any), arg_in(K,J,X), call(K,G), p2a_r(G,J,C,Asm), t(K,S,C,any).

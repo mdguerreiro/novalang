@@ -18,7 +18,7 @@ p2l(F,I,K) :- pr(A,F,I), arg_in(X,J,A), call(X,G), p2l(G,J,K).
 udep(N) :- user_ref(N).
 udep(B) :- udep(A), edge(A,B).
 udep(Y) :- udep(A), arg_in(Y,J,A), call(Y,G), p2r_raw(G,J).
-rdep(K,K) :- lookup(K,_).
+rdep(K,K) :- lookup(K,_), idor_cand(_,K,_).  % only for lookups that are IDOR candidates
 rdep(B,K) :- rdep(A,K), edge(A,B).
 rdep(Y,K) :- rdep(R,K), ret(G,R), call(Y,G).
 rdep(P,K) :- rdep(A,K), arg_in(X,J,A), call(X,G), param(G,J,P).
