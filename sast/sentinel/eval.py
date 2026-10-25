@@ -168,6 +168,7 @@ class CountingOracle:
 
     def __init__(self, inner):
         self.inner, self.name = inner, inner.name
+        self.concurrent = getattr(inner, "concurrent", False)
         self.calls: list[tuple[str, str, int]] = []
 
     def __getattr__(self, attr):

@@ -69,7 +69,10 @@ p2k_s(F,I,K,C,W) :- pk(A,F,I,C,W), arg_in(X,J,A), call(X,G), p2s_raw(G,J,K), sin
 p2k_s(F,I,K,C,W) :- pc(A,F,I,C,any), arg_in(X,J,A), call(X,G), p2k_s(G,J,K,C,W).
 
 % Assumption summaries: parameter I reaches N (dangerous for C) through assumption Asm.
-pa(N,F,I,C,Asm) :- pc(N,F,I,C,any), assume_at(N,Asm).
+% Only for parameter paths that matter (reach a sink or the return value): the two places pa is consumed.
+pa_need(F,I,C) :- p2s(F,I,_,C,any).
+pa_need(F,I,C) :- p2r(F,I,C,any).
+pa(N,F,I,C,Asm) :- pc(N,F,I,C,any), assume_at(N,Asm), pa_need(F,I,C).
 pa(B,F,I,C,Asm) :- pa(X,F,I,C,Asm), edge(X,B), pc(B,F,I,C,any).
 pa(K,F,I,C,Asm) :- pa(X,F,I,C,Asm), arg_in(K,J,X), call(K,G), p2r(G,J,C,any), pc(K,F,I,C,any).
 pa(K,F,I,C,Asm) :- pc(X,F,I,C,any), arg_in(K,J,X), call(K,G), p2a_r(G,J,C,Asm), pc(K,F,I,C,any).

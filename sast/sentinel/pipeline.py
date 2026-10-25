@@ -8,6 +8,7 @@ import os
 import re
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 from pathlib import Path
 
@@ -41,6 +42,7 @@ def make_synth() -> RuleSynthesizer:
     return MockRuleSynthesizer()
 
 
+FRONTIER_WORKERS = int(os.environ.get("SENTINEL_FRONTIER_WORKERS", "8"))
 VERIFY_LEARNED = float(os.environ.get("SENTINEL_VERIFY_LEARNED", "0.9"))  # oracle confidence that skips verification
 
 
@@ -364,6 +366,7 @@ class Scanner:
                 break
             stats["rounds"] += 1
             admitted = 0
+            fresh, pending_decs = [], set()
             for kind, subj in todo:
                 asked.add((kind, subj))
                 preds = {"sink": ("sink_api", "not_sink_api"), "entry": ("entry_source", "not_entry"),
@@ -378,13 +381,29 @@ class Scanner:
                                                 for p in ("framework_source", "not_framework_source"))):
                     stats["cached"] += 1
                     continue
+                if kind == "entry":
+                    decs = {d for f, d in facts.decorated if f == subj}
+                    if decs & pending_decs:  # a sibling handler's answer about the same decorator comes first
+                        asked.discard((kind, subj))
+                        continue
+                    pending_decs |= decs
                 stats["questions"] += 1
-                items = (self._ask_sink(subj, sorted(sinks[subj], key=str), facts) if kind == "sink"
-                         else self._ask_registrar(*subj, facts) if kind == "reg"
-                         else self._ask_authz(subj, facts, org) if kind == "authz"
-                         else self._ask_model(subj, facts, org) if kind == "model"
-                         else self._ask_source(subj, facts) if kind == "srcapi"
-                         else self._ask_entry(subj, facts, org, repo_id))
+                fresh.append((kind, subj))
+
+            def ask(q):
+                kind, subj = q
+                return (self._ask_sink(subj, sorted(sinks[subj], key=str), facts) if kind == "sink"
+                        else self._ask_registrar(*subj, facts) if kind == "reg"
+                        else self._ask_authz(subj, facts, org) if kind == "authz"
+                        else self._ask_model(subj, facts, org) if kind == "model"
+                        else self._ask_source(subj, facts) if kind == "srcapi"
+                        else self._ask_entry(subj, facts, org, repo_id))
+            # Questions are independent: a real model answers them concurrently (the mock stays sequential so
+            # knowledge ids are deterministic in tests). Gating stays sequential.
+            workers = FRONTIER_WORKERS if getattr(self.oracle, "concurrent", False) else 1
+            with ThreadPoolExecutor(max_workers=workers) as pool:
+                answers = list(pool.map(ask, fresh))
+            for items in answers:
                 for item in items:
                     item = self._gate_frontier_item(item)
                     stats["facts"].append(item["id"])

@@ -173,6 +173,7 @@ class ClaudeSpecOracle:
     """Tier 1: narrow, typed questions about one API or one guard (lazy neural predicates)."""
 
     name = f"claude-oracle:{MODEL}"
+    concurrent = True  # independent questions may be asked in parallel
 
     def __init__(self, client: anthropic.Anthropic | None = None):
         self.client = client or anthropic.Anthropic()
