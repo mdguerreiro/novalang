@@ -1,0 +1,606 @@
+{
+  "steps": [
+    {
+      "step": "shop scan 1 (cold)",
+      "tier0_rate": 0.8,
+      "auto_rate": 1.0,
+      "tier1_calls": 3,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 2,
+      "resolved_by_learned_knowledge": 0,
+      "lanes": {
+        "review": 0,
+        "confirmed": 9,
+        "suppressed": 6,
+        "suppressed_ai": 4,
+        "test": 1
+      },
+      "precision": 1.0,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [],
+      "usd_so_far": 0.44
+    },
+    {
+      "step": "shop scan 2 (after review)",
+      "tier0_rate": 1.0,
+      "auto_rate": 1.0,
+      "tier1_calls": 0,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 0,
+      "resolved_by_learned_knowledge": 4,
+      "lanes": {
+        "review": 0,
+        "confirmed": 9,
+        "suppressed": 10,
+        "suppressed_ai": 0,
+        "test": 1
+      },
+      "precision": 1.0,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [],
+      "usd_so_far": 0.49
+    },
+    {
+      "step": "billing scan 1 (warm)",
+      "tier0_rate": 0.455,
+      "auto_rate": 1.0,
+      "tier1_calls": 1,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 3,
+      "resolved_by_learned_knowledge": 0,
+      "lanes": {
+        "review": 0,
+        "confirmed": 5,
+        "suppressed": 2,
+        "suppressed_ai": 4,
+        "test": 0
+      },
+      "precision": 1.0,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [],
+      "usd_so_far": 1.09
+    },
+    {
+      "step": "admin scan 1 (warm)",
+      "tier0_rate": 1.0,
+      "auto_rate": 1.0,
+      "tier1_calls": 0,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 0,
+      "resolved_by_learned_knowledge": 2,
+      "lanes": {
+        "review": 0,
+        "confirmed": 5,
+        "suppressed": 3,
+        "suppressed_ai": 0,
+        "test": 0
+      },
+      "precision": 1.0,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [],
+      "usd_so_far": 1.21
+    },
+    {
+      "step": "acme-billing scan 1 (cold)",
+      "tier0_rate": 0.455,
+      "auto_rate": 0.818,
+      "tier1_calls": 1,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 3,
+      "resolved_by_learned_knowledge": 0,
+      "lanes": {
+        "review": 2,
+        "confirmed": 4,
+        "suppressed": 2,
+        "suppressed_ai": 3,
+        "test": 0
+      },
+      "precision": 0.833,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [
+        "acme-billing/invoice_search/sqli"
+      ],
+      "usd_so_far": 1.69
+    },
+    {
+      "step": "acme-admin scan 1 (cold)",
+      "tier0_rate": 0.5,
+      "auto_rate": 1.0,
+      "tier1_calls": 1,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 0,
+      "resolved_by_learned_knowledge": 0,
+      "lanes": {
+        "review": 0,
+        "confirmed": 1,
+        "suppressed": 0,
+        "suppressed_ai": 1,
+        "test": 0
+      },
+      "precision": 1.0,
+      "recall": 0.2,
+      "missed": [
+        "acme-admin/audit_log/sqli",
+        "acme-admin/backup/cmdi",
+        "acme-admin/health_probe/ssrf",
+        "acme-admin/user_search/sqli"
+      ],
+      "false_alarms": [],
+      "usd_so_far": 1.7
+    }
+  ],
+  "review_shop": {
+    "triaged": 10,
+    "approved": [
+      "K-001",
+      "K-002",
+      "K-003",
+      "K-004",
+      "K-005",
+      "K-006",
+      "K-007",
+      "K-008",
+      "K-009",
+      "K-010",
+      "K-011",
+      "K-012",
+      "K-013",
+      "K-014",
+      "K-015",
+      "K-016",
+      "K-017",
+      "K-018",
+      "K-019",
+      "R-001",
+      "R-002",
+      "R-003"
+    ],
+    "audited": 1
+  },
+  "review_billing": {
+    "triaged": 7,
+    "approved": [
+      "K-020",
+      "K-021",
+      "K-022",
+      "K-023",
+      "K-024",
+      "K-025",
+      "K-026",
+      "K-027",
+      "K-029",
+      "R-004",
+      "R-005",
+      "R-006"
+    ],
+    "audited": 2
+  },
+  "knowledge": [
+    {
+      "id": "K-001",
+      "pred": "sanitizer_api",
+      "args": [
+        "hashlib.sha256().hexdigest",
+        "sqli"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-002",
+      "pred": "sanitizer_api",
+      "args": [
+        "hashlib.sha256().hexdigest",
+        "cmdi"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-003",
+      "pred": "sanitizer_api",
+      "args": [
+        "hashlib.sha256().hexdigest",
+        "path"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-004",
+      "pred": "sanitizer_api",
+      "args": [
+        "hashlib.sha256().hexdigest",
+        "xss"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-005",
+      "pred": "sanitizer_api",
+      "args": [
+        "hashlib.sha256().hexdigest",
+        "ssti"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-006",
+      "pred": "sanitizer_api",
+      "args": [
+        "hashlib.sha256().hexdigest",
+        "ssrf"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-007",
+      "pred": "sanitizer_api",
+      "args": [
+        "hashlib.sha256().hexdigest",
+        "code"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-008",
+      "pred": "sanitizer_api",
+      "args": [
+        "hashlib.sha256().hexdigest",
+        "redirect"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-009",
+      "pred": "sanitizer_api",
+      "args": [
+        "hashlib.sha256().hexdigest",
+        "deser"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-010",
+      "pred": "sanitizer_api",
+      "args": [
+        "hashlib.sha256",
+        "all"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-011",
+      "pred": "sanitizer_api",
+      "args": [
+        "slugify.slugify",
+        "path"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-012",
+      "pred": "sanitizer_api",
+      "args": [
+        "slugify.slugify",
+        "xss"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-013",
+      "pred": "sanitizer_api",
+      "args": [
+        "slugify.slugify",
+        "sqli"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-014",
+      "pred": "sanitizer_api",
+      "args": [
+        "slugify.slugify",
+        "cmdi"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-015",
+      "pred": "sanitizer_api",
+      "args": [
+        "slugify.slugify",
+        "ssti"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-016",
+      "pred": "sanitizer_api",
+      "args": [
+        "slugify.slugify",
+        "code"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-017",
+      "pred": "sanitizer_api",
+      "args": [
+        "slugify.slugify",
+        "redirect"
+      ],
+      "scope": "global",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-018",
+      "pred": "sanitizer_api",
+      "args": [
+        "acme_common.db.quote_sql",
+        "sqli"
+      ],
+      "scope": "repo",
+      "status": "active",
+      "origin": "agent:claude-verifier:claude-opus-5-5"
+    },
+    {
+      "id": "K-019",
+      "pred": "dead_fn",
+      "args": [
+        "shop.app.legacy_debug_console"
+      ],
+      "scope": "repo",
+      "status": "active",
+      "origin": "agent:claude-verifier:claude-opus-5-5"
+    },
+    {
+      "id": "K-020",
+      "pred": "safe_pred",
+      "args": [
+        "call:acme_common.validators.is_safe_slug",
+        "sqli"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-021",
+      "pred": "safe_pred",
+      "args": [
+        "call:acme_common.validators.is_safe_slug",
+        "cmdi"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-022",
+      "pred": "safe_pred",
+      "args": [
+        "call:acme_common.validators.is_safe_slug",
+        "path"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-023",
+      "pred": "safe_pred",
+      "args": [
+        "call:acme_common.validators.is_safe_slug",
+        "xss"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-024",
+      "pred": "safe_pred",
+      "args": [
+        "call:acme_common.validators.is_safe_slug",
+        "ssti"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-025",
+      "pred": "safe_pred",
+      "args": [
+        "call:acme_common.validators.is_safe_slug",
+        "ssrf"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-026",
+      "pred": "safe_pred",
+      "args": [
+        "call:acme_common.validators.is_safe_slug",
+        "code"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-027",
+      "pred": "safe_pred",
+      "args": [
+        "call:acme_common.validators.is_safe_slug",
+        "redirect"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "oracle:claude-oracle:claude-opus-5-5"
+    },
+    {
+      "id": "K-028",
+      "pred": "not_sanitizer",
+      "args": [
+        "billing.invoices._customer_filter"
+      ],
+      "scope": "repo",
+      "status": "active",
+      "origin": "agent:claude-verifier:claude-opus-5-5"
+    },
+    {
+      "id": "K-029",
+      "pred": "sanitizer_api",
+      "args": [
+        "acme_common.db.quote_sql",
+        "sqli"
+      ],
+      "scope": "repo",
+      "status": "active",
+      "origin": "agent:claude-verifier:claude-opus-5-5"
+    },
+    {
+      "id": "K-030",
+      "pred": "not_sanitizer",
+      "args": [
+        "billing.invoices.clean_filename"
+      ],
+      "scope": "repo",
+      "status": "active",
+      "origin": "agent:claude-verifier:claude-opus-5-5"
+    },
+    {
+      "id": "K-031",
+      "pred": "sanitizer_api",
+      "args": [
+        "acme_common.db.quote_sql",
+        "sqli"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "human:appsec-lead"
+    },
+    {
+      "id": "R-001",
+      "pred": "spec_rule",
+      "args": [
+        "acme-common-db-quote-sql-sanitizer",
+        "sanitizer",
+        "sqli"
+      ],
+      "scope": "repo",
+      "status": "active",
+      "origin": "agent:claude-synth:claude-opus-5-5"
+    },
+    {
+      "id": "R-002",
+      "pred": "spec_rule",
+      "args": [
+        "acme-common-db-run-query-sqli-sink",
+        "sink",
+        "sqli"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "agent:claude-synth:claude-opus-5-5"
+    },
+    {
+      "id": "R-003",
+      "pred": "spec_rule",
+      "args": [
+        "acme-common-net-fetch-ssrf-sink",
+        "sink",
+        "ssrf"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "agent:claude-synth:claude-opus-5-5"
+    },
+    {
+      "id": "R-004",
+      "pred": "spec_rule",
+      "args": [
+        "acme-common-db-quote-sql-sanitizer",
+        "sanitizer",
+        "sqli"
+      ],
+      "scope": "repo",
+      "status": "active",
+      "origin": "agent:claude-synth:claude-opus-5-5"
+    },
+    {
+      "id": "R-005",
+      "pred": "spec_rule",
+      "args": [
+        "acme-common-db-quote-sql-sanitizer",
+        "sanitizer",
+        "sqli"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "agent:claude-synth:claude-opus-5-5"
+    },
+    {
+      "id": "R-006",
+      "pred": "spec_rule",
+      "args": [
+        "acme-common-shell-run-shell-cmdi-sink",
+        "sink",
+        "cmdi"
+      ],
+      "scope": "org",
+      "status": "active",
+      "origin": "agent:claude-synth:claude-opus-5-5"
+    }
+  ],
+  "spend": {
+    "calls": 137,
+    "in": 9675,
+    "out": 60501,
+    "cw": 70811,
+    "cr": 467657,
+    "refusals": 0,
+    "errors": 0,
+    "usd": 1.7,
+    "minutes": 6.2
+  }
+}
