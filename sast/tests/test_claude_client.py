@@ -16,6 +16,7 @@ pytest.importorskip("anthropic")
 from sentinel.agent.claude import ClaudeVerifier  # noqa: E402
 
 ClaudeVerifier.parallel = False  # the scripted fake replays responses in order
+ClaudeVerifier.adaptive = False  # scripted tests exercise the full vote; adaptivity has its own test
 from sentinel.agent.interfaces import VerificationCase  # noqa: E402
 from sentinel.agent.orchestrator import Tools, gate  # noqa: E402
 from sentinel.eval import fresh_scanner  # noqa: E402
@@ -270,3 +271,20 @@ def test_rule_synthesizer_bad_rule_is_stopped_by_the_gate():
                     lambda ms: sc.analyze_repo("acme-billing", extra_matches=ms))
     rep = RuleGate().gate(item, {"acme-billing": view}, set())
     assert not gate_passed(rep) and "budget" in rep["canary"], rep["canary"]
+
+
+def test_one_sample_confirms_full_vote_only_to_close(case_and_tools):
+    """Confirming needs one sample; a sample arguing FALSE_POSITIVE triggers the full unanimous vote."""
+    case, tools = case_and_tools
+    tp = {"verdict": "TRUE_POSITIVE", "reason_code": "EXPLOITABLE", "rationale": "r", "claims": [], "proposed": []}
+    api = FakeAPI([final(lambda kw: tp)] * 4)
+    v = ClaudeVerifier(client=api)
+    v.adaptive = True
+    out = v.verify(case, tools)
+    assert len(api.calls) == 1 and out.verdict == "TRUE_POSITIVE" and out.votes["k"] == 1
+    fp = {"verdict": "FALSE_POSITIVE", "reason_code": "SANITIZED", "rationale": "r", "claims": [], "proposed": []}
+    api = FakeAPI([final(lambda kw: fp)] * 8)
+    v = ClaudeVerifier(client=api)
+    v.adaptive = True
+    out = v.verify(case, tools)
+    assert len(api.calls) == v.k + 1 and out.votes["k"] == v.k

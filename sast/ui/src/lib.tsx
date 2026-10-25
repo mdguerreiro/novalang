@@ -51,6 +51,7 @@ export const LANES: { id: string; label: string; hint: string }[] = [
   { id: "suppressed_ai", label: "Closed by AI", hint: "Closed by oracle or agent, re-derived by the engine." },
   { id: "suppressed", label: "Closed by engine", hint: "Mitigation proven by the engine." },
   { id: "test", label: "Tests", hint: "Flow only in test code." },
+  { id: "candidate", label: "Candidates", hint: "Possible missing authorization, not verified." },
 ];
 
 /** Human-readable statement of a knowledge fact. */

@@ -176,8 +176,25 @@ class MockVerifier:
                 return self._judge_reachability(case, tools, args[0])
             if kind == "unknown_authz":
                 return self._judge_authz(case, tools, args[0])
+        if case.cls == "idor":
+            return self._judge_idor(case, tools)
         return Verdict(case.fingerprint, "ABSTAIN", case.cls, None, [], [], {"k": self.k, "agree": self.k},
                        0.0, "Open assumptions are about library behavior not visible in this repository.", self.name)
+
+    # ── is anything outside the handler restricting the record? ──────────────────────────
+    def _judge_idor(self, case: VerificationCase, tools: AgentTools) -> Verdict:
+        found = tools.function_source(case.source_fn)
+        if found is None:
+            return self._abstain(case, f"Could not read {case.source_fn}.")
+        file, l1, l2, text, _sha = found
+        if re.search(r"current_user|request\.user|g\.user|tenant|owner", text):
+            return self._abstain(case, "Handler mentions the user; ownership may be enforced indirectly.")
+        at = next((l1 + i for i, ln in enumerate(text.splitlines()) if ".get" in ln or "filter" in ln), l1)
+        claims = [Claim("c1", "sink", "The record is loaded by the request id and returned with no user check.",
+                        _cite(tools, file, at, at))]
+        return Verdict(case.fingerprint, "TRUE_POSITIVE", case.cls, "EXPLOITABLE", claims, [],
+                       {"k": self.k, "agree": self.k, "dissent": []}, 0.85, "Any user can load any record by id.",
+                       self.name, _cost(self.k))
 
     # ── does decorator D authorize access to the record? ─────────────────────────────────
     def _judge_authz(self, case: VerificationCase, tools: AgentTools, dec: str) -> Verdict:

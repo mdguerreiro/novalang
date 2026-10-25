@@ -19,11 +19,11 @@ from .engine.datalog import Program
 from .extract.python_facts import Facts, content_hash, extract
 from .extract.semgrep_specs import SpecMatch, match_specs
 from .learn import bayes
-from .learn.knowledge import SPEC_RULE, KnowledgeService, Policy, gate_passed
+from .learn.knowledge import SPEC_RULE, SUPPRESSING, KnowledgeService, Policy, gate_passed
 from .learn.rules import RepoView, RuleGate, hides_body, match_rules, parse_rule
 from .store.db import Store
 
-LANES = ("review", "confirmed", "suppressed", "suppressed_ai", "test")
+LANES = ("review", "confirmed", "suppressed", "suppressed_ai", "test", "candidate")
 AUDIT_RATE = float(os.environ.get("SENTINEL_AUDIT_RATE", "0.34"))
 
 
@@ -161,6 +161,9 @@ class Scanner:
             f: Finding = o["finding"]
             if o["lane"] != "review" or (f.status != "undecided" and fp not in verify_learned):
                 continue
+            # IDOR on a model the oracle called public content: not worth an agent run; it stays a candidate.
+            if f.cls == "idor" and self._public_model(f, org):
+                continue
             # Unchanged code is never re-verified: reuse the last verdict for the same evidence.
             key = self._evidence_key(f, facts)
             prev = self.store.one("SELECT v.* FROM verdicts v JOIN findings x ON x.id = v.finding_id WHERE x.repo_id=? "
@@ -183,6 +186,12 @@ class Scanner:
             if result.accepted:
                 o.update(lane=result.lane, decided_by="tier2")
                 o["proposals"] = verdict.proposed
+
+        # Missing-authorization findings are semantic: unless the verifier confirmed one, it is a candidate
+        # (its own lane, out of the review queue), so authorization patterns we cannot see never flood triage.
+        for o in outcome.values():
+            if o["finding"].cls == "idor" and o["lane"] == "review":
+                o["lane"] = "candidate"
 
         # Shadow evaluation: what would candidate/shadow knowledge change? (shown, never applied)
         # Shadow spec rules are matched the same way; candidate rules never run (they failed a gate, and
@@ -369,12 +378,37 @@ class Scanner:
                          else self._ask_model(subj, facts, org) if kind == "model"
                          else self._ask_entry(subj, facts, org, repo_id))
                 for item in items:
-                    item = self._gate_item(item["id"])
+                    item = self._gate_frontier_item(item)
                     stats["facts"].append(item["id"])
                     admitted += item["status"] == "active"
             if not admitted:
                 break
+            self._enforce_adds_budget(repo_id, stats["facts"])
         return stats
+
+    def _gate_frontier_item(self, item: dict) -> dict:
+        """Frontier facts that only add findings (or stop a question) are gated on the canary corpus; what they add
+        in this repository is checked once per round (_enforce_adds_budget) instead of re-analysing every repo per
+        fact. Facts that can hide findings take the full gate."""
+        if item["status"] in ("active", "retired") or item["pred"] in SUPPRESSING:
+            return self._gate_item(item["id"])
+        report = self.ks.gate(item, {}, set(), lambda r, extra: self.analyze_repo(r, extra))
+        return self.ks.apply_gate(item["id"], report)
+
+    def _enforce_adds_budget(self, repo_id: str, kids: list[str]) -> None:
+        a = self.analyze_repo(repo_id)
+        adds: dict[str, int] = defaultdict(int)
+        for f in a.findings:
+            if f.status in ("confirmed", "undecided"):
+                for x in f.learned:
+                    for k in x["knowledge"]:
+                        adds[k] += 1
+        for k in set(kids):
+            if adds[k] > self.ks.policy.adds_budget:
+                item = self.store.knowledge(k)
+                gate = {**item["gate"], "adds": adds[k], "over_budget": True}
+                self.store.x("UPDATE knowledge SET status='shadow', gate=?, updated_at=? WHERE id=?", json.dumps(gate), time.time(), k)
+                self.store.event("system", "knowledge.shadow", None, k, reason="adds budget", adds=adds[k])
 
     def _known(self, pred: str, subject: str, org: str, repo_id: str) -> bool:
         """Already answered (any status but retired): a frontier question is asked once per scope."""
@@ -408,6 +442,12 @@ class Scanner:
         if not label.registers and label.confidence >= 0.8:
             return [self.ks.propose("not_registrar", [api], scope, org, repo, origin, label.confidence, label.rationale)]
         return []
+
+    def _public_model(self, f: Finding, org: str) -> bool:
+        models = [a["asm"][1] for a in f.assumptions if a["asm"][0] == "unknown_privacy"]
+        return any(self.store.one("SELECT 1 FROM knowledge WHERE pred='public_model' AND args=? AND status != 'retired' "
+                                  "AND confidence >= 0.8 AND (scope='global' OR org_id=?)", json.dumps([m]), org)
+                   for m in models)
 
     def _ask_model(self, model: str, facts: Facts, org: str) -> list[dict]:
         fn = facts.functions.get(model)

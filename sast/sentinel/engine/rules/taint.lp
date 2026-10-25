@@ -37,7 +37,11 @@ blocked(N,clean)     :- assume_at(N,_).
 
 % ── parameter summaries ─────────────────────────────────────────────────────────────────
 % pc(N,F,I,C,M): node N in F carries parameter I, still dangerous for class C.
-pc(P,F,I,C,M) :- param(F,I,P), cls(C), mode(M), not killed(P,C), not blocked(P,M).
+% Demand-driven: class/mode summaries only for functions that tainted data can reach as an argument
+% (directly or through callees). Raw summaries (pr) stay total: they are cheap and feed traw and the frontier.
+needed(G) :- traw(A,_), arg_in(K,_,A), call(K,G).
+needed(G) :- needed(F), node(X,F), call(X,G).
+pc(P,F,I,C,M) :- param(F,I,P), needed(F), cls(C), mode(M), not killed(P,C), not blocked(P,M).
 pc(B,F,I,C,M) :- pc(A,F,I,C,M), edge(A,B), not killed(B,C), not blocked(B,M).
 pc(K,F,I,C,M) :- pc(A,F,I,C,M), arg_in(K,J,A), call(K,G), p2r(G,J,C,M), not killed(K,C), not blocked(K,M).
 p2r(F,I,C,M)   :- pc(R,F,I,C,M), ret(F,R).
