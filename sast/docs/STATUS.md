@@ -43,6 +43,15 @@ Running plan/status, updated every loop iteration so work can resume from here.
 - Remaining UX: diff lenses (new since last scan), suppression-health view, PR-time surface.
 - Engine: method resolution on objects, context-sensitive summaries, Soufflé backend for scale.
 
+## Backlog: engine scale
+- Profiled (redash, 230k input facts): a full solve is ~20 s and >95% of it is clingo *grounding*; provenance costs ~1 s.
+  A scan does 2 full solves per frontier round; the ~70 gate canary solves are tiny (1 s total).
+- Done: solves are memoised on the exact input (in-process rescans skip the engine) and counted per scan (`stats.solves`).
+- Soufflé backend: port the .lp rules behind the Program interface, compiled once; learned knowledge stays EDB facts
+  (learned spec rules become rows, not rule text) so the compiled binary never changes; clingo kept as the reference
+  for result equivalence on the demo corpora and held-out repos. Expected 10-100x per solve (unmeasured).
+- Persistent solve cache (keyed by input hash) across processes; incremental/per-module solving for PR scans.
+
 ## Recall roadmap (loop 2)
 - [x] A taint frontier: sink/source/registrar/entry questions only where a tainted path meets unmodelled code; answers are gated, scoped, cached knowledge (acme-reports, acme-etl corpora).
 - [x] B symbolic call resolution: script-style imports, self/local/global instance methods through the project class hierarchy, library attributes named by base class, module-level registrations.

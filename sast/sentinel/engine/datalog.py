@@ -12,13 +12,19 @@ and truth maintenance (which knowledge items a decision depends on).
 """
 from __future__ import annotations
 
-from collections import defaultdict
+import hashlib
+import threading
+import time
+from collections import OrderedDict, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
 import clingo
 import clingo.ast as A
+
+MEMO_SIZE = 6  # whole-repo models are large; a scan only re-asks a handful of distinct inputs
+SOLVE_STATS = {"solves": 0, "hits": 0, "seconds": 0.0, "max_seconds": 0.0}
 
 RULES_DIR = Path(__file__).parent / "rules"
 PROV_HEADS = {
@@ -100,6 +106,8 @@ class Program:
     def __init__(self, rule_files: Iterable[Path] | None = None, extra_rules: str = ""):
         files = list(rule_files) if rule_files else sorted(RULES_DIR.glob("*.lp"))
         self.rules: dict[int, RuleInfo] = {}
+        self._memo: OrderedDict[str, Model] = OrderedDict()
+        self._lock = threading.Lock()
         chunks = []
         for f in files:
             chunks.append(self._instrument(f.read_text(), f.name))
@@ -145,6 +153,33 @@ class Program:
         return "\n".join(out)
 
     def solve(self, facts: Iterable[str], keep: set[str] | None = None) -> Model:
+        """Solve, memoised on the exact input (models are read-only downstream). A scan re-derives the same
+        program several times (gating, frontier rounds, rescans); identical inputs are solved once."""
+        facts = sorted(set(facts))
+        h = hashlib.blake2b(digest_size=16)
+        for f in facts:
+            h.update(f.encode()); h.update(b"\0")
+        h.update(repr(sorted(keep) if keep is not None else None).encode())
+        key = h.hexdigest()
+        with self._lock:
+            hit = self._memo.get(key)
+            if hit is not None:
+                self._memo.move_to_end(key)
+                SOLVE_STATS["hits"] += 1
+                return hit
+        t0 = time.perf_counter()
+        model = self._solve(facts, keep)
+        dt = time.perf_counter() - t0
+        with self._lock:
+            SOLVE_STATS["solves"] += 1
+            SOLVE_STATS["seconds"] += dt
+            SOLVE_STATS["max_seconds"] = max(SOLVE_STATS["max_seconds"], dt)
+            self._memo[key] = model
+            while len(self._memo) > MEMO_SIZE:
+                self._memo.popitem(last=False)
+        return model
+
+    def _solve(self, facts: list[str], keep: set[str] | None) -> Model:
         ctl = clingo.Control(["--warn=none"])
         ctl.add("base", [], self.text)
         ctl.add("base", [], "\n".join(facts))

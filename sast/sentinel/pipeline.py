@@ -16,7 +16,7 @@ from .agent.interfaces import RuleContext, RuleSynthesizer, SpecOracle, Verifica
 from .agent.mock import MockRuleSynthesizer, MockSpecOracle, MockVerifier, _scope_for
 from .agent.orchestrator import Tools, gate
 from .engine.analyze import CLASSES, CWE, Analysis, default_program, Finding, KnowledgeFact, analyze
-from .engine.datalog import Program
+from .engine.datalog import SOLVE_STATS, Program
 from .extract.python_facts import Facts, content_hash, extract
 from .extract.semgrep_specs import SpecMatch, match_specs
 from .learn import bayes
@@ -111,6 +111,7 @@ class Scanner:
         """`trigger` is "scan" for a real scan, "knowledge" when knowledge changed and decisions are re-derived."""
         t0 = time.time()
         stage_marks = [("start", t0)]
+        solve0 = dict(SOLVE_STATS)
         repo = self.store.repo(repo_id)
         org = repo["org_id"]
         scan_id = self.store.x("INSERT INTO scans(repo_id, started_at) VALUES (?, ?)", repo_id, t0)
@@ -306,6 +307,7 @@ class Scanner:
         self.last[repo_id] = a1
         stage_marks.append(('shadow+persist', time.time()))
         stats = self._stats(outcome, a0, t1_calls, t1_hits, t2_calls, t2_cost, auto_by_knowledge, time.time() - t0)
+        stats["solves"] = {k: round(SOLVE_STATS[k] - solve0[k], 2) for k in ("solves", "hits", "seconds")}
         stats["timings"] = {name: round(t - stage_marks[i][1], 2) for i, (name, t) in enumerate(stage_marks[1:])}
         stats.update(handler_reads=reads["read"], read_issues=reads["issues"])
         stats.update(knn_answers=fr.get("knn", 0))
