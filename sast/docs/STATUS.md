@@ -56,6 +56,11 @@ Running plan/status, updated every loop iteration so work can resume from here.
   answer. It now re-analyses only the chops of findings that hold a node the fact acts on (call to the API, the guard,
   the typed node, the dead function); other findings keep their status. Same result as whole-program on 15 hypotheses
   (flaskbb, redash, Mycodo); redash 83 s -> 0.4 s, Mycodo 215 s -> 39 s, flaskbb 31 s -> 9 s.
+- Done: tier-1 answers of one scan are gated with one combined re-analysis per repo; each answer is charged with the
+  changed findings whose chop holds its nodes (never misses a change; may over-charge answers that only mitigate
+  together, so the gate is stricter). If that could flip the decision (impact budget, human-confirmed finding), the
+  answer gets its exact re-analysis. flaskbb 10 answers 11.7 s -> 1.6 s, Mycodo 3 answers 38 s -> 13 s.
+  clingo holds the GIL while grounding (threads: 4 solves 38 s vs 16 s sequential), so parallel solving needs processes.
 - Soufflé backend: port the .lp rules behind the Program interface, compiled once; learned knowledge stays EDB facts
   (learned spec rules become rows, not rule text) so the compiled binary never changes; clingo kept as the reference
   for result equivalence on the demo corpora and held-out repos. Expected 10-100x per solve (unmeasured).

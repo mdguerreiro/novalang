@@ -340,10 +340,10 @@ class Scanner:
         out: list[KnowledgeFact] = []
         hits = 0
 
+        proposed: list[dict] = []
+
         def admit(item: dict) -> None:
-            item = self._gate_frontier_item(item)  # non-suppressing facts: canary gate; suppressing: full gate
-            if _gate_ok(item):
-                out.append(KnowledgeFact(item["id"], item["pred"], tuple(item["args"])))
+            proposed.append(item)  # gated together below
 
         todo = []
         for kind, subject in questions:
@@ -386,6 +386,14 @@ class Scanner:
                         admit(self.ks.propose("safe_pred", [subject, c], scope, org, repo_id, origin, label.confidence, label.rationale))
                 elif label.confidence >= 0.8:
                     admit(self.ks.propose("not_safe_pred", [subject], scope, org, repo_id, origin, label.confidence, label.rationale))
+        self._prepare_batch(proposed)
+        try:
+            for item in proposed:
+                item = self._gate_frontier_item(item)  # non-suppressing facts: canary gate; suppressing: full gate
+                if _gate_ok(item):
+                    out.append(KnowledgeFact(item["id"], item["pred"], tuple(item["args"])))
+        finally:
+            self._batch = None
         self._base_cache = None
         return out, len(todo), hits
 
@@ -794,8 +802,50 @@ class Scanner:
             return {n for n, nd in facts.nodes.items() if nd.fn == k.args[0]}
         return None  # anything else (authz, privacy, sources, sinks): whole program
 
+    _batch: dict | None = None
+    LOCAL_PREDS = {"sanitizer_api", "propagator_api", "not_sanitizer", "safe_pred", "not_safe_pred", "safe_type",
+                   "dead_fn", "internal_only"}  # the predicates _fact_nodes can localise
+
+    def _prepare_batch(self, items: list[dict]) -> None:
+        """One re-analysis per repository with every pending suppressing answer of this batch, instead of one per
+        answer. Each answer's gate then sees the findings that changed and that it can act on (its nodes lie in
+        their chop): an answer that only helps together with another is charged with that finding too, which
+        makes the gate stricter, never looser."""
+        todo = [i for i in items if i["pred"] in SUPPRESSING and i["pred"] in self.LOCAL_PREDS
+                and i["status"] not in ("active", "retired")]
+        if len(todo) < 2:
+            return
+        kfs = [KnowledgeFact(i["id"], i["pred"], tuple(i["args"])) for i in todo]
+        repos = sorted({r for i in todo for r in self.repos_in_scope(i)})
+        cache = self._base_cache if self._base_cache is not None else {}
+        runs = {}
+        for r in repos:
+            base = cache[r] if r in cache else cache.setdefault(r, self.analyze_repo(r))
+            runs[r] = (base, self._rerun_affected(r, kfs, base))
+        self._batch = {"kids": {k.kid for k in kfs}, "runs": runs}
+
     def _rerun_affected(self, repo_id: str, extra: list[KnowledgeFact], base: Analysis) -> Analysis:
         facts, _ = self.inputs(repo_id)
+        b = self._batch
+        if b and repo_id in b["runs"] and extra and all(k.kid in b["kids"] for k in extra) \
+                and b["runs"][repo_id][0] is base:
+            hit = set().union(*((self._fact_nodes(facts, k) or set()) for k in extra))
+            chops = facts.__dict__.setdefault("_chops", {})
+            comb = b["runs"][repo_id][1].by_key()
+
+            def acts_on(f) -> bool:
+                if f.key not in chops:
+                    chops[f.key] = facts.chop([(f.source, f.sink)])
+                fns, heap = chops[f.key]
+                return bool(hit & heap) or any(facts.nodes[n].fn in fns for n in hit if n in facts.nodes)
+            view = [comb[f.key] if f.key in comb and comb[f.key].status != f.status and f.cls != "idor" and acts_on(f)
+                    else f for f in base.findings]
+            # The view can charge an answer with findings it only mitigates together with another one. Where that
+            # could change the gate's decision (impact budget, human-confirmed findings), decide it exactly.
+            changed = [g for g, f in zip(view, base.findings) if g is not f]
+            hidden = [g for g in changed if g.status == "mitigated"]
+            if len(hidden) <= self.ks.policy.impact_budget and not ({g.fingerprint for g in hidden} & self.confirmed_fps()):
+                return replace(base, findings=view)
         hit: set[int] = set()
         for k in extra:
             nodes = self._fact_nodes(facts, k)
