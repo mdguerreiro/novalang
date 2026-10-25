@@ -13,8 +13,8 @@ import re
 import yaml
 
 from ..engine.analyze import CWE
-from .interfaces import (AgentTools, ApiLabel, Citation, Claim, EntryLabel, GuardLabel, ProposedKnowledge, RuleContext,
-                         RuleProposal, SinkLabel, VerificationCase, Verdict)
+from .interfaces import (AgentTools, ApiLabel, Citation, Claim, EntryLabel, GuardLabel, ProposedKnowledge, RegistrarLabel,
+                         RuleContext, RuleProposal, SinkLabel, VerificationCase, Verdict)
 
 # What a well-read model "knows" about common library APIs.
 API_TABLE: dict[str, tuple[str, list[str], float, str]] = {
@@ -87,6 +87,11 @@ class MockSpecOracle:
         if params[:2] == ["event", "context"]:
             return EntryLabel(fn, "handler", None, [0], "event", 0.9, "AWS Lambda handler signature; `event` is caller input.", self.name)
         return EntryLabel(fn, "none", None, [], "", 0.6, "No sign of an entry point.", self.name)
+
+    def classify_registrar(self, api: str, arg, usage: str) -> RegistrarLabel:
+        if re.search(r"(add_route|add_url_rule|add_api_route|add_view|add_get|add_post|register_handler|django\.urls\.(path|re_path)|django\.conf\.urls\.url)$", api):
+            return RegistrarLabel(api, arg, True, "http", 0.92, "Registers the function as a request handler.", self.name)
+        return RegistrarLabel(api, arg, False, "", 0.8, "Not a handler registration.", self.name)
 
     def judge_guard(self, pred: str, source: str) -> GuardLabel:
         """Judge a validation predicate by *executing* the regex it relies on against payloads."""

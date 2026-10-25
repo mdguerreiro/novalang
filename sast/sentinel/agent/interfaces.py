@@ -93,6 +93,19 @@ class EntryLabel:
 
 
 @dataclass
+class RegistrarLabel:
+    """Frontier question: project functions are passed to `api` at argument `arg`. Does that register them as
+    request handlers (so their parameters carry attacker-controlled input)?"""
+    api: str
+    arg: int | str
+    registers: bool
+    source_kind: str
+    confidence: float
+    rationale: str
+    model: str
+
+
+@dataclass
 class GuardLabel:
     pred: str
     safe_for: list[str]  # [] = does not validate; ["all"] = blocks every payload class
@@ -164,6 +177,7 @@ class SpecOracle(Protocol):
     def judge_guard(self, pred: str, source: str) -> GuardLabel: ...
     def classify_sink(self, api: str, args: list, usage: str) -> SinkLabel: ...
     def classify_entry(self, fn: str, decorators: list[str], params: list[str], source: str) -> EntryLabel: ...
+    def classify_registrar(self, api: str, arg: int | str, usage: str) -> RegistrarLabel: ...
 
 
 class Verifier(Protocol):

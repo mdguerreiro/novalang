@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import ast
 import json
 import os
 import shutil
@@ -95,6 +96,26 @@ def _short_id(check_id: str, known: dict[str, dict]) -> str:
     return check_id
 
 
+def _is_literal(facts: Facts, path: str, s: dict, e: dict) -> bool:
+    """The focused expression is a constant (`cur.execute("SELECT ... %s", (x,))`): it cannot carry taint."""
+    lines = facts.files.get(path, "").splitlines()[s["line"] - 1: e["line"]]
+    if not lines:
+        return False
+    if len(lines) == 1:
+        text = lines[0][s["col"] - 1: e["col"] - 1]
+    else:
+        text = "\n".join([lines[0][s["col"] - 1:]] + lines[1:-1] + [lines[-1][: e["col"] - 1]])
+    try:
+        ast.literal_eval(text.strip() if not text.lstrip().startswith("(") else text.strip())
+        return True
+    except (ValueError, SyntaxError, TypeError, MemoryError, RecursionError):
+        try:
+            ast.literal_eval("(" + text.strip() + ")")  # implicitly concatenated literals over several lines
+            return True
+        except Exception:
+            return False
+
+
 def lift(results: list[dict], facts: Facts, meta: dict[str, dict], path_of=lambda r: r["path"]) -> list[SpecMatch]:
     """Semgrep results -> spec matches attached to the AST node with the same span."""
     matches = []
@@ -107,8 +128,9 @@ def lift(results: list[dict], facts: Facts, meta: dict[str, dict], path_of=lambd
         s, e = r["start"], r["end"]
         path = path_of(r)
         node = facts.node_at(path, s["line"], s["col"], e["line"], e["col"])
-        if node is not None and m.get("knowledge") and role != "sanitizer" and \
-                (node.l1, node.c1, node.l2, node.c2) != (s["line"], s["col"], e["line"], e["col"]):
+        if node is not None and role != "sanitizer" and \
+                (node.l1, node.c1, node.l2, node.c2) != (s["line"], s["col"], e["line"], e["col"]) and \
+                (m.get("knowledge") or _is_literal(facts, path, s, e)):
             # A learned sink/source focused on an expression with no node of its own (a literal) must not
             # fall back to the enclosing call: that would taint-check the call's other arguments.
             # (The curated pack keeps the original fallback; see docs/evaluation.md.)

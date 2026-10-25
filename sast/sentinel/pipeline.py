@@ -294,6 +294,7 @@ class Scanner:
         runs out on a tainted path, and only those become oracle questions. Answers are ordinary knowledge
         items (gated, scoped, cached), so the next repository using the same library asks nothing."""
         stats = {"questions": 0, "cached": 0, "facts": [], "rounds": 0}
+        self._org_of_facts = org
         asked: set[tuple] = set()
         for _ in range(rounds):
             a = self.analyze_repo(repo_id)
@@ -301,7 +302,8 @@ class Scanner:
             for q, i in a.model.get("sink_frontier"):
                 sinks[q].add(i)
             entries = sorted({fn for fn, _i in a.model.get("src_frontier")})
-            todo = [("sink", q) for q in sorted(sinks)] + [("entry", fn) for fn in entries]
+            regs = sorted(set(a.model.get("reg_frontier")), key=str)
+            todo = [("sink", q) for q in sorted(sinks)] + [("reg", r) for r in regs] + [("entry", fn) for fn in entries]
             todo = [t for t in todo if t not in asked]
             if not todo:
                 break
@@ -309,16 +311,20 @@ class Scanner:
             admitted = 0
             for kind, subj in todo:
                 asked.add((kind, subj))
-                preds = ("sink_api", "not_sink_api") if kind == "sink" else ("entry_source", "not_entry")
-                if any(self._known(p, subj, org, repo_id) for p in preds) or (
+                preds = {"sink": ("sink_api", "not_sink_api"), "entry": ("entry_source", "not_entry"),
+                         "reg": ("registrar", "not_registrar")}[kind]
+                key = subj[0] if kind == "reg" else subj
+                if any(self._known(p, key, org, repo_id) for p in preds) or (
                         kind == "entry" and any(self._known(p, d, org, repo_id)
                                                 for f, d in facts.decorated if f == subj
                                                 for p in ("framework_source", "not_framework_source"))):
                     stats["cached"] += 1
                     continue
                 stats["questions"] += 1
-                for item in (self._ask_sink(subj, sorted(sinks[subj], key=str), facts) if kind == "sink"
-                             else self._ask_entry(subj, facts, org, repo_id)):
+                items = (self._ask_sink(subj, sorted(sinks[subj], key=str), facts) if kind == "sink"
+                         else self._ask_registrar(*subj, facts) if kind == "reg"
+                         else self._ask_entry(subj, facts, org, repo_id))
+                for item in items:
                     item = self._gate_item(item["id"])
                     stats["facts"].append(item["id"])
                     admitted += item["status"] == "active"
@@ -343,6 +349,20 @@ class Scanner:
                                     label.rationale) for x in sinks]
         if not sinks and label.confidence >= 0.8:
             return [self.ks.propose("not_sink_api", [api], "global", None, None, origin, label.confidence, label.rationale)]
+        return []
+
+    def _ask_registrar(self, api: str, arg, facts: Facts) -> list[dict]:
+        site = next(((facts.nodes[k].file, facts.nodes[k].l1) for k, q in sorted(facts.callnames) if q == api), None)
+        usage = f"{site[0]}:{site[1]}: {facts.files[site[0]].splitlines()[site[1] - 1].strip()}" if site else ""
+        label = self.oracle.classify_registrar(api, arg, usage)
+        origin = f"oracle:{label.model}"
+        # `*.add_route` names a method, not a type: such facts stay in the org that taught them.
+        scope = "org" if api.startswith("*.") else "global"
+        org, repo = (self._org_of_facts, None) if scope == "org" else (None, None)
+        if label.registers and label.confidence >= 0.7:
+            return [self.ks.propose("registrar", [api, arg], scope, org, repo, origin, label.confidence, label.rationale)]
+        if not label.registers and label.confidence >= 0.8:
+            return [self.ks.propose("not_registrar", [api], scope, org, repo, origin, label.confidence, label.rationale)]
         return []
 
     def _ask_entry(self, fn: str, facts: Facts, org: str, repo_id: str) -> list[dict]:

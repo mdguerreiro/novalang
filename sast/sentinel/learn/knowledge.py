@@ -33,9 +33,9 @@ PREDICATES = {  # pred -> arity
     "dead_fn": 1, "internal_only": 1, "not_sanitizer": 1, "weak_kind": 1,
     # Frontier answers (recall): what an unmodelled library call or entry point is.
     "sink_api": 3, "not_sink_api": 1, "framework_source": 1, "not_framework_source": 1,
-    "entry_source": 3, "not_entry": 1,
+    "entry_source": 3, "not_entry": 1, "registrar": 2, "not_registrar": 1,
 }
-ADDING = {"sink_api", "framework_source", "entry_source"}  # can only add findings (which are then verified)
+ADDING = {"sink_api", "framework_source", "entry_source", "registrar"}  # can only add findings (which are then verified)
 SUPPRESSING = {"sanitizer_api", "safe_pred", "safe_type", "dead_fn", "internal_only"}
 SPEC_RULE = "spec_rule"  # a learned Semgrep spec rule (learn/rules.py), not a Datalog fact
 CANARY_ROOT = Path(__file__).resolve().parents[2] / "canaries"

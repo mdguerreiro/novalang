@@ -136,6 +136,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out += [fact("entry", f) for f, _ in facts.entrypoints]
     out += [fact("lib_arg", k, i, a) for k, i, a in facts.lib_args]
     out += [fact("decorated", f, d) for f, d in facts.decorated]
+    out += [fact("fn_ref", k, i, f) for k, i, f in facts.fn_refs]
     out += [fact("generic_api", q) for q in set(facts.libcalls.values()) if q.startswith("*.") or q == "<dynamic>"]
     out += [fact("test_fn", q) for q, fn in facts.functions.items() if is_test_path(fn.file)]
     for fn, _name, conv, pid in facts.route_params:
@@ -156,7 +157,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
 
 
 KEEP = {"cand", "alarm", "mitigated", "undecided", "confirmed", "test_only", "asm", "mit", "assume_at",
-        "kill", "reach", "safe", "open", "sink_frontier", "src_frontier", "learned_sink", "learned_src"}
+        "kill", "reach", "safe", "open", "sink_frontier", "src_frontier", "learned_sink", "learned_src", "reg_frontier"}
 
 
 def analyze(facts: Facts, matches: list[SpecMatch], knowledge: list[KnowledgeFact] | None = None,
@@ -283,7 +284,7 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
                               "knowledge": [x.kid for x in kn if x.pred == "sink_api" and x.args[0] == q]})
         for x in sorted(learned_src.get(s, ())):
             f.learned.append({"kind": "source", "subject": x,
-                              "knowledge": [y.kid for y in kn if y.pred in ("framework_source", "entry_source")
+                              "knowledge": [y.kid for y in kn if y.pred in ("framework_source", "entry_source", "registrar")
                                             and y.args[0] == x]})
         if not sm and learned_src.get(s):
             f.source_kind, f.source_rule = "http", "learned-source"

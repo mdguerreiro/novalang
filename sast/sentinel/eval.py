@@ -176,6 +176,11 @@ class CountingOracle:
         self.calls.append(("sink", api, len(ClaudeSpecOracle._sink_prompt(api, args, usage))))
         return self.inner.classify_sink(api, args, usage)
 
+    def classify_registrar(self, api, arg, usage):
+        from .agent.claude import ClaudeSpecOracle
+        self.calls.append(("reg", api, len(ClaudeSpecOracle._registrar_prompt(api, arg, usage))))
+        return self.inner.classify_registrar(api, arg, usage)
+
     def classify_entry(self, fn, decorators, params, source):
         from .agent.claude import ClaudeSpecOracle
         self.calls.append(("entry", fn, len(ClaudeSpecOracle._entry_prompt(fn, decorators, params, source))))

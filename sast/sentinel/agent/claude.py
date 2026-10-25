@@ -32,7 +32,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import anthropic
 
-from .interfaces import (AgentTools, ApiLabel, Citation, Claim, EntryLabel, GuardLabel, SinkLabel, ProposedKnowledge, RuleContext,
+from .interfaces import (AgentTools, ApiLabel, Citation, Claim, EntryLabel, GuardLabel, RegistrarLabel, SinkLabel, ProposedKnowledge, RuleContext,
                          RuleProposal, VerificationCase, Verdict)
 from .orchestrator import StrippedTools
 from ..engine.analyze import CLASSES
@@ -139,6 +139,12 @@ ENTRY_SCHEMA = {"type": "object", "properties": {
     "confidence": {"type": "number"}, "rationale": {"type": "string"}},
     "required": ["kind", "decorator", "params", "source_kind", "confidence", "rationale"], "additionalProperties": False}
 
+REGISTRAR_SCHEMA = {"type": "object", "properties": {
+    "registers": {"type": "boolean"},
+    "source_kind": {"type": "string", "enum": ["http", "event", "queue", "cli", "none"]},
+    "confidence": {"type": "number"}, "rationale": {"type": "string"}},
+    "required": ["registers", "source_kind", "confidence", "rationale"], "additionalProperties": False}
+
 
 def _text(resp) -> str:
     return next((b.text for b in resp.content if b.type == "text"), "")
@@ -220,6 +226,22 @@ class ClaudeSpecOracle:
         kind = d["kind"] if (d["kind"] != "framework" or dec) else "none"
         return EntryLabel(fn, kind, dec, [i for i in d["params"] if 0 <= i < len(params)], d["source_kind"],
                           float(d["confidence"]), d["rationale"], self.name)
+
+    def classify_registrar(self, api: str, arg, usage: str) -> RegistrarLabel:
+        d = self._ask(self._registrar_prompt(api, arg, usage), REGISTRAR_SCHEMA)
+        if d is None:
+            return RegistrarLabel(api, arg, False, "", 0.0, "oracle unavailable or declined", self.name)
+        return RegistrarLabel(api, arg, bool(d["registers"]), d["source_kind"], float(d["confidence"]), d["rationale"],
+                              self.name)
+
+    @staticmethod
+    def _registrar_prompt(api: str, arg, usage: str) -> str:
+        return (f"Python call `{api}` (`*.name` = a method whose receiver type is unknown; judge by the call site). "
+                f"A project function is passed as argument {arg} (integer = 0-based position, name = keyword).\n"
+                f"Call site:\n{usage or '(none)'}\n\n"
+                "Does this call register that function as a handler that a web, RPC or messaging framework invokes "
+                "with external input (so all its parameters carry attacker-controlled data)? Say false for callbacks "
+                "invoked with trusted data (sort keys, signal handlers, thread targets, atexit).")
 
     @staticmethod
     def _sink_prompt(api: str, args: list, usage: str) -> str:

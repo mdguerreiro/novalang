@@ -73,6 +73,7 @@ class Function:
     params: list[str] = field(default_factory=list)
     decorators: list[str] = field(default_factory=list)
     is_entry: bool = False
+    cls: str | None = None  # enclosing class for methods
     route: str | None = None
 
 
@@ -94,6 +95,9 @@ class Facts:
     callnames: set[tuple[int, str]] = field(default_factory=set)  # every call node -> qualified callee
     lib_args: set[tuple[int, int | str, int]] = field(default_factory=set)  # library call, position or keyword, arg node
     decorated: set[tuple[str, str]] = field(default_factory=set)  # function, resolved decorator
+    classes: dict[str, list[str]] = field(default_factory=dict)  # project class -> resolved bases
+    fn_refs: set[tuple[int, int | str, str]] = field(default_factory=set)  # call, arg position/keyword, project fn passed
+    resolved: dict[int, str] = field(default_factory=dict)  # call node -> how it was resolved (cha | self | import | ctor)
     pred_sources: dict[str, str] = field(default_factory=dict)  # predicate -> source text (for the oracle)
 
     def node_at(self, file: str, l1: int, c1: int, l2: int, c2: int) -> Node | None:
@@ -124,6 +128,9 @@ def module_name(relpath: str) -> str:
 
 def is_test_path(relpath: str) -> bool:
     return bool(TEST_PATH_RE.search(relpath))
+
+
+BUILTIN_NAMES = set(dir(__import__("builtins")))
 
 
 class _Module:
@@ -182,12 +189,40 @@ class PythonExtractor:
                 continue
             self._modules[rel] = _Module(rel, tree)
         self._by_name = {m.name: m for m in self._modules.values()}
+        self._tops = {n.split(".")[0] for n in self._by_name}
         # Index every function first so calls can be resolved across modules.
         for rel, mod in self._modules.items():
             self._index_functions(mod, mod.tree.body, mod.name)
         for rel, mod in self._modules.items():
             self._walk_defs(mod, mod.tree.body, mod.name)
+            self._module_registrations(mod)
         return self.facts
+
+    def _module_registrations(self, mod: _Module) -> None:
+        """Module-level calls that hand project functions to a framework (`urlpatterns = [path("x", views.x)]`,
+        `app.add_url_rule("/", view_func=index)`). Only the call and the function references are recorded."""
+        for stmt in mod.tree.body:
+            if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Import, ast.ImportFrom)):
+                continue
+            for e in ast.walk(stmt):
+                if not isinstance(e, ast.Call):
+                    continue
+                refs = []
+                for key, a in [(i, x) for i, x in enumerate(e.args)] + [(k.arg, k.value) for k in e.keywords if k.arg]:
+                    d = self._dotted(a) if isinstance(a, (ast.Name, ast.Attribute)) else None
+                    ref = self.resolve(mod, d) if d else None
+                    if ref in self.facts.functions:
+                        refs.append((key, ref))
+                if not refs:
+                    continue
+                d = self._dotted(e.func)
+                qual = self.resolve(mod, d) if d else "<dynamic>"
+                if d and d.split(".")[0] not in mod.imports and d.split(".")[0] not in mod.global_calls and "." in d:
+                    qual = "*." + d.rsplit(".", 1)[1]
+                nid = self.new_node(f"{mod.name}.<module>", mod.relpath, e, "call", label=ast.unparse(e)[:80], callee=qual)
+                self.facts.callnames.add((nid, qual))
+                for key, ref in refs:
+                    self.facts.fn_refs.add((nid, key, ref))
 
     # ── function indexing ───────────────────────────────────────────────────
     def _index_functions(self, mod: _Module, body: list[ast.stmt], prefix: str) -> None:
@@ -211,7 +246,12 @@ class PythonExtractor:
                     self.facts.entrypoints.add((q, "http_route"))
                 self._index_functions(mod, stmt.body, q)
             elif isinstance(stmt, ast.ClassDef):
-                self._index_functions(mod, stmt.body, f"{prefix}.{stmt.name}")
+                cq = f"{prefix}.{stmt.name}"
+                self.facts.classes[cq] = [self.resolve(mod, d) for d in (self._dotted(b) for b in stmt.bases) if d]
+                self._index_functions(mod, stmt.body, cq)
+                for q, fn in self.facts.functions.items():
+                    if q.rpartition(".")[0] == cq:
+                        fn.cls = cq
 
     def _walk_defs(self, mod: _Module, body: list[ast.stmt], prefix: str) -> None:
         for stmt in body:
@@ -253,7 +293,7 @@ class PythonExtractor:
         if depth < 4 and head in mod.global_calls:
             return self.resolve(mod, mod.global_calls[head], depth + 1) + "()" + tail
         if head in mod.imports:
-            base = mod.imports[head]
+            base = self._localize(mod, mod.imports[head])
             owner, _, name = base.rpartition(".")
             other = self._by_name.get(owner)
             if depth < 4 and other is not None and name in other.global_calls:
@@ -262,6 +302,48 @@ class PythonExtractor:
         if head in mod.local_defs:
             return f"{mod.name}.{dotted}"
         return dotted
+
+    def _localize(self, mod: _Module, base: str) -> str:
+        """Script-style imports (`import libuser` run from the script's directory, i.e. sys.path[0]): when the
+        name is not a top-level project module but a sibling of the importing module is, it means the sibling."""
+        if base.split(".")[0] in self._tops or not mod.package:
+            return base
+        cand = f"{mod.package}.{base}"
+        parts = cand.split(".")
+        if any(".".join(parts[:i]) in self._by_name for i in range(len(parts), mod.package.count(".") + 1, -1)):
+            return cand
+        return base
+
+    def method(self, cls: str, name: str, depth: int = 0) -> str | None:
+        """Class-hierarchy lookup of `name` on project class `cls`: a project function, or None."""
+        q = f"{cls}.{name}"
+        if q in self.facts.functions:
+            return q
+        for b in self.facts.classes.get(cls, []) if depth < 8 else []:
+            if b in self.facts.classes:
+                r = self.method(b, name, depth + 1)
+                if r:
+                    return r
+        return None
+
+    def through_class(self, qual: str) -> str:
+        """`app.User.query.filter_by` where `User(db.Model)` defines no `query`: the attribute comes from the
+        (library) base class, so name it after that base, `flask_sqlalchemy.SQLAlchemy().Model.query.filter_by`.
+        One question per library API instead of one per model class."""
+        parts = qual.split(".")
+        for i in range(len(parts) - 1, 0, -1):
+            cls = ".".join(parts[:i])
+            if cls in self.facts.classes:
+                if self.method(cls, parts[i]):
+                    return qual
+                ext = [b for b in self.facts.classes[cls] if b not in self.facts.classes]
+                proj = [b for b in self.facts.classes[cls] if b in self.facts.classes]
+                for b in proj:  # inherited through a project base
+                    r = self.through_class(".".join([b] + parts[i:]))
+                    if r != ".".join([b] + parts[i:]) or not ext:
+                        return r
+                return ".".join([ext[0]] + parts[i:]) if ext else qual
+        return qual
 
 
 Env = dict[str, frozenset[int]]
@@ -283,6 +365,7 @@ class _FunctionWalker:
         self.f = ex.facts
         self.file = mod.relpath
         self.hosts: dict[str, str] = {}  # var holding urlparse(<url>).hostname -> url var
+        self.types: dict[str, str] = {}  # local var -> project class (from `x = Class(...)`)
 
     def walk(self) -> None:
         env: Env = {}
@@ -313,6 +396,13 @@ class _FunctionWalker:
     def stmt(self, s: ast.stmt, env: Env) -> Env:
         if isinstance(s, ast.Assign):
             v = self.expr(s.value, env)
+            for t in s.targets:
+                if isinstance(t, ast.Name):
+                    cls = self._ctor_class(s.value)
+                    if cls:
+                        self.types[t.id] = cls
+                    else:
+                        self.types.pop(t.id, None)
             for t in s.targets:
                 env = self.bind(t, v, env, s.value)
             return env
@@ -628,12 +718,42 @@ class _FunctionWalker:
             parts = []
         return [x for x in (self.expr(p, env) for p in parts) if x]
 
+    def _ctor_class(self, value: ast.expr) -> str | None:
+        if isinstance(value, ast.Call):
+            d = self.ex._dotted(value.func)
+            q = self.ex.resolve(self.mod, d) if d else None
+            if q in self.f.classes:
+                return q
+        return None
+
+    def _receiver_class(self, func: ast.expr) -> str | None:
+        """Project class of `obj` in `obj.m(...)`: `self` in a method, or a local built by a project constructor."""
+        if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name):
+            name = func.value.id
+            if name == "self" and self.fn.cls and self.fn.params[:1] == ["self"]:
+                return self.fn.cls
+            return self.types.get(name)
+        return None
+
     def call(self, e: ast.Call, env: Env) -> int:
         func = e.func
         receiver = None
         dotted = self.ex._dotted(func)
         head = dotted.split(".")[0] if dotted else None
-        if isinstance(func, ast.Attribute) and (dotted is None or head in env):
+        offset = 0  # positional argument i binds parameter i + offset (1 for bound methods / constructors)
+        how = None
+        rcls = self._receiver_class(func)
+        bound = self.ex.method(rcls, func.attr) if rcls and isinstance(func, ast.Attribute) else None
+        if bound:
+            receiver = self.expr(func.value, env)
+            qual, method, offset, how = bound, None, 1, ("self" if head == "self" else "local-type")
+        elif isinstance(func, ast.Attribute) and isinstance(func.value, ast.Call) and \
+                self._ctor_class(func.value) and self.ex.method(self._ctor_class(func.value), func.attr):
+            receiver = self.expr(func.value, env)  # `Helper(x).run(y)`
+            qual, method, offset, how = self.ex.method(self._ctor_class(func.value), func.attr), None, 1, "ctor"
+        elif isinstance(func, ast.Attribute) and (dotted is None or head in env or (
+                head not in self.mod.imports and head not in self.mod.local_defs and head not in self.mod.global_calls
+                and head not in BUILTIN_NAMES and dotted.count(".") == 1)):
             # Method call on a value (`cur.execute`, `x.strip()`, `hashlib.sha256(x).hexdigest()`).
             receiver = self.expr(func.value, env)
             base_callee = None
@@ -645,6 +765,15 @@ class _FunctionWalker:
         else:
             qual = self.ex.resolve(self.mod, dotted) if dotted else "<dynamic>"
             method = None
+            if dotted and head in self.mod.imports and qual != self.mod.imports[head] + dotted[len(head):]:
+                how = "import"
+            if qual in self.f.classes:  # constructor of a project class
+                init = self.ex.method(qual, "__init__")
+                qual, offset, how = (init, 1, "ctor") if init else (qual, 0, "ctor")
+            elif qual not in self.f.functions:
+                q2 = self.ex.through_class(qual)
+                if q2 != qual:
+                    qual, how = q2, "cha"
 
         arg_nodes: list[tuple[int, int | None]] = []
         for i, a in enumerate(e.args):
@@ -654,16 +783,27 @@ class _FunctionWalker:
         nid = self.ex.new_node(self.fn.qname, self.file, e, "call", label=ast.unparse(e)[:80], callee=qual)
         self.f.callnames.add((nid, qual))
 
+        for key, a in [(i, x) for i, x in enumerate(e.args)] + [(k.arg, k.value) for k in e.keywords if k.arg]:
+            d = self.ex._dotted(a) if isinstance(a, (ast.Name, ast.Attribute)) else None
+            ref = self.ex.resolve(self.mod, d) if d and d.split(".")[0] not in env else None
+            if ref in self.f.functions:
+                self.f.fn_refs.add((nid, key, ref))  # a function handed to a call: maybe a handler registration
+        if "()." in qual and qual not in self.f.functions:
+            c, _, m = qual.rpartition("().")
+            hit = self.ex.method(c, m) if c in self.f.classes else None
+            if hit:  # module-level instance of a project class: `pkg = Helper()` ... `pkg.run(x)`
+                qual, offset, how = hit, 1, "global-type"
+        if how:
+            self.f.resolved[nid] = how
         target = qual if qual in self.f.functions else None
-        if target is None and receiver is None and method is None and dotted:
-            # `self.helper(...)` and `Class.method(...)` are not resolved in the POC.
-            target = None
         if target is not None:
             self.f.calls.add((nid, target))
             params = self.f.functions[target].params
+            if offset and receiver:
+                self.f.arg_in.add((nid, 0, receiver))
             for i, a in arg_nodes:
                 if a:
-                    self.f.arg_in.add((nid, i, a))
+                    self.f.arg_in.add((nid, i + offset, a))
             for k, a in kw_nodes:
                 if a and k in params:
                     self.f.arg_in.add((nid, params.index(k), a))
@@ -683,7 +823,8 @@ class _FunctionWalker:
         if not is_neutral:
             for a in incoming:
                 self.f.edges.add((a, nid))
-        known = is_neutral or qual in PROPAGATORS or method in PROPAGATOR_METHODS
+        # A project class without __init__ just stores its arguments: a propagator, not an unknown API.
+        known = is_neutral or qual in PROPAGATORS or method in PROPAGATOR_METHODS or qual in self.f.classes
         if not known and incoming:
             self.f.libcalls[nid] = qual
         return nid

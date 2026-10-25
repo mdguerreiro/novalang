@@ -118,6 +118,7 @@ asm(S,K,C,Asm) :- t(X,S,C,any), arg_in(Y,J,X), call(Y,G), p2a_s(G,J,K,C,Asm).
 reach(F) :- entry(F).
 reach(F) :- entry_source(F,_,_).
 reach(F) :- decorated(F,D), framework_source(D).
+reach(F) :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I).
 reach(G) :- reach(F), node(X,F), call(X,G).
 asm(S,K,C,weak_source(Kd)) :- alarm(S,K,C,any), src(S,Kd), weak_kind(Kd).
 asm(S,K,C,unreachable(F))  :- alarm(S,K,C,any), node(S,F), not reach(F), not test_node(S), not dead_fn(F).
@@ -137,6 +138,9 @@ learned_src(P,F)   :- entry_source(F,I,_), param(F,I,P).
 % ── the taint frontier: where tainted data meets something the engine does not understand ──
 answered_api(Q)    :- modeled_api(Q).
 answered_api(Q)    :- not_sink_api(Q).
+answered_api(Q)    :- propagator_api(Q).
+answered_api(Q)    :- sanitizer_api(Q,_).
+has_caller(F)      :- call(_,F).
 spec_call(K)       :- lib_arg(K,_,A), sink(A,_).
 spec_call(K)       :- modeled_node(K).
 sink_frontier(Q,I) :- lib_arg(K,I,A), traw(A,_), libcall(K,Q), not answered_api(Q), not spec_call(K), not generic_api(Q).
@@ -147,4 +151,17 @@ answered_entry(F)  :- decorated(F,D), framework_source(D).
 answered_entry(F)  :- decorated(F,D), not_framework_source(D).
 has_src_param(F)   :- param(F,_,P), src(P,_).
 src_frontier(F,I)  :- entry(F), param(F,I,P), p2s_raw(F,I,_), not has_src_param(F), not typed(P,_), not answered_entry(F).
-src_frontier(F,I)  :- param(F,I,P), p2s_raw(F,I,_), not reach(F), not test_fn(F), not typed(P,_), not answered_entry(F).
+src_frontier(F,I)  :- param(F,I,P), p2s_raw(F,I,_), not reach(F), not has_caller(F), not test_fn(F), not typed(P,_), not answered_entry(F), not pending_reg(F).
+
+% Handlers registered by passing the function to a framework call (`app.router.add_route("GET", "/", view)`):
+% one question about the registrar covers every handler it registers.
+src(P,"http")      :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I), param(F,_,P), not typed(P,_).
+learned_src(P,Q)   :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I), param(F,_,P).
+answered_reg(Q)    :- registrar(Q,_).
+answered_reg(Q)    :- not_registrar(Q).
+pending_reg(F)     :- fn_ref(K,_,F), callname(K,Q), not answered_reg(Q).
+% Asked even when no known sink is reachable yet: unknown framework + unknown sink is the common case, and
+% there are only a handful of registrar APIs per code base.
+reg_frontier(Q,I)  :- fn_ref(K,I,F), callname(K,Q), param(F,_,_), not has_caller(F), not answered_reg(Q), not test_fn(F),
+                      not generic_reg(Q).
+answered_entry(F)  :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I).
