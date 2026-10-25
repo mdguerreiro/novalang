@@ -397,7 +397,8 @@ class ClaudeVerifier:
     name = f"claude-verifier:{'+'.join(VOTERS)}"
     k = SAMPLES
     parallel = True  # tests driving a scripted fake set this to False for a deterministic call order
-    adaptive = os.environ.get("SENTINEL_ADAPTIVE_VOTES", "1") != "0"  # one sample unless it argues for closing
+    adaptive = os.environ.get("SENTINEL_ADAPTIVE_VOTES", "1") != "0"
+    concurrent = True  # findings may be verified in parallel  # one sample unless it argues for closing
 
     def __init__(self, client: anthropic.Anthropic | None = None):
         self.client = client or anthropic.Anthropic()

@@ -47,6 +47,8 @@ def make_synth() -> RuleSynthesizer:
     return MockRuleSynthesizer()
 
 
+TIER2_WORKERS = int(os.environ.get("SENTINEL_TIER2_WORKERS", "6"))
+TIER2_BUDGET = int(os.environ.get("SENTINEL_TIER2_BUDGET", "40"))  # root causes verified per scan
 FRONTIER_WORKERS = int(os.environ.get("SENTINEL_FRONTIER_WORKERS", "8"))
 VERIFY_LEARNED = float(os.environ.get("SENTINEL_VERIFY_LEARNED", "0.9"))  # oracle confidence that skips verification
 
@@ -171,6 +173,7 @@ class Scanner:
         rerun = lambda extra: self.analyze_repo(repo_id, t1_facts + extra)
         tools = Tools(facts, a1, rerun)
         t2_calls, t2_hits, t2_cost = 0, 0, {"tokens_in": 0, "tokens_out": 0, "tool_calls": 0}
+        todo: list[tuple[str, dict, str]] = []
         for fp, o in outcome.items():
             f: Finding = o["finding"]
             if o["lane"] != "review" or (f.status != "undecided" and fp not in verify_learned):
@@ -191,10 +194,27 @@ class Scanner:
                 if prev["gate"].get("accepted"):
                     o.update(lane=prev["gate"]["lane"], decided_by="tier2")
                 continue
+            todo.append((fp, o, key))
+
+        # Root-cause grouping: findings that hinge on the same unknown (`sqlalchemy.select().where`, one helper) are
+        # verified once; siblings inherit an accepted verdict only if its facts re-derive *their* status too.
+        groups: dict[str, list] = defaultdict(list)
+        for item in todo:
+            groups[(item[1]["finding"].cls, _group_key(item[1]["finding"]))].append(item)
+        reps = [g[0] for g in groups.values()][:TIER2_BUDGET]
+
+        def run(item):
+            fp, o, key = item
+            f = o["finding"]
             case = VerificationCase(fp, repo_id, f.cls, f.title, f.status, f.assumptions,
                                     [asdict(s) for s in f.path], f.source_fn, f.sink_fn, f.proof)
             verdict = self.verifier.verify(case, tools)
-            result = gate(verdict, tools)
+            return item, verdict, gate(verdict, tools)
+
+        workers = TIER2_WORKERS if getattr(self.verifier, "concurrent", False) else 1
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            results = list(pool.map(run, reps))
+        for (fp, o, key), verdict, result in results:
             t2_calls += 1
             for k_ in t2_cost:
                 t2_cost[k_] += verdict.cost.get(k_, 0)
@@ -204,6 +224,21 @@ class Scanner:
             if result.accepted:
                 o.update(lane=result.lane, decided_by="tier2")
                 o["proposals"] = verdict.proposed
+            group = groups[(o["finding"].cls, _group_key(o["finding"]))]
+            facts_ = [c.fact for c in verdict.claims if c.fact]
+            if not (result.accepted and verdict.verdict == "FALSE_POSITIVE" and facts_ and len(group) > 1):
+                continue
+            after = tools.what_if(facts_)["findings"]
+            for sfp, so, skey in group[1:]:
+                st_ = after.get(sfp)
+                if st_ and st_["status"] == "mitigated":
+                    so.update(lane="suppressed_ai", decided_by="tier2")
+                    so["verdicts"].append({"kind": "agent", "actor": f"agent:{verdict.model}", "verdict": "FALSE_POSITIVE",
+                                           "reason_code": verdict.reason_code,
+                                           "evidence": {"inherited_from": fp, "evidence_key": skey, "facts": facts_},
+                                           "gate": {"accepted": True, "lane": "suppressed_ai", "checks": [
+                                               {"gate": "discharge", "ok": True,
+                                                "detail": "same root cause; mitigation re-derived for this finding"}]}})
 
         # Missing-authorization findings are semantic: unless the verifier confirmed one, it is a candidate
         # (its own lane, out of the review queue), so authorization patterns we cannot see never flood triage.
