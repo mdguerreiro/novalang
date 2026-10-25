@@ -273,6 +273,7 @@ class Scanner:
         stats = self._stats(outcome, a0, t1_calls, t1_hits, t2_calls, t2_cost, auto_by_knowledge, time.time() - t0)
         stats["timings"] = {name: round(t - stage_marks[i][1], 2) for i, (name, t) in enumerate(stage_marks[1:])}
         stats.update(handler_reads=reads["read"], read_issues=reads["issues"])
+        stats.update(knn_answers=fr.get("knn", 0))
         stats.update(frontier_questions=fr["questions"], frontier_cached=fr["cached"], frontier_facts=len(fr["facts"]),
                      found_by_frontier=sum(1 for o in outcome.values() if o["finding"].learned
                                            and o["finding"].status in ("confirmed", "undecided")))
@@ -423,6 +424,21 @@ class Scanner:
                 stats["questions"] += 1
                 fresh.append((kind, subj))
 
+            # Cheap pre-oracle first: questions whose closest labelled APIs agree are answered without a model call.
+            still = []
+            for kind, subj in fresh:
+                items = self._knn_answer(kind, subj) if kind in ("sink", "srcapi") else None
+                if items is None:
+                    still.append((kind, subj))
+                    continue
+                stats["knn"] = stats.get("knn", 0) + 1
+                stats["questions"] -= 1
+                for item in items:
+                    item = self._gate_frontier_item(item)
+                    stats["facts"].append(item["id"])
+                    admitted += item["status"] == "active"
+            fresh = still
+
             def ask(q):
                 kind, subj = q
                 return (self._ask_sink(subj, sorted(sinks[subj], key=str), facts) if kind == "sink"
@@ -472,6 +488,39 @@ class Scanner:
                 gate = {**item["gate"], "adds": adds[k], "over_budget": True}
                 self.store.x("UPDATE knowledge SET status='shadow', gate=?, updated_at=? WHERE id=?", json.dumps(gate), time.time(), k)
                 self.store.event("system", "knowledge.shadow", None, k, reason="adds budget", adds=adds[k])
+
+    KNN_PREDS = {"sink": ("sink_api", "not_sink_api"), "srcapi": ("source_api", "not_source_api")}
+
+    def _knn_answer(self, kind: str, api: str) -> list[dict] | None:
+        """Label `api` from its closest already-labelled APIs (k=3, unanimous, similar enough), or None."""
+        from .learn.neighbors import NeighborOracle
+        if os.environ.get("SENTINEL_KNN", "1") == "0":
+            return None
+        pos, neg = self.KNN_PREDS[kind]
+        rows = self.store.q("SELECT pred, args FROM knowledge WHERE pred IN (?, ?) AND status != 'retired' "
+                            "AND origin NOT LIKE 'knn:%'", pos, neg)  # learn only from model/human answers
+        by_api: dict[str, set] = defaultdict(set)
+        for r in rows:
+            a = r["args"]
+            by_api[a[0]].add(json.dumps([a[1], a[2]]) if r["pred"] == "sink_api" else
+                             (json.dumps(["*", a[1]]) if r["pred"] == "source_api" else "no"))
+        data = [(api_, "|".join(sorted(v))) for api_, v in by_api.items()]
+        if len(data) < 20:
+            return None
+        pred = NeighborOracle(k=3, min_sim=0.45).fit(data).predict(api)
+        if pred is None:
+            return None
+        label, sim, nbrs = pred
+        origin = f"knn:{','.join(nbrs)}"
+        why = f"Labelled like its closest known APIs: {', '.join(nbrs)}."
+        if label == "no":
+            return [self.ks.propose(neg, [api], "global", None, None, origin, round(sim, 2), why)]
+        out = []
+        for part in label.split("|"):
+            a1, a2 = json.loads(part)
+            args = [api, a1, a2] if pos == "sink_api" else [api, a2]
+            out.append(self.ks.propose(pos, args, "global", None, None, origin, round(sim, 2), why))
+        return out
 
     def _asked_before(self, kind: str, subject) -> bool:
         """Asked this oracle (model) before, whatever the answer was. A new model asks again."""

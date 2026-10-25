@@ -152,3 +152,27 @@ def test_no_framework_knowledge_still_finds_everything(monkeypatch):
     finally:
         monkeypatch.delenv("SENTINEL_SPECS")
         importlib.reload(ss)
+
+
+def test_neighbor_preoracle_answers_like_apis_and_abstains_otherwise():
+    from sentinel.learn.neighbors import NeighborOracle
+    data = [(f"lib{i}.db.read_sql", '["0", "sqli"]') for i in range(5)] + \
+           [(f"lib{i}.text.strip_html", "no") for i in range(5)] + [(f"x{i}.util.format_date", "no") for i in range(15)]
+    o = NeighborOracle(k=3, min_sim=0.45).fit(data)
+    label, sim, nbrs = o.predict("newlib.db.read_sql")
+    assert label == '["0", "sqli"]' and len(nbrs) == 3
+    assert o.predict("totally.unrelated.thing") is None  # no confident unanimous neighbourhood: ask the LLM
+
+
+def test_frontier_uses_preoracle_before_the_model():
+    from sentinel.eval import fresh_scanner
+    sc = fresh_scanner(repos=["acme-reports"])
+    for i in range(25):  # prior answers from other customers/repos
+        sc.ks.propose("not_sink_api", [f"vendor{i}.metrics.emit_counter"], "global", None, None, "oracle:m", 0.9, "r")
+    for i in range(3):
+        sc.ks.propose("sink_api", [f"vendor{i}.sql.read_sql", 0, "sqli"], "global", None, None, "oracle:m", 0.95, "r")
+    asked = []
+    inner = sc.oracle.classify_sink
+    sc.oracle.classify_sink = lambda api, args, usage: asked.append(api) or inner(api, args, usage)
+    stats = sc.scan("acme-reports")
+    assert stats["knn_answers"] >= 1 and "pandas.read_sql" not in asked
