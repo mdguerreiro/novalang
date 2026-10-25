@@ -17,3 +17,18 @@ def test_rescan_reuses_agent_verdicts_and_tags_trigger():
     assert sc.store.one("SELECT COUNT(*) AS n FROM verdicts WHERE kind='agent'")["n"] == n_verdicts
     # Cached outcomes keep their lanes.
     assert second["lanes"] == first["lanes"]
+
+
+def test_tier1_cache_respects_knowledge_scope():
+    """A repo-scoped fact learned on one repository must never decide findings in another one."""
+    from sentinel.eval import onboard
+    sc = fresh_scanner(repos=["acme-billing"])
+    item = sc.ks.propose("sanitizer_api", ["acme_common.db.quote_sql", "sqli"], "repo", "acme", "acme-billing",
+                         "human:tester", 1.0, "billing only")
+    sc.ks.set_status(item["id"], "active", "human:tester")
+    onboard(sc, "acme-admin")
+    sc.scan("acme-admin")
+    row = sc.store.one("SELECT * FROM findings WHERE repo_id='acme-admin' AND source_fn LIKE '%.user_lookup' AND cls='sqli'")
+    assert row is not None
+    used = {kid for m in row["data"].get("mitigations", []) for kid in m.get("knowledge", [])}
+    assert item["id"] not in used

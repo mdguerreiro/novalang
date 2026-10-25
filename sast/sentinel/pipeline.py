@@ -9,15 +9,16 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 
-from .agent.interfaces import SpecOracle, VerificationCase, Verifier
-from .agent.mock import MockSpecOracle, MockVerifier
+from .agent.interfaces import RuleContext, RuleSynthesizer, SpecOracle, VerificationCase, Verifier
+from .agent.mock import MockRuleSynthesizer, MockSpecOracle, MockVerifier, _scope_for
 from .agent.orchestrator import Tools, gate
 from .engine.analyze import CWE, Analysis, Finding, KnowledgeFact, analyze
 from .engine.datalog import Program
 from .extract.python_facts import Facts, content_hash, extract
 from .extract.semgrep_specs import SpecMatch, match_specs
 from .learn import bayes
-from .learn.knowledge import KnowledgeService, Policy
+from .learn.knowledge import SPEC_RULE, KnowledgeService, Policy, gate_passed
+from .learn.rules import RepoView, RuleGate, hides_body, match_rules, parse_rule
 from .store.db import Store
 
 LANES = ("review", "confirmed", "suppressed", "suppressed_ai", "test")
@@ -31,31 +32,61 @@ def make_neural() -> tuple[SpecOracle, Verifier]:
     return MockSpecOracle(), MockVerifier()
 
 
+def make_synth() -> RuleSynthesizer:
+    if os.environ.get("SENTINEL_LLM") == "claude":
+        from .agent.claude import ClaudeRuleSynthesizer
+        return ClaudeRuleSynthesizer()
+    return MockRuleSynthesizer()
+
+
 class Scanner:
     def __init__(self, store: Store, oracle: SpecOracle | None = None, verifier: Verifier | None = None,
-                 policy: Policy | None = None):
+                 policy: Policy | None = None, synth: RuleSynthesizer | None = None):
         self.store = store
         default_oracle, default_verifier = make_neural()
         self.oracle = oracle or default_oracle
         self.verifier = verifier or default_verifier
+        self.synth = synth or make_synth()
         self.ks = KnowledgeService(store, policy)
+        self.rule_gate = RuleGate(self.ks.policy)
         self.program = Program()
         self._inputs: dict[str, tuple[Facts, list[SpecMatch]]] = {}
+        self._rule_matches: dict[tuple[str, str, str], list[SpecMatch]] = {}  # (repo, rule item, yaml hash) -> matches
         self.last: dict[str, Analysis] = {}
 
     # ── inputs ───────────────────────────────────────────────────────────────────────────
     def inputs(self, repo_id: str, refresh: bool = False) -> tuple[Facts, list[SpecMatch]]:
+        """Facts and curated-pack matches. Matches of learned spec rules are added per analysis by
+        `learned_matches`, cached on the exact rule set (item id + YAML), so a change to the active or
+        shadow rules re-runs Semgrep for the new rules only."""
         if refresh or repo_id not in self._inputs:
             root = Path(self.store.repo(repo_id)["root"])
             facts = extract(root)
             self._inputs[repo_id] = (facts, match_specs(root, facts))
+            self._rule_matches = {k: v for k, v in self._rule_matches.items() if k[0] != repo_id}
         return self._inputs[repo_id]
 
+    def learned_matches(self, repo_id: str, items: list[dict]) -> list[SpecMatch]:
+        facts, _ = self.inputs(repo_id)
+        key = lambda k: (repo_id, k["id"], hashlib.sha1(k["payload"]["yaml"].encode()).hexdigest())
+        missing = [k for k in items if key(k) not in self._rule_matches]
+        if missing:
+            try:
+                got = match_rules(Path(self.store.repo(repo_id)["root"]), facts, missing)
+            except RuntimeError as e:  # a rule that passed its gates should never break a scan; be safe anyway
+                self.store.event("system", "rules.match_failed", None, None, repo=repo_id, error=str(e)[:500])
+                got = []
+            for k in missing:
+                self._rule_matches[key(k)] = [m for m in got if m.knowledge == k["id"]]
+        return [m for k in items for m in self._rule_matches[key(k)]]
+
     def analyze_repo(self, repo_id: str, extra: list[KnowledgeFact] | None = None,
-                     statuses: tuple[str, ...] = ("active",)) -> Analysis:
+                     statuses: tuple[str, ...] = ("active",), extra_matches: list[SpecMatch] | None = None) -> Analysis:
         repo = self.store.repo(repo_id)
         facts, matches = self.inputs(repo_id)
         kn = self.ks.engine_facts(repo["org_id"], repo_id, statuses) + list(extra or [])
+        rules = self.ks.spec_rules(repo["org_id"], repo_id, statuses)
+        matches = matches + (self.learned_matches(repo_id, rules) if rules else []) + list(extra_matches or [])
         return analyze(facts, matches, kn, self.program)
 
     # ── the scan ─────────────────────────────────────────────────────────────────────────
@@ -75,7 +106,7 @@ class Scanner:
             lane = {"confirmed": "confirmed", "mitigated": "suppressed", "test_only": "test"}.get(f.status, "review")
             outcome[f.fingerprint] = {"finding": f, "lane": lane, "decided_by": "engine" if lane != "review" else None,
                                       "verdicts": []}
-        learned = {k.kid for k in a0.knowledge if not k.kid.startswith("K-cur")}
+        learned = {k.kid for k in a0.knowledge if not k.kid.startswith("K-cur")} | {m.knowledge for m in a0.matches if m.knowledge}
         auto_by_knowledge = [f for f in a0.findings if f.status == "mitigated"
                              and any(set(m["knowledge"]) & learned for m in f.mitigations)]
 
@@ -131,17 +162,24 @@ class Scanner:
                 o["proposals"] = verdict.proposed
 
         # Shadow evaluation: what would candidate/shadow knowledge change? (shown, never applied)
+        # Shadow spec rules are matched the same way; candidate rules never run (they failed a gate, and
+        # a rule Semgrep rejects must not reach a scan).
         shadow_items = self.ks.engine_facts(org, repo_id, ("shadow", "candidate"))
+        shadow_rules = self.ks.spec_rules(org, repo_id, ("shadow",))
         shadow_by: dict[str, str] = {}
-        if shadow_items:
-            a_sh = self.analyze_repo(repo_id, shadow_items)
-            sh_ids = {k.kid for k in shadow_items}
+        shadow_new: list[dict] = []  # findings a shadow sink/source rule would add
+        if shadow_items or shadow_rules:
+            a_sh = self.analyze_repo(repo_id, shadow_items, extra_matches=self.learned_matches(repo_id, shadow_rules))
+            sh_ids = {k.kid for k in shadow_items} | {k["id"] for k in shadow_rules}
             for g in a_sh.findings:
                 o = outcome.get(g.fingerprint)
                 if o and o["lane"] in ("review", "confirmed") and g.status == "mitigated":
                     kids = sorted({kid for m in g.mitigations for kid in m["knowledge"]} & sh_ids)
                     if kids:
                         shadow_by[g.fingerprint] = kids[0]
+                elif o is None and g.status in ("confirmed", "undecided") and set(g.spec_knowledge) & sh_ids:
+                    shadow_new.append({"knowledge": sorted(set(g.spec_knowledge) & sh_ids)[0], "fingerprint": g.fingerprint,
+                                       "cls": g.cls, "source_fn": g.source_fn, "file": g.file, "line": g.line})
 
         # Persist findings, verdicts and knowledge proposals.
         seen_ids = []
@@ -161,6 +199,15 @@ class Scanner:
                         item = self.ks.propose(p.pred, p.args, p.scope, org, repo_id, v["actor"],
                                                v["evidence"]["confidence"], p.rationale, fid, vid)
                         self._gate_item(item["id"])
+                    # Rule synthesis from accepted agent verdicts (machine origin: shadow until approved/corroborated).
+                    f_: Finding = o["finding"]
+                    view = _finding_view(f_)
+                    trig = {"kind": "agent_verdict", "by": v["actor"], "verdict": v["verdict"]}
+                    if v["verdict"] == "TRUE_POSITIVE":
+                        self.learn_sink_rule(repo_id, view, fid, vid, trig, a1)
+                    for p in o.get("proposals", []):
+                        if p.pred == "sanitizer_api" and p.scope in ("repo", "org"):
+                            self.learn_sanitizer_rule(repo_id, view, p.args[0], p.args[1], p.scope, fid, vid, trig, a1)
         if seen_ids:
             marks = ",".join("?" * len(seen_ids))
             self.store.x(f"UPDATE findings SET is_open=0 WHERE repo_id=? AND id NOT IN ({marks})", repo_id, *seen_ids)
@@ -170,7 +217,9 @@ class Scanner:
         self.rank(repo_id)
         self.last[repo_id] = a1
         stats = self._stats(outcome, a0, t1_calls, t1_hits, t2_calls, t2_cost, auto_by_knowledge, time.time() - t0)
-        stats.update(trigger=trigger, tier2_cache_hits=t2_hits)
+        stats.update(trigger=trigger, tier2_cache_hits=t2_hits,
+                     found_by_learned_rules=sum(1 for o in outcome.values() if o["finding"].spec_knowledge),
+                     shadow_rule_findings=shadow_new)
         self.store.x("UPDATE scans SET finished_at=?, stats=? WHERE id=?", time.time(), json.dumps(stats), scan_id)
         self.store.event("system", "scan.completed", None, None, repo=repo_id, scan=scan_id, **{k: v for k, v in stats.items() if k != "lanes"})
         return {"scan_id": scan_id, **stats}
@@ -197,7 +246,7 @@ class Scanner:
         todo = []
         for kind, subject in questions:
             preds = ("sanitizer_api", "propagator_api") if kind == "unknown_api" else ("safe_pred", "not_safe_pred")
-            cached = [k for p in preds for k in self._cached(p, subject)]
+            cached = [k for p in preds for k in self._cached(p, subject, org, repo_id)]
             if cached:
                 hits += 1
                 out += [KnowledgeFact(k["id"], k["pred"], tuple(k["args"])) for k in cached]
@@ -226,9 +275,11 @@ class Scanner:
                     admit(self.ks.propose("not_safe_pred", [subject], scope, org, repo_id, origin, label.confidence, label.rationale))
         return out, len(todo), hits
 
-    def _cached(self, pred: str, subject: str) -> list[dict]:
-        rows = self.store.q("SELECT * FROM knowledge WHERE pred=? AND json_extract(args, '$[0]')=? AND status != 'retired'",
-                            pred, subject)
+    def _cached(self, pred: str, subject: str, org: str, repo_id: str) -> list[dict]:
+        """Earlier answers for the same question, visible from this repo (global, this org, or this repo)."""
+        rows = self.store.q("SELECT * FROM knowledge WHERE pred=? AND json_extract(args, '$[0]')=? AND status != 'retired' "
+                            "AND (scope='global' OR (scope='org' AND org_id=?) OR (scope='repo' AND repo_id=?))",
+                            pred, subject, org, repo_id)
         return [r for r in rows if _gate_ok(r)]
 
     def _oracle_verdict(self, g: Finding, kids: set[str], verdict: str) -> dict:
@@ -257,6 +308,17 @@ class Scanner:
 
     def preview(self, item: dict) -> dict:
         repos = self.repos_in_scope(item)
+        if item["pred"] == SPEC_RULE:
+            origin = (item.get("payload") or {}).get("origin_repo")
+            if origin and origin not in repos and self.store.repo(origin):
+                repos.append(origin)  # the generalization gate checks the rule against where it came from
+            views = {r: RepoView(Path(self.store.repo(r)["root"]), self.inputs(r)[0], lambda r=r: self.analyze_repo(r),
+                                 lambda ms, r=r: self.analyze_repo(r, extra_matches=ms)) for r in repos}
+            report = self.rule_gate.gate(item, views, self.confirmed_fps())
+            yaml_hash = hashlib.sha1(item["payload"]["yaml"].encode()).hexdigest()
+            for r, ms in self.rule_gate.repo_matches.pop(item["id"], {}).items():
+                self._rule_matches[(r, item["id"], yaml_hash)] = [] if hides_body(item, views[r].facts) else ms
+            return report
         analyses = {r: self.analyze_repo(r) for r in repos}
         return self.ks.gate(item, analyses, self.confirmed_fps(), lambda r, extra: self.analyze_repo(r, extra))
 
@@ -266,12 +328,100 @@ class Scanner:
             return item
         return self.ks.apply_gate(kid, self.preview(item), approved_by)
 
+    # ── spec rule synthesis ──────────────────────────────────────────────────────────────
+    # A finding is passed as a "view": {fingerprint, cls, title, source_fn, sink_fn, path: [step dicts]},
+    # which both a fresh engine Finding (_finding_view) and a persisted finding row (data.path) provide.
+    def learn_sink_rule(self, repo_id: str, view: dict, finding_id: int | None, verdict_id: int | None,
+                        trigger: dict, analysis: Analysis | None = None) -> dict | None:
+        """A confirmed flow reaches its sink inside a shared helper: propose a sink rule for the helper,
+        focused on the parameter the flow enters by. Repos that install the package without its source
+        can then see the sink at every call site."""
+        facts, _ = self.inputs(repo_id)
+        helper = view["sink_fn"]
+        if helper == view["source_fn"] or helper not in facts.functions or _scope_for(helper) != "org":
+            return None  # app-local helper: every repo that calls it also contains its body
+        path = view["path"]
+        idx = next((i for i in range(len(path) - 1, -1, -1) if path[i]["kind"] == "param" and path[i]["fn"] == helper), None)
+        index = next((i for fn, i, p in facts.params if fn == helper and idx is not None and p == path[idx]["node"]), None)
+        if index is None:
+            return None
+        params = facts.functions[helper].params
+        site = path[idx - 1] if idx > 0 else None
+        ctx = RuleContext("sink", view["cls"], helper, repo_id, index, params[index] if index < len(params) else None,
+                          self._source_of(facts, helper), self._site(facts, site), _brief(view))
+        return self._synthesize(ctx, "org", finding_id, verdict_id, trigger, analysis)
+
+    def learn_sanitizer_rule(self, repo_id: str, view: dict, fn: str, cls: str, scope: str, finding_id: int | None,
+                             verdict_id: int | None, trigger: dict, analysis: Analysis | None = None) -> dict | None:
+        """`fn` was judged to sanitize `cls` (human triage at org scope, or a gated agent FP verdict):
+        propose a sanitizer rule for it, alongside the sanitizer_api fact."""
+        if scope not in ("repo", "org"):
+            return None
+        facts, _ = self.inputs(repo_id)
+        on_path = {st["node"] for st in view.get("path", [])}
+        nodes = sorted((n for n in facts.nodes.values() if n.callee == fn),
+                       key=lambda n: (n.id not in on_path, n.fn != view.get("source_fn"), n.file, n.l1))
+        site = {"file": nodes[0].file, "line": nodes[0].l1} if nodes else None
+        ctx = RuleContext("sanitizer", cls, fn, repo_id, helper_source=self._source_of(facts, fn),
+                          site=self._site(facts, site), finding=_brief(view))
+        return self._synthesize(ctx, scope, finding_id, verdict_id, trigger, analysis)
+
+    def submit_rule(self, repo_id: str, yaml_text: str, role: str, cls: str | None, scope: str, actor: str,
+                    vulnerable_example: str, fixed_example: str, rationale: str = "", target: str | None = None,
+                    site: dict | None = None) -> dict:
+        """A rule written by a human (API / workbench). Human origin: it activates once every gate passes."""
+        repo = self.store.repo(repo_id)
+        rule, _ = parse_rule(yaml_text)
+        payload = {"yaml": yaml_text, "role": role, "cls": cls, "rule_id": (rule or {}).get("id") or f"human.{role}.{cls}",
+                   "target": target, "vulnerable_example": vulnerable_example, "fixed_example": fixed_example,
+                   "rationale": rationale, "synthesizer": None, "origin_repo": repo_id, "site": site,
+                   "trigger": {"kind": "authored", "by": actor}}
+        item = self.ks.propose_rule(payload, scope, repo["org_id"], repo_id, actor, 1.0, rationale or "authored rule")
+        return self._gate_item(item["id"])
+
+    def _synthesize(self, ctx: RuleContext, scope: str, finding_id: int | None, verdict_id: int | None, trigger: dict,
+                    analysis: Analysis | None) -> dict | None:
+        repo = self.store.repo(ctx.repo)
+        facts, _ = self.inputs(ctx.repo)
+        a = analysis or self.last.get(ctx.repo) or self.analyze_repo(ctx.repo)
+        tools = Tools(facts, a, lambda extra: self.analyze_repo(ctx.repo, extra))
+        proposals = self.synth.propose(ctx, tools)
+        if not proposals:
+            return None
+        prop = proposals[0]
+        rule, _ = parse_rule(prop.yaml)
+        payload = {"yaml": prop.yaml, "role": prop.role, "cls": prop.cls,
+                   "rule_id": (rule or {}).get("id") or f"invalid.{ctx.role}.{ctx.cls}.{ctx.target}", "target": ctx.target,
+                   "vulnerable_example": prop.vulnerable_example, "fixed_example": prop.fixed_example,
+                   "rationale": prop.rationale, "synthesizer": prop.model or self.synth.name, "origin_repo": ctx.repo,
+                   "site": {k: ctx.site[k] for k in ("file", "line")} if ctx.site else None, "trigger": trigger}
+        item = self.ks.propose_rule(payload, scope, repo["org_id"], ctx.repo, f"agent:{self.synth.name}", 0.9,
+                                    prop.rationale, finding_id, verdict_id)
+        gated = self._gate_item(item["id"])
+        return {**gated, "newly_active": item["status"] != "active" and gated["status"] == "active"}
+
+    @staticmethod
+    def _source_of(facts: Facts, qname: str) -> str:
+        fn = facts.functions.get(qname)
+        if fn is None:
+            return ""
+        return "\n".join(facts.files.get(fn.file, "").splitlines()[fn.line - 1: fn.end_line])
+
+    @staticmethod
+    def _site(facts: Facts, step: dict | None) -> dict | None:
+        if not step:
+            return None
+        lines = facts.files.get(step["file"], "").splitlines()
+        code = lines[step["line"] - 1].strip() if 0 < step["line"] <= len(lines) else ""
+        return {"file": step["file"], "line": step["line"], "code": code}
+
     # ── persistence helpers ──────────────────────────────────────────────────────────────
     def _upsert_finding(self, repo_id: str, scan_id: int, o: dict, shadow: str | None) -> int:
         f: Finding = o["finding"]
         data = {"path": [asdict(s) for s in f.path], "proof": f.proof, "mitigations": f.mitigations,
                 "assumptions": f.assumptions, "source_rule": f.source_rule, "sink_rule": f.sink_rule,
-                "decided_by": o.get("decided_by"), "source_node": f.source, "sink_node": f.sink}
+                "decided_by": o.get("decided_by"), "source_node": f.source, "sink_node": f.sink,
+                "spec_knowledge": f.spec_knowledge}
         audit = 1 if o["lane"] == "suppressed_ai" and (int(hashlib.sha1(f.fingerprint.encode()).hexdigest(), 16) % 1000) < AUDIT_RATE * 1000 else 0
         group = _group_key(f)
         existing = self.store.one("SELECT id, triage_state FROM findings WHERE repo_id=? AND fingerprint=?", repo_id, f.fingerprint)
@@ -352,9 +502,17 @@ def _group_key(f: Finding) -> str:
     return f"route:{f.source_fn}:{f.cls}"
 
 
+def _finding_view(f: Finding) -> dict:
+    return {"fingerprint": f.fingerprint, "cls": f.cls, "title": f.title, "source_fn": f.source_fn, "sink_fn": f.sink_fn,
+            "path": [asdict(s) for s in f.path]}
+
+
+def _brief(view: dict) -> dict:
+    return {k: view.get(k) for k in ("fingerprint", "title", "source_fn", "sink_fn")}
+
+
 def _gate_ok(item: dict) -> bool:
-    g = item.get("gate") or {}
-    return g.get("sanity", "pass") == "pass" and g.get("canary", "pass") == "pass"
+    return gate_passed(item.get("gate") or {})
 
 
 def _evidence(row: dict) -> float | None:

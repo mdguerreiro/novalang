@@ -11,6 +11,8 @@ Items are activated only through gates:
   3. impact       large blast radius -> shadow + human approval
   4. scope rules  human-origin may activate at repo/org; machine-origin needs corroboration;
                   global only for public-library facts, never customer code
+Learned Semgrep spec rules (pred `spec_rule`, ids R-NNN) share this lifecycle and provenance; their
+gates (Semgrep validity, patch differential, generalization, canaries + FP budget) live in rules.py.
 """
 from __future__ import annotations
 
@@ -31,6 +33,7 @@ PREDICATES = {  # pred -> arity
     "dead_fn": 1, "internal_only": 1, "not_sanitizer": 1, "weak_kind": 1,
 }
 SUPPRESSING = {"sanitizer_api", "safe_pred", "safe_type", "dead_fn", "internal_only"}
+SPEC_RULE = "spec_rule"  # a learned Semgrep spec rule (learn/rules.py), not a Datalog fact
 CANARY_ROOT = Path(__file__).resolve().parents[2] / "canaries"
 
 
@@ -39,6 +42,14 @@ class Policy:
     corroborations_to_activate: int = 3  # independent machine verdicts before a machine item goes active
     impact_budget: int = 10  # max findings an item may suppress without explicit approval
     machine_global_allowed: bool = True  # oracle facts about public libraries may become global (still gated)
+    rule_fp_budget: int = 2  # max new findings a sink/source spec rule may add on the reference corpora
+
+
+GATES = ("sanity", "canary", "differential", "generalization")  # every one must read "pass" (spec rules use all four)
+
+
+def gate_passed(report: dict) -> bool:
+    return all(report.get(g, "pass") == "pass" for g in GATES)
 
 
 @lru_cache(maxsize=1)
@@ -58,7 +69,11 @@ class KnowledgeService:
 
     # ── reading ──────────────────────────────────────────────────────────────────────────
     def engine_facts(self, org_id: str, repo_id: str, statuses: tuple[str, ...] = ("active",)) -> list[KnowledgeFact]:
-        return [to_fact(k) for k in self.store.knowledge_in_scope(org_id, repo_id, statuses)]
+        return [to_fact(k) for k in self.store.knowledge_in_scope(org_id, repo_id, statuses) if k["pred"] != SPEC_RULE]
+
+    def spec_rules(self, org_id: str, repo_id: str, statuses: tuple[str, ...] = ("active",)) -> list[dict]:
+        """Learned Semgrep spec rules in scope. They reach the engine as spec matches, not as facts."""
+        return [k for k in self.store.knowledge_in_scope(org_id, repo_id, statuses) if k["pred"] == SPEC_RULE]
 
     def lookup(self, pred: str, args: list) -> dict | None:
         """Cache lookup across all scopes (used to avoid re-asking the oracle the same question)."""
@@ -87,6 +102,36 @@ class KnowledgeService:
                          kid, scope, org_id, repo_id, pred, json.dumps(args), "candidate", origin, confidence, rationale,
                          1, now, now)
             self.store.event(origin, "knowledge.proposed", finding_id, kid, pred=pred, args=args, scope=scope)
+        if finding_id is not None or verdict_id is not None:
+            self.store.link(kid, "created_from" if not existing else "corroborated_by", finding_id, verdict_id)
+        return self.store.knowledge(kid)
+
+    def propose_rule(self, payload: dict, scope: str, org_id: str | None, repo_id: str | None, origin: str,
+                     confidence: float, rationale: str, finding_id: int | None = None,
+                     verdict_id: int | None = None) -> dict:
+        """A learned Semgrep spec rule. pred=spec_rule, args=[rule id, role, cls]; the rule YAML, its
+        validation pair and the originating site live in `payload`. Same lifecycle and provenance as facts;
+        the same rule proposed again (same id, scope) is corroboration, not a new item."""
+        if payload.get("role") not in ("source", "sink", "sanitizer"):
+            raise ValueError(f"unknown spec rule role {payload.get('role')}")
+        if scope == "global":
+            org_id = repo_id = None
+        elif scope == "org":
+            repo_id = None
+        args = [payload["rule_id"], payload["role"], payload.get("cls")]
+        existing = self.store.find_knowledge(SPEC_RULE, args, scope, org_id, repo_id)
+        now = time.time()
+        if existing:
+            if finding_id is not None or verdict_id is not None:
+                self.store.x("UPDATE knowledge SET corroborations=corroborations+1, updated_at=? WHERE id=?", now, existing["id"])
+            kid = existing["id"]
+        else:
+            kid = self.store.next_knowledge_id("R")
+            self.store.x("INSERT INTO knowledge(id, scope, org_id, repo_id, pred, args, status, origin, confidence, rationale, "
+                         "corroborations, created_at, updated_at, payload) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                         kid, scope, org_id, repo_id, SPEC_RULE, json.dumps(args), "candidate", origin, confidence, rationale,
+                         1, now, now, json.dumps(payload))
+            self.store.event(origin, "knowledge.proposed", finding_id, kid, pred=SPEC_RULE, args=args, scope=scope)
         if finding_id is not None or verdict_id is not None:
             self.store.link(kid, "created_from" if not existing else "corroborated_by", finding_id, verdict_id)
         return self.store.knowledge(kid)
@@ -131,12 +176,14 @@ class KnowledgeService:
         return report
 
     def decide_status(self, item: dict, report: dict, approved_by: str | None = None) -> str:
-        if report["sanity"] != "pass" or report["canary"] != "pass":
+        if not gate_passed(report):
             return "candidate"  # blocked; stays visible in the workbench with its failing gate
         human = item["origin"].startswith("human:") or approved_by is not None
         if human:
             return "shadow" if report["over_budget"] and approved_by is None else "active"
-        if item["pred"] not in SUPPRESSING:
+        # Machine-written spec rules change what the engine sees everywhere in scope, in both directions
+        # (a sink rule adds findings, a sanitizer rule hides them): approval or corroboration first.
+        if item["pred"] not in SUPPRESSING and item["pred"] != SPEC_RULE:
             # Knowledge that only *removes an assumption toward reporting* (not_sanitizer, propagator_api,
             # not_safe_pred) can never hide a vulnerability, so it activates once its gates pass.
             return "active"
@@ -175,8 +222,8 @@ class KnowledgeService:
         item = self.store.knowledge(kid)
         if item is None:
             raise KeyError(kid)
-        if status == "active" and (item.get("gate") or {}).get("canary", "pass") != "pass":
-            raise ValueError(f"{kid} failed its canary gate and cannot be activated")
+        if status == "active" and not gate_passed(item.get("gate") or {}):
+            raise ValueError(f"{kid} failed its gates and cannot be activated")
         self.store.x("UPDATE knowledge SET status=?, updated_at=? WHERE id=?", status, time.time(), kid)
         self.store.event(actor, f"knowledge.{status}", None, kid, previous=item["status"])
         return self.store.knowledge(kid)

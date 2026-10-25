@@ -1,0 +1,397 @@
+{
+  "stages": {
+    "S0 Semgrep OSS baseline": {
+      "tp": 9,
+      "fp": 5,
+      "fn": 5,
+      "precision": 0.643,
+      "recall": 0.643,
+      "missed": [
+        "acme-billing/archive/cmdi",
+        "acme-billing/list_invoices/sqli",
+        "acme-billing/webhook_test/ssrf",
+        "acme-shop/link_preview/ssrf",
+        "acme-shop/search/sqli"
+      ],
+      "false_alarms": [
+        "acme-billing/invoice_pdf/path",
+        "acme-billing/statements/path",
+        "acme-shop/legacy_debug_console/code",
+        "acme-shop/test_replay_fixture/cmdi",
+        "acme-shop/user_profile/sqli"
+      ],
+      "unlabeled": []
+    },
+    "S1 Tier 0 engine": {
+      "tp": 14,
+      "fp": 8,
+      "fn": 0,
+      "precision": 0.636,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [
+        "acme-billing/invoice_by_plan/sqli",
+        "acme-billing/invoice_pdf/cmdi",
+        "acme-billing/invoice_pdf/path",
+        "acme-billing/invoice_search/sqli",
+        "acme-shop/category/sqli",
+        "acme-shop/coupon/sqli",
+        "acme-shop/legacy_debug_console/code",
+        "acme-shop/order_lookup/sqli"
+      ],
+      "unlabeled": []
+    },
+    "S2 + Tier 1 oracle": {
+      "tp": 14,
+      "fp": 3,
+      "fn": 0,
+      "precision": 0.824,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [
+        "acme-billing/invoice_search/sqli",
+        "acme-shop/legacy_debug_console/code",
+        "acme-shop/order_lookup/sqli"
+      ],
+      "unlabeled": []
+    },
+    "S3 + Tier 2 agent (gated)": {
+      "tp": 14,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [],
+      "unlabeled": []
+    }
+  },
+  "flywheel": {
+    "acme-shop scan 1": {
+      "tier0_rate": 0.8,
+      "auto_rate": 1.0,
+      "tier1_calls": 3,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 2,
+      "resolved_by_learned_knowledge": 0,
+      "lanes": {
+        "review": 0,
+        "confirmed": 9,
+        "suppressed": 6,
+        "suppressed_ai": 4,
+        "test": 1
+      }
+    },
+    "appsec review of acme-shop": {
+      "triaged": 1,
+      "approved": [
+        "K-001",
+        "K-002",
+        "K-003",
+        "K-004",
+        "K-005",
+        "K-006",
+        "K-007",
+        "K-008",
+        "K-009",
+        "K-010",
+        "K-011",
+        "K-012",
+        "K-013",
+        "K-014",
+        "K-015",
+        "K-016",
+        "K-017",
+        "K-018",
+        "K-019"
+      ],
+      "audited": 1
+    },
+    "acme-shop scan 2 (after review)": {
+      "tier0_rate": 1.0,
+      "auto_rate": 1.0,
+      "tier1_calls": 0,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 0,
+      "resolved_by_learned_knowledge": 4,
+      "lanes": {
+        "review": 0,
+        "confirmed": 9,
+        "suppressed": 10,
+        "suppressed_ai": 0,
+        "test": 1
+      }
+    },
+    "acme-billing cold (no shop knowledge)": {
+      "tier0_rate": 0.455,
+      "auto_rate": 0.909,
+      "tier1_calls": 1,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 3,
+      "resolved_by_learned_knowledge": 0,
+      "lanes": {
+        "review": 1,
+        "confirmed": 5,
+        "suppressed": 2,
+        "suppressed_ai": 3,
+        "test": 0
+      }
+    },
+    "acme-billing warm (after shop review)": {
+      "tier0_rate": 0.455,
+      "auto_rate": 0.909,
+      "tier1_calls": 1,
+      "tier1_cache_hits": 0,
+      "tier2_calls": 3,
+      "resolved_by_learned_knowledge": 0,
+      "lanes": {
+        "review": 1,
+        "confirmed": 5,
+        "suppressed": 2,
+        "suppressed_ai": 3,
+        "test": 0
+      }
+    },
+    "acme-billing warm precision/recall": {
+      "tp": 5,
+      "fp": 1,
+      "fn": 0,
+      "precision": 0.833,
+      "recall": 1.0,
+      "missed": [],
+      "false_alarms": [
+        "acme-billing/invoice_search/sqli"
+      ],
+      "unlabeled": []
+    },
+    "active learned knowledge": [
+      {
+        "id": "K-001",
+        "pred": "sanitizer_api",
+        "args": [
+          "hashlib.sha256().hexdigest",
+          "sqli"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-002",
+        "pred": "sanitizer_api",
+        "args": [
+          "hashlib.sha256().hexdigest",
+          "cmdi"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-003",
+        "pred": "sanitizer_api",
+        "args": [
+          "hashlib.sha256().hexdigest",
+          "path"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-004",
+        "pred": "sanitizer_api",
+        "args": [
+          "hashlib.sha256().hexdigest",
+          "xss"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-005",
+        "pred": "sanitizer_api",
+        "args": [
+          "hashlib.sha256().hexdigest",
+          "ssti"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-006",
+        "pred": "sanitizer_api",
+        "args": [
+          "hashlib.sha256().hexdigest",
+          "ssrf"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-007",
+        "pred": "sanitizer_api",
+        "args": [
+          "hashlib.sha256().hexdigest",
+          "code"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-008",
+        "pred": "sanitizer_api",
+        "args": [
+          "hashlib.sha256().hexdigest",
+          "redirect"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-009",
+        "pred": "sanitizer_api",
+        "args": [
+          "hashlib.sha256().hexdigest",
+          "deser"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-010",
+        "pred": "sanitizer_api",
+        "args": [
+          "hashlib.sha256",
+          "all"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-011",
+        "pred": "sanitizer_api",
+        "args": [
+          "slugify.slugify",
+          "path"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-012",
+        "pred": "sanitizer_api",
+        "args": [
+          "slugify.slugify",
+          "xss"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-013",
+        "pred": "sanitizer_api",
+        "args": [
+          "slugify.slugify",
+          "sqli"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-014",
+        "pred": "sanitizer_api",
+        "args": [
+          "slugify.slugify",
+          "cmdi"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-015",
+        "pred": "sanitizer_api",
+        "args": [
+          "slugify.slugify",
+          "ssti"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-016",
+        "pred": "sanitizer_api",
+        "args": [
+          "slugify.slugify",
+          "redirect"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-017",
+        "pred": "sanitizer_api",
+        "args": [
+          "slugify.slugify",
+          "code"
+        ],
+        "scope": "global",
+        "origin": "oracle:claude-oracle:claude-opus-5-5"
+      },
+      {
+        "id": "K-018",
+        "pred": "sanitizer_api",
+        "args": [
+          "acme_common.db.quote_sql",
+          "sqli"
+        ],
+        "scope": "repo",
+        "origin": "agent:claude-verifier:claude-opus-5-5"
+      },
+      {
+        "id": "K-019",
+        "pred": "dead_fn",
+        "args": [
+          "shop.app.legacy_debug_console"
+        ],
+        "scope": "repo",
+        "origin": "agent:claude-verifier:claude-opus-5-5"
+      },
+      {
+        "id": "K-029",
+        "pred": "not_sanitizer",
+        "args": [
+          "billing.invoices._customer_filter"
+        ],
+        "scope": "repo",
+        "origin": "agent:claude-verifier:claude-opus-5-5"
+      },
+      {
+        "id": "K-030",
+        "pred": "not_sanitizer",
+        "args": [
+          "billing.invoices.clean_filename"
+        ],
+        "scope": "repo",
+        "origin": "agent:claude-verifier:claude-opus-5-5"
+      }
+    ]
+  },
+  "ai_suppression": {
+    "suppressed": 8,
+    "wrongly_suppressed_tps": []
+  },
+  "coverage": {
+    "findings": 31,
+    "human_queue": 0,
+    "auto_decided": 1.0
+  },
+  "spend": {
+    "calls": 213,
+    "in": 10118,
+    "out": 75214,
+    "cw": 91238,
+    "cr": 793030,
+    "refusals": 0,
+    "errors": 0,
+    "usd": 2.16,
+    "minutes": 5.5
+  }
+}

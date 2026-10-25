@@ -10,6 +10,7 @@ Sentinel finds injection-class vulnerabilities with very few false positives. It
 
   Their output must pass **symbolic gates**: hash-checked citations, unanimous votes, and the engine re-deriving the verdict from the agent's own facts.
 - **The flywheel.** Every agent verdict and every human triage decision becomes a *knowledge item*: a versioned Datalog fact with provenance, gated by canary replay and an impact budget. Each scan therefore needs fewer AI calls and fewer human decisions.
+- **Learned spec rules.** Confirmed flows through shared helpers, and sanitizer judgements, also produce Semgrep spec rules. A synthesizer writes each rule. It is validated by a patch-differential oracle, a generalization check and the canaries before it can apply. Rules model helpers whose source a repository does not contain, and `export-rules` hands them to plain Semgrep in CI.
 - **A triage UI** built for analysts:
   - evidence-first findings, with "why it's a finding / why it might not be" and a counterfactual
   - the source→sink trace over your real code
@@ -31,7 +32,8 @@ python3 -m venv .venv-semgrep && .venv-semgrep/bin/pip install semgrep   # separ
 PYTHONPATH=. .venv/bin/python -m sentinel demo     # onboard acme-shop, AppSec review, rescan, onboard acme-billing
 PYTHONPATH=. .venv/bin/python -m sentinel serve    # http://127.0.0.1:8077
 PYTHONPATH=. .venv/bin/python -m sentinel eval     # precision/recall per stage -> docs/evaluation.json
-PYTHONPATH=. .venv/bin/python -m pytest -q         # 98 tests (incl. 2 browser E2E)
+PYTHONPATH=. .venv/bin/python -m sentinel export-rules --org acme -o rules.yml   # curated + learned rules for CI
+PYTHONPATH=. .venv/bin/python -m pytest -q         # 132 tests (incl. 2 browser E2E)
 ```
 
 Inbox keys: `j`/`k` move · `c` confirm · `x` not exploitable (then `1`–`9` reason, `↵` commit) · `a` accept risk · `.` apply to root-cause group · `u` undo · `g` grouping · `[`/`]` lanes · `?` help.
@@ -59,10 +61,10 @@ sentinel/
   extract/   python_facts.py (AST → value-flow facts, guards, routes) · semgrep_specs.py (spec matching + baseline)
   engine/    datalog.py (clingo + provenance instrumentation) · rules/taint.lp, decide.lp · analyze.py
   agent/     interfaces.py · mock.py · claude.py · orchestrator.py (tools + gates)
-  learn/     knowledge.py (lifecycle, gates) · bayes.py (Bingo-style ranking)
+  learn/     knowledge.py (lifecycle, gates) · rules.py (learned spec rules: validation gate, export) · bayes.py (Bingo-style ranking)
   pipeline.py (Tier 0 → 1 → 2, caching, persistence) · triage.py · explain.py · eval.py · api/app.py · cli.py
 specs/       Semgrep spec pack            canaries/  known-vulnerable corpus used by the knowledge gates
-demo/        acme-shop, acme-billing (+ ground_truth.yaml, outside the scanned trees)
+demo/        acme-shop, acme-billing, acme-admin (installs acme_common) (+ ground_truth.yaml, outside the scanned trees)
 ui/          React + TypeScript triage UI  tests/  pytest suite + Playwright screenshot script
 ```
 

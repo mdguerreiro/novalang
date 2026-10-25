@@ -129,3 +129,31 @@ def test_eval_flywheel_transfer(eval_results):
     shop2 = fw["acme-shop scan 2 (after review)"]
     assert shop2["tier0_rate"] == 1.0 and shop2["tier2_calls"] == 0
     assert set(REPOS) == {"acme-shop", "acme-billing"}
+
+
+def test_eval_spec_rules_on_a_repo_without_the_helper_source(eval_results):
+    """S5: acme-admin installs acme_common, so the engine cannot see the helper bodies. Cold it misses every
+    flow through run_shell / run_query / fetch; with the rules learned on shop + billing it finds them, and
+    quote_sql's sanitizer knowledge keeps its uses suppressed."""
+    s5 = eval_results["spec_rules"]
+    cold = s5["acme-admin cold (no org knowledge)"]["score"]
+    assert (cold["tp"], cold["fp"], cold["fn"]) == (1, 1, 4)
+    assert set(cold["missed"]) == {"acme-admin/backup/cmdi", "acme-admin/user_search/sqli", "acme-admin/audit_log/sqli",
+                                   "acme-admin/health_probe/ssrf"}
+    assert cold["false_alarms"] == ["acme-admin/user_lookup/sqli"]
+    warm = s5["acme-admin warm (after review, rules approved)"]
+    assert (warm["score"]["tp"], warm["score"]["fp"], warm["score"]["fn"]) == (5, 0, 0) and warm["score"]["unlabeled"] == []
+    assert warm["tier2_calls"] == 0 and warm["found_by_learned_rules"] >= 4
+    rules = {r["rule"]: r for r in s5["learned spec rules"]}
+    assert {"learned.sink.cmdi.acme_common.shell.run_shell", "learned.sink.sqli.acme_common.db.run_query",
+            "learned.sink.ssrf.acme_common.net.fetch", "learned.sanitizer.sqli.acme_common.db.quote_sql"} <= set(rules)
+    assert all(r["status"] == "active" and set(r["gates"].values()) == {"pass"} for r in rules.values())
+    decisions = s5["acme-admin warm decisions"]
+    san = rules["learned.sanitizer.sqli.acme_common.db.quote_sql"]["id"]
+    assert decisions["user_lookup/sqli"]["status"] == "mitigated" and san in decisions["user_lookup/sqli"]["knowledge"]
+    assert decisions["user_by_ref/sqli"]["status"] == "mitigated"
+    assert decisions["backup_safe/cmdi"]["status"] == "mitigated"  # shlex.quote, seen at the rule's call site
+    # The same rules exported to plain Semgrep: the helper sinks and the sanitizer work there too.
+    oss, exported = s5["acme-admin Semgrep OSS, curated pack"], s5["acme-admin Semgrep OSS, exported pack (curated + learned)"]
+    assert (oss["tp"], oss["fp"]) == (1, 1) and (exported["tp"], exported["fp"], exported["fn"]) == (4, 0, 1)
+    assert exported["missed"] == ["acme-admin/audit_log/sqli"]  # interprocedural: Semgrep OSS cannot follow it

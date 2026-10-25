@@ -2,7 +2,7 @@
 
 Reproduce with `PYTHONPATH=. .venv/bin/python -m sentinel eval`, which writes `docs/evaluation.json`. The same numbers are asserted by `tests/test_demo_eval.py`.
 
-**Corpus.** Two Flask services from one fictional customer (`acme-shop`, `acme-billing`) share a vendored internal package (`acme_common`). The corpus contains:
+**Corpus.** Two Flask services from one fictional customer (`acme-shop`, `acme-billing`) share a vendored internal package (`acme_common`). A third service, `acme-admin`, is used only by stage S5 below. The corpus of the first two contains:
 - **14 real vulnerabilities**, 5 of them interprocedural, across SQLi, command injection, path traversal, SSTI, SSRF, deserialization and open redirect.
 - **20 false-positive traps:**
   - guards, casts and route converters
@@ -62,9 +62,46 @@ Ground truth lives in `demo/ground_truth.yaml`, outside the scanned trees, so it
 - **Knowledge transfers within an org.** The `quote_sql` sanitizer was learned on `acme-shop` and scoped to the org, because it lives in the shared `acme_common` package. It decides `invoice_search` on `acme-billing`'s first scan. The remaining billing work (the `is_safe_slug` guard, `_customer_filter`) is new to the org, so it still needs AI. That is expected, and it shrinks with every repository onboarded.
 - **Rescans of unchanged code cost nothing.** Agent verdicts are cached by content hash. Re-derivations after a knowledge change make no AI calls (`tests/test_pipeline_cache.py`).
 
+## Learned spec rules (S5)
+
+Facts such as `sanitizer_api(fn, cls)` are keyed by callee name. They cannot help when the code that makes a call dangerous is not in the repository. `acme-admin` is a third service of the same org. It installs `acme_common` as a package (`requirements.txt`) instead of vendoring it, so the engine cannot see the bodies of `run_shell`, `run_query`, `fetch` or `quote_sql`. Its ground truth has 5 real vulnerabilities and 6 traps.
+
+Learned spec rules are the second kind of knowledge (`sentinel/learn/rules.py`). Each one is an ordinary Semgrep rule in the shape of `specs/python-web.yml`, written by a rule synthesizer:
+- A confirmed finding (human, or a gated agent TP) whose sink is inside a shared helper proposes a sink rule for the helper, focused on the parameter the flow enters by.
+- A sanitizer judgement (human `SANITIZED` at org scope, or a gated agent FP verdict) proposes a sanitizer rule.
+
+A rule must pass four gates before it can leave `candidate`:
+1. Sanity: Semgrep accepts it.
+2. Patch differential: the vulnerable and fixed examples, analysed by the full engine with and without the rule, differ as intended.
+3. Generalization: the rule matches the originating call site.
+4. Canaries and FP budget: no canary is lost, and at most 2 new findings appear on the reference corpora.
+
+Synthesized rules start in shadow, like other machine knowledge.
+
+| Run | TP | FP | FN | Precision | Recall |
+|---|---|---|---|---|---|
+| acme-admin, cold (no org knowledge) | 1 | 1 | 4 | 0.50 | 0.20 |
+| acme-admin, after shop + billing were triaged and the rules approved | **5** | **0** | **0** | **1.00** | **1.00** |
+| Semgrep OSS on acme-admin, curated pack | 1 | 1 | 4 | 0.50 | 0.20 |
+| Semgrep OSS on acme-admin, exported pack (curated + learned) | 4 | 0 | 1 | 1.00 | 0.80 |
+
+- **Cold.** The engine finds only `export_users` (a direct `os.system`). It misses `backup`, `user_search`, `audit_log` and `health_probe`, which all reach a sink inside an installed helper. `user_lookup` (`quote_sql` in a quoted literal) is reported, because `quote_sql` is an unmodelled library call.
+- **Triage of shop and billing** confirmed the reported findings and approved the knowledge that passed its gates. Three sink rules (`run_query`, `fetch`, `run_shell`) and one sanitizer rule (`quote_sql`) were synthesized. All four passed every gate.
+- **Warm.** The sink rules reveal the four missed flows, including `audit_log`, which goes through a local helper first. The engine still applies what it knows at the call site: `backup_safe` is `shlex.quote`d, and `user_by_id` passes the value as a bound parameter, not in the query text. `user_lookup` and `user_by_ref` are suppressed by the `quote_sql` knowledge (the org fact and the sanitizer rule both apply). No AI calls were needed.
+- **Export.** `python -m sentinel export-rules --org acme --format taint` turns the same rules into Semgrep OSS taint rules for CI. On acme-admin they find 4 of 5 flows with no false alarm, and the sanitizer rule removes the `quote_sql` false alarm. `audit_log` is interprocedural, which Semgrep OSS does not follow.
+- **Scope of a rule.** A sink rule applies only in repos that do not contain the helper's body. Where the body is present (shop, billing), the engine already sees the real sink, so the rule would only add duplicate findings. S0 to S4 are unchanged.
+- **Literal arguments.** A learned sink or source rule focused on a literal (`run_query("... = ?", (uid,))`) does not fall back to the enclosing call node. The curated pack keeps the original fallback, so existing numbers do not move.
+
+The test suite checks that the gate rejects:
+- a rule Semgrep cannot parse;
+- an over-specific rule that matches its own example but not the real call site;
+- `$F($X, ...)` as a sink (FP budget) and `$F(...)` as a sanitizer (canaries);
+- a validation pair that does not differ;
+- a sanitizer rule that would hide a human-confirmed finding.
+
 ## Safety properties exercised by the test suite
 
-98 tests (including 2 browser end-to-end flows) run in about a minute:
+132 tests (including 2 browser end-to-end flows) run in about three minutes:
 - **Canary gate.** Overbroad knowledge such as `os.path.join` as a sanitizer, `regex:[a-z]+` as a validator, or `*.strip` cannot activate.
 - **Confirmed findings are protected.** Human-confirmed findings block conflicting knowledge.
 - **Rescans are not corroboration.** Machine-proposed suppressing knowledge needs independent support: distinct findings for agent items, distinct repositories for oracle items.

@@ -90,6 +90,7 @@ class Finding:
     sink_rule: str = ""
     file: str = ""
     line: int = 0
+    spec_knowledge: list[str] = field(default_factory=list)  # learned spec rules that located this source/sink
 
     @property
     def key(self) -> tuple[int, int, str]:
@@ -249,8 +250,10 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
     asm_nodes = defaultdict(list)
     for n, a in model.get("assume_at"):
         asm_nodes[n].append(a)
-    src_rule = {m.node: m for m in matches if m.role == "source"}
-    sink_rule = {m.node: m for m in matches if m.role == "sink"}
+    # Curated matches win the node when a learned rule matches the same span.
+    src_rule = {m.node: m for m in sorted((m for m in matches if m.role == "source"), key=lambda m: m.knowledge is None)}
+    sink_rule = {m.node: m for m in sorted((m for m in matches if m.role == "sink"), key=lambda m: m.knowledge is None)}
+    rule_kid = {m.rule_id: m.knowledge for m in matches if m.knowledge}  # learned spec rule id -> knowledge item
     derivs = model.derivations()
 
     findings = []
@@ -269,7 +272,10 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
         for w in mits.get((s, k, c), []):
             if w not in uniq:
                 uniq.append(w)
-        f.mitigations = [{"why": _jsonable(w), "label": _why_label(w, facts), "knowledge": knowledge_for(w, kn)} for w in uniq]
+        f.mitigations = [{"why": _jsonable(w), "label": _why_label(w, facts),
+                          "knowledge": [rule_kid[w]] if isinstance(w, str) and w in rule_kid else knowledge_for(w, kn)}
+                         for w in uniq]
+        f.spec_knowledge = sorted({m.knowledge for m in (sm, sink_rule.get(k)) if m is not None and m.knowledge})
         seen = []
         for a in asms.get((s, k, c), []) if (s, k, c) in alarm_any else []:
             if a not in seen:

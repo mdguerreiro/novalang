@@ -9,6 +9,9 @@ one kind of knowledge, at a default scope:
     NOT_EXPOSED           -> internal_only(source function) repo
     TEST_CODE / ACCEPTED_RISK / OTHER -> no correctness learning (governance only)
 
+Two decisions also propose a learned Semgrep spec rule (see `learn_rules`): confirming a flow whose
+sink is inside a shared helper (sink rule), and SANITIZED {fn} at org scope (sanitizer rule).
+
 Before anything is committed, `preview()` shows the knowledge item, every finding it would change
 across the repos in scope, and the canary result. That is the "impact preview" in the UI.
 """
@@ -125,9 +128,35 @@ class Triage:
                 result["knowledge"] = item
                 if item["status"] == "active":
                     result["rescanned"] = self.rescan_scope(item)
+                result["rules"] = self.learn_rules(f, state, actor, vid, k)
         else:
+            if state == "confirmed":
+                result["rules"] = self.learn_rules(f, state, actor, vid)
             self.sc.rank(f["repo_id"])
         return result
+
+    def learn_rules(self, f: dict, state: str, actor: str, verdict_id: int, k: dict | None = None) -> list[dict]:
+        """Spec-rule triggers of a triage decision (learn/rules.py):
+        confirmed                      -> sink rule for the shared helper the flow reaches its sink in
+        not exploitable, SANITIZED fn,
+        org scope                      -> sanitizer rule for fn (next to the sanitizer_api fact)
+        Rules are written by the synthesizer, so they enter as machine knowledge (shadow until approved or
+        corroborated); one that activates through corroboration re-derives the repos in scope."""
+        view = {"fingerprint": f["fingerprint"], "cls": f["cls"], "title": f["title"], "source_fn": f["source_fn"],
+                "sink_fn": f["sink_fn"], "path": f["data"].get("path", [])}
+        trigger = {"kind": f"human_{state}", "by": actor}
+        if state == "confirmed":
+            item = self.sc.learn_sink_rule(f["repo_id"], view, f["id"], verdict_id, trigger)
+        elif k and k["pred"] == "sanitizer_api" and k["scope"] == "org":
+            item = self.sc.learn_sanitizer_rule(f["repo_id"], view, k["args"][0], k["args"][1], "org", f["id"],
+                                                verdict_id, trigger)
+        else:
+            item = None
+        if item is None:
+            return []
+        if item.get("newly_active"):
+            item = {**item, "rescanned": self.rescan_scope(item)}
+        return [item]
 
     def bulk(self, finding_ids: list[int], state: str, actor: str, reason: str | None = None, detail: dict | None = None,
              note: str = "") -> list[dict]:

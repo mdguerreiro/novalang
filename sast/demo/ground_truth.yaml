@@ -38,3 +38,16 @@ acme-billing:
   - {fn: webhook_test,         cls: ssrf,     label: tp, why: "interprocedural fetch"}
   - {fn: statements,           cls: path,     label: fp, why: "isalnum() guard"}
   - {fn: attachment,           cls: path,     label: tp, why: "single-pass ../ stripping is bypassable with ....//"}
+# acme-admin installs acme_common as a package (not vendored): the helper bodies are not in the repo.
+acme-admin:
+  - {fn: backup,               cls: cmdi,     label: tp, why: "run_shell (installed helper) with concatenated input"}
+  - {fn: backup_safe,          cls: cmdi,     label: fp, why: "shlex.quote before run_shell"}
+  - {fn: user_search,          cls: sqli,     label: tp, why: "run_query (installed helper) with concatenated input"}
+  - {fn: user_by_ref,          cls: sqli,     label: fp, why: "quote_sql inside a quoted literal, through run_query"}
+  - {fn: user_lookup,          cls: sqli,     label: fp, why: "quote_sql inside a quoted literal, cursor.execute"}
+  - {fn: user_by_id,           cls: sqli,     label: fp, why: "parameterized run_query", expect_flow: false}
+  - {fn: audit_log,            cls: sqli,     label: tp, why: "interprocedural: audit.load_audit -> run_query"}
+  - {fn: health_probe,         cls: ssrf,     label: tp, why: "fetch (installed helper) with user URL"}
+  - {fn: cdn_probe,            cls: ssrf,     label: fp, why: "fetch_allowed checks a host allow-list", expect_flow: false}
+  - {fn: run_report,           cls: cmdi,     label: fp, why: "argv list via run_cmd, no shell", expect_flow: false}
+  - {fn: export_users,         cls: cmdi,     label: tp, why: "os.system with concatenated input"}

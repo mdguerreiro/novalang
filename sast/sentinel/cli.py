@@ -4,6 +4,7 @@
   scan   scan one registered repo
   serve  run the API + triage UI
   eval   run the evaluation harness and write docs/evaluation.json
+  export-rules  write the curated pack + active learned spec rules as one plain Semgrep config
 """
 from __future__ import annotations
 
@@ -72,7 +73,22 @@ def cmd_eval(args) -> None:
     res = run(write=out)
     for k, v in res["stages"].items():
         print(f"{k:28} precision={v['precision']:.2f} recall={v['recall']:.2f} tp={v['tp']} fp={v['fp']} fn={v['fn']}")
+    for k, v in res["spec_rules"].items():
+        v = v.get("score", v) if isinstance(v, dict) else {}
+        if "precision" in v:
+            print(f"S5 {k:58} precision={v['precision']:.2f} recall={v['recall']:.2f} tp={v['tp']} fp={v['fp']} fn={v['fn']}")
     print(f"wrote {out}")
+
+
+def cmd_export_rules(args) -> None:
+    from .learn.rules import export_rules
+    from .store.db import Store
+    text = export_rules(Store(_db(args)), args.org, args.repo, args.format)
+    if args.output:
+        Path(args.output).write_text(text)
+        print(f"wrote {args.output}")
+    else:
+        print(text, end="")
 
 
 def main() -> None:
@@ -90,6 +106,13 @@ def main() -> None:
     s.add_argument("--port", type=int, default=8077)
     s.set_defaults(fn=cmd_serve)
     sub.add_parser("eval").set_defaults(fn=cmd_eval)
+    s = sub.add_parser("export-rules", help="write the curated pack + active learned spec rules as one Semgrep config")
+    s.add_argument("--org", required=True)
+    s.add_argument("--repo", help="also include rules scoped to this repo")
+    s.add_argument("--format", choices=("spec", "taint"), default="spec",
+                   help="spec: the spec rules; taint: Semgrep OSS taint-mode rules generated from them")
+    s.add_argument("-o", "--output")
+    s.set_defaults(fn=cmd_export_rules)
     args = ap.parse_args()
     args.fn(args)
 

@@ -213,6 +213,21 @@ Verdicts become evidence on alarm nodes, and loopy belief propagation updates th
 
 **5.6 Retraction and audit.** Every suppressed finding records which knowledge items its proof used (from `fire`). Retiring an item re-runs decisions and re-opens the dependents. A configurable fraction (default 5%) of auto-suppressed findings is sampled into an **audit queue**, and audit results give the **measured false-negative rate** shown on the Insights page (R12).
 
+**5.7 Learned spec rules** (`sentinel/learn/rules.py`). A `spec_rule` item (ids `R-NNN`) holds one Semgrep rule in the shape of the curated pack, plus its validation pair and the originating call site. These are stored in `knowledge.payload`. Facts are keyed by callee name; rules describe code shape. They model a shared helper in repos that install the package without its source, and they export to plain Semgrep.
+- **Triggers.**
+  - A confirmed finding (human, or a gated agent TP) whose sink lies inside a shared helper proposes a sink rule focused on the parameter the flow enters by.
+  - A sanitizer judgement (human `SANITIZED` at org scope, or a gated agent FP verdict) proposes a sanitizer rule.
+- **Synthesizer.** `RuleSynthesizer.propose(RuleContext, tools) -> [RuleProposal]`. There are two implementations: a template mock, and `ClaudeRuleSynthesizer` (one structured-output call).
+- **Gates.** All must pass before an item leaves `candidate`:
+  1. Sanity, including Semgrep accepting the rule.
+  2. Patch differential: the full engine runs on the vulnerable and fixed examples, with and without the rule.
+  3. Generalization: the rule matches the originating site.
+  4. Canaries plus an FP budget on the reference corpora (`Policy.rule_fp_budget`).
+
+  The gate also reports impact on the repos in scope, as for facts.
+- **Lifecycle.** Synthesized rules are machine knowledge: shadow until approved or corroborated. Rules written by a human (`POST /api/rules`) activate when their gates pass. Active rules are matched per repo and cached on the rule set. Shadow rules are evaluated only: sanitizer rules set `shadow_by`, and sink rules report the findings they would add (`shadow_rule_findings` in scan stats). A sink rule is not applied in a repo that contains the helper's body, since the engine already sees the real sink there.
+- **Export.** `export-rules` / `GET /api/rules/export` returns the curated pack plus active learned rules: as spec rules, or as Semgrep OSS taint rules.
+
 ## 6. Persistence
 
 SQLite, one file per deployment, accessed through stdlib `sqlite3` behind a small repository layer:
@@ -224,7 +239,7 @@ SQLite, one file per deployment, accessed through stdlib `sqlite3` behind a smal
 - `paths(finding, step, file, line, col, kind, label)`
 - `proofs(finding, json)`
 - `verdicts(id, finding, actor, kind, verdict, reason_code, evidence_json, created)`
-- `knowledge(id, kind, args_json, scope, status, origin, gate_json, created, …)`
+- `knowledge(id, kind, args_json, scope, status, origin, gate_json, created, payload_json, …)` (`payload`: spec rule YAML and validation pair; added by migration to existing databases)
 - `knowledge_links(knowledge, verdict|finding, relation)`
 - `events(id, ts, actor, type, payload_json)` — append-only audit log
 

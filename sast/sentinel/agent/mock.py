@@ -10,8 +10,11 @@ import ast
 import hashlib
 import re
 
-from .interfaces import (AgentTools, ApiLabel, Citation, Claim, GuardLabel, ProposedKnowledge, VerificationCase,
-                         Verdict)
+import yaml
+
+from ..engine.analyze import CWE
+from .interfaces import (AgentTools, ApiLabel, Citation, Claim, GuardLabel, ProposedKnowledge, RuleContext,
+                         RuleProposal, VerificationCase, Verdict)
 
 # What a well-read model "knows" about common library APIs.
 API_TABLE: dict[str, tuple[str, list[str], float, str]] = {
@@ -204,6 +207,78 @@ class MockVerifier:
 
     def _abstain(self, case: VerificationCase, why: str) -> Verdict:
         return Verdict(case.fingerprint, "ABSTAIN", case.cls, None, [], [], {"k": self.k, "agree": self.k}, 0.0, why, self.name)
+
+
+# One curated sink per class, used to build the validation pair for a sanitizer rule.
+SINK_SNIPPETS: dict[str, tuple[str, str]] = {
+    "sqli": ("import sqlite3", "sqlite3.connect('app.db').cursor().execute(\"SELECT * FROM t WHERE c = '\" + {v} + \"'\")"),
+    "cmdi": ("import os", "os.system('echo ' + {v})"),
+    "path": ("", "open('/srv/data/' + {v})"),
+    "xss": ("import markupsafe", "markupsafe.Markup('<p>' + {v} + '</p>')"),
+    "ssti": ("from flask import render_template_string", "render_template_string('Hi ' + {v})"),
+    "ssrf": ("import requests", "requests.get({v}, timeout=3)"),
+    "redirect": ("from flask import redirect", "redirect({v})"),
+    "code": ("", "eval({v})"),
+    "deser": ("import pickle", "pickle.loads({v})"),
+}
+
+
+def example_app(imports: list[str], body: list[str]) -> str:
+    """A tiny Flask app with one route reading `value` from the query string."""
+    head = ["from flask import Flask, abort, request", *[i for i in imports if i], "", "app = Flask(__name__)", "", "",
+            '@app.route("/probe")', "def probe():", '    value = request.args.get("value", "")']
+    return "\n".join(head + ["    " + b for b in body] + ['    return "ok"', ""])
+
+
+class MockRuleSynthesizer:
+    """Template-based rule writer. Deterministic: the rule follows from the triggering decision alone.
+
+    sink:      `target($A0, ..., $X, ...)` (and the keyword form), focused on the argument that reaches
+               the wrapped sink; validated by a call with a concatenated value (vulnerable) and the
+               same call behind an `isalnum()` guard (fixed).
+    sanitizer: `target(...)`; validated by a curated sink of the class fed the raw value (vulnerable)
+               and the value passed through `target` (fixed).
+    """
+
+    name = "mock-synth-v1"
+
+    def propose(self, ctx: RuleContext, tools: AgentTools) -> list[RuleProposal]:
+        if "(" in ctx.target or "." not in ctx.target or ctx.target.startswith("*"):
+            return []  # method calls on values have no importable name to write a rule for
+        module, fn = ctx.target.rsplit(".", 1)
+        imp = f"from {module} import {fn}"
+        if ctx.role == "sink" and ctx.param_index is not None:
+            pre = "".join(f"$A{j}, " for j in range(ctx.param_index))
+            either = [{"pattern": f"{ctx.target}({pre}$X, ...)"}]
+            if ctx.param_name:
+                either.append({"pattern": f"{ctx.target}(..., {ctx.param_name}=$X, ...)"})
+            rule = {"id": f"learned.sink.{ctx.cls}.{ctx.target}", "languages": ["python"], "severity": "INFO",
+                    "message": "sink", "metadata": {"sentinel": {"role": "sink", "cls": ctx.cls, "cwe": CWE.get(ctx.cls)}},
+                    "patterns": [{"pattern-either": either}, {"focus-metavariable": "$X"}]}
+            call = f"{fn}({'None, ' * ctx.param_index}'prefix ' + value)"
+            return [RuleProposal(_dump(rule), "sink", ctx.cls,
+                                 f"`{fn}` passes argument {ctx.param_index} ({ctx.param_name or '?'}) to a {ctx.cls} sink "
+                                 f"(seen in {ctx.repo}); callers that cannot see its body need it modelled as a sink.",
+                                 example_app([imp], [call]),
+                                 example_app([imp], ["if not value.isalnum():", "    abort(400)", call]), self.name)]
+        if ctx.role == "sanitizer":
+            sink_cls = "sqli" if ctx.cls == "all" else ctx.cls
+            if sink_cls not in SINK_SNIPPETS:
+                return []
+            sink_imp, sink = SINK_SNIPPETS[sink_cls]
+            rule = {"id": f"learned.sanitizer.{ctx.cls}.{ctx.target}", "languages": ["python"], "severity": "INFO",
+                    "message": "sanitizer", "metadata": {"sentinel": {"role": "sanitizer", "cls": ctx.cls}},
+                    "pattern": f"{ctx.target}(...)"}
+            return [RuleProposal(_dump(rule), "sanitizer", ctx.cls,
+                                 f"`{fn}` was judged to neutralise {ctx.cls} (in {ctx.repo}); modelled as a sanitizer "
+                                 "so the decision carries to every caller and to CI.",
+                                 example_app([sink_imp], [sink.format(v="value")]),
+                                 example_app([sink_imp, imp], [sink.format(v=f"{fn}(value)")]), self.name)]
+        return []
+
+
+def _dump(rule: dict) -> str:
+    return yaml.safe_dump({"rules": [rule]}, sort_keys=False)
 
 
 def _scope_for(fn: str) -> str:
