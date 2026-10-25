@@ -111,3 +111,87 @@ The test suite checks that the gate rejects:
   - a host allow-list no longer survives rebinding the URL variable;
   - chained string methods no longer create false assumptions;
   - proof trees resolve against the derivation graph.
+
+---
+
+# Live evaluation (real model, code we did not write)
+
+Everything above uses the deterministic mock. This section uses the real model (Opus-class, adaptive thinking,
+structured outputs) and measures what a customer would see. Protocol:
+
+- **Frozen code, unseen repositories.** Before each held-out run the code is committed and not changed until the
+  run is scored. Repositories inspected while fixing a miss become *development* data; the next run uses a fresh set.
+  Every fix made from a held-out run is a general rule (no repository names, no benchmark-specific patterns).
+- **Two comparisons.** Semgrep OSS on the same spec pack, and an *LLM that reads every file* (same model, one call per
+  file, structured output, medium effort) - the strongest simple baseline, and the one LLM-SAST products resemble.
+- **One scoring script** (`bench/score_oss.py`, `bench/pysastbench.py`) scores both systems against the same labels.
+- Sentinel "reports" what reaches an analyst: Open + Review lanes. The Candidates lane (unverified IDOR) is not counted.
+
+## External benchmark: PySASTBench (ICSE '26 SAST study)
+
+240 synthetic Python programs, 120 vulnerable/fixed pairs, 6 CWE families, many frameworks (Flask, FastAPI, Django,
+Quart, Falcon, raw sockets/http.server, CLI tools). A file is flagged when the expected class is reported at the
+ground-truth function. Published numbers for PyFlow (IFDS) are from its README; the others are ours.
+
+| System | Files | Precision | Recall | F1 | Cost |
+|---|---:|---:|---:|---:|---:|
+| PyFlow ast-dataflow (published) | 240 | 0.857 | 0.450 | 0.590 | - |
+| PyFlow IFDS (published, best) | 240 | 0.837 | 0.858 | 0.848 | - |
+| Sentinel engine only, no model (start of this work) | 240 | 0.857 | 0.200 | 0.324 | $0 |
+| Sentinel engine only, no model (current) | 240 | **1.000** | 0.425 | 0.596 | $0 |
+| LLM reads every file | 120 | 0.966 | 0.950 | 0.958 | $1.52 |
+| Sentinel + model (before heap/guard fixes) | 120 | 0.875 | 0.700 | 0.778 | $7.98 |
+| Sentinel + model (heap, templates, containment) | 120 | 0.917 | 0.733 | 0.815 | $9.56 |
+| Sentinel + model (current: guard summaries, cheaper verifier) | 120 | PENDING | | | |
+
+Reading: on single-file synthetic programs, reading everything is the LLM's best case (the whole program fits in
+one prompt). The engine alone (no model, deterministic, explainable) already has zero false positives on 240 files.
+Model calls add recall; their cost per file is higher than one read of a tiny file, and lower on real repositories
+(next section).
+
+## Open-source repositories (held-out sets 1-4)
+
+15 repositories: intentionally vulnerable apps (DSVW, Vulnerable-Flask-App, VAmPI, vulnpy, DSVPWA, vulnerable-api,
+lets-be-bad-guys, python-insecure-app) and real applications (flask-realworld, microblog, full-stack-fastapi-template,
+flasky, flaskbb, fastapi-realworld, httpbin, redash, bakerydemo, Flask examples).
+
+What the held-out runs exposed, and the general fixes (each re-checked on the next unseen set):
+
+| Observed on unseen code | Cause | General fix |
+|---|---|---|
+| 8 IDOR "confirmed" on a clean app | narrow identity model; owner column taken as privacy | identity by name across auth libraries; per-model privacy question; IDOR never engine-confirmed, Candidates lane |
+| open redirect FP | an unrecognised check was invisible | checks that inspect a tainted value become unverified-validation points |
+| SSRF FP | constant `https://host/` prefix ignored | fixed-host URLs are safe for SSRF/redirect |
+| verifier TPs discarded | model narrowed cited ranges and copied another hash | citation valid when the lines were served by a tool call |
+| review queue flooded | every candidate verified at full cost | one confirming sample; full unanimous vote only to close |
+| vulnpy, DSVPWA misses | dynamic dispatch, framework attributes | CHA by method name (capped); `self.attr` named after the library base |
+| VAmPI / vulnerable-api: no entry points | handlers declared in OpenAPI YAML | config keys naming project functions are registrar questions |
+| python-insecure-app, Flask-free code: no questions | unknown source + unknown sink | source frontier (mirror of the sink frontier) + handler-read seed |
+| flaskbb: 45 min | per-fact gating re-analysed every repo; summaries for all functions | canary-gated additive facts; demand-driven summaries (79 s -> 1.7 s per analysis) |
+| crash on one repo | indented method source | robust parsing; one bad function never aborts a scan |
+
+Cost on real repositories (one scan, cold, same model):
+
+| Repository | Size | Sentinel | LLM reads every file |
+|---|---:|---:|---:|
+| flaskbb | 2,096 functions, 38k lines | $0.48 | $2.50 |
+| redash | 2,743 functions, 45k lines | $0.77 | $3.15 |
+| vulnpy | 374 functions | $0.17-0.30 | $0.42 |
+| fastapi-realworld | 185 functions | $0.004 | $0.35 |
+
+Cross-repository reuse: flaskbb, scanned after four other repositories, answered 14 of its 50 frontier questions from
+knowledge learned elsewhere. Unchanged rescans: PENDING (live). With the mock: 3 frontier questions, 0 tier-1, 0 tier-2.
+
+## Generalization: no framework knowledge at all
+
+`SENTINEL_SPECS=minimal` keeps only Python stdlib sinks and sanitizers (no Flask/FastAPI/Django/pandas/jinja2 specs).
+On acme-reports and acme-etl the frontier learns the frameworks itself: same recall (13/13) and precision (no FP), at
+20 instead of 14 first-time questions (`tests/test_frontier.py::test_no_framework_knowledge_still_finds_everything`).
+The curated pack works as a warm cache, not as the source of coverage.
+
+## Known gaps (measured, not yet fixed)
+
+- Flows through files written and read back (upload saved, later `yaml.load`ed).
+- Dynamic calls through `getattr(module, name)`.
+- Object-level authorization through dictionaries rather than ORM lookups.
+- Stored XSS through server-side templates in other files when the template marks values safe in a macro.
