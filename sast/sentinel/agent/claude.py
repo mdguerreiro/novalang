@@ -45,6 +45,7 @@ MAX_TURNS = int(os.environ.get("SENTINEL_MAX_TURNS", "12"))
 TASK_BUDGET = int(os.environ.get("SENTINEL_TASK_BUDGET", "60000"))  # tokens per trajectory (min 20000)
 VERIFIER_EFFORT = os.environ.get("SENTINEL_VERIFIER_EFFORT", "high")
 ORACLE_EFFORT = os.environ.get("SENTINEL_ORACLE_EFFORT", "low")
+CONFIRM_EFFORT = os.environ.get("SENTINEL_CONFIRM_EFFORT", "medium")  # the single confirming pass
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 TASK_BUDGET_BETA = "task-budgets-2026-03-13"
 
@@ -388,7 +389,7 @@ class ClaudeVerifier:
         # Evidence is spent where a mistake is expensive. Closing a finding hides a possible vulnerability, so it
         # needs k unanimous samples plus a comment-stripped re-check. Confirming one (or asking a human) only
         # puts it in front of an analyst, so one sample decides unless it argues for closing.
-        first = self._trajectory(case, tools, VOTERS[0]) if self.adaptive else None
+        first = self._trajectory(case, tools, VOTERS[0], CONFIRM_EFFORT) if self.adaptive else None
         if first is not None and first[0]["verdict"] != "FALSE_POSITIVE":
             v, u = first
             claims = [Claim(c["id"], c["kind"], c["statement"], Citation(**c["cite"]) if c.get("cite") else None,
@@ -427,7 +428,8 @@ class ClaudeVerifier:
         return Verdict(case.fingerprint, verdict, case.cls, chosen.get("reason_code"), claims, proposed,
                        {"k": self.k, "agree": agree, "dissent": dissent}, agree / self.k, rationale, self.name, cost)
 
-    def _trajectory(self, case: VerificationCase, tools: AgentTools, model: str) -> tuple[dict, dict]:
+    def _trajectory(self, case: VerificationCase, tools: AgentTools, model: str,
+                    effort: str | None = None) -> tuple[dict, dict]:
         usage = {"tokens_in": 0, "tokens_out": 0, "cache_read": 0, "cache_write": 0, "tool_calls": 0}
         brief = {"finding": case.title, "class": case.cls, "repo": case.repo, "source_function": case.source_fn,
                  "sink_function": case.sink_fn, "engine_status": case.engine_status,
@@ -444,7 +446,7 @@ class ClaudeVerifier:
                     # Automatic breakpoint on the growing loop prefix, so each turn re-reads the last one from cache.
                     cache_control={"type": "ephemeral"},
                     thinking={"type": "adaptive"}, betas=[FALLBACK_BETA, TASK_BUDGET_BETA], fallbacks="default",
-                    output_config={"effort": VERIFIER_EFFORT, "task_budget": {"type": "tokens", "total": TASK_BUDGET},
+                    output_config={"effort": effort or VERIFIER_EFFORT, "task_budget": {"type": "tokens", "total": TASK_BUDGET},
                                    "format": {"type": "json_schema", "schema": VERDICT_SCHEMA}})
             except anthropic.APIError as e:  # 4xx, 5xx, rate limit or network: this sample abstains
                 return _abstain(f"API error: {type(e).__name__}"), usage

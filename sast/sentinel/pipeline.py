@@ -168,6 +168,10 @@ class Scanner:
             f: Finding = o["finding"]
             if o["lane"] != "review" or (f.status != "undecided" and fp not in verify_learned):
                 continue
+            # Only a weak source is open (CLI argument, config): whether the operator is an attacker is deployment
+            # context the verifier cannot see from the code. It goes to an analyst without an agent run.
+            if f.assumptions and all(a["asm"][0] == "weak_source" for a in f.assumptions):
+                continue
             # IDOR on a model the oracle called public content: not worth an agent run; it stays a candidate.
             if f.cls == "idor" and self._public_model(f, org):
                 continue
