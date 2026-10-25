@@ -66,6 +66,7 @@ export function knowledgeStatement(pred: string, args: string[]): string {
     case "dead_fn": return `${short(args[0])}() is dead code`;
     case "internal_only": return `${short(args[0])}() is internal only`;
     case "not_sanitizer": return `${short(args[0])}() is not a sanitizer`;
+    case "spec_rule": return `${args[1][0].toUpperCase()}${args[1].slice(1)} rule: ${args[0].replace(/^spec\.(learned\.)?(R-\d+\.)?/, "")}${args[2] ? ` (${args[2].toUpperCase()})` : ""}`;
     default: return `${pred}(${args.join(", ")})`;
   }
 }

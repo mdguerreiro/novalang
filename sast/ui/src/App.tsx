@@ -113,7 +113,7 @@ export function App() {
         </header>
         <div className="content">
           {view === "inbox" && <Inbox key={`${repo}-${inboxKey}`} repo={repo} toast={toast} refreshOverview={refreshOverview} />}
-          {view === "knowledge" && <Knowledge toast={toast} refreshOverview={refreshOverview} />}
+          {view === "knowledge" && <Knowledge toast={toast} refreshOverview={refreshOverview} orgId={overview?.orgs[0]?.id ?? null} />}
           {view === "insights" && <Insights key={inboxKey} />}
           {view === "activity" && <Activity />}
         </div>

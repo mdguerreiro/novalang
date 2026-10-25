@@ -22,7 +22,7 @@ function GatePills({ k }: { k: K }) {
   );
 }
 
-export function Knowledge({ toast, refreshOverview }: { toast: ToastFn; refreshOverview: () => void }) {
+export function Knowledge({ toast, refreshOverview, orgId }: { toast: ToastFn; refreshOverview: () => void; orgId: string | null }) {
   const [items, setItems] = useState<K[]>([]);
   const [filter, setFilter] = useState<K["status"] | "all">("all");
   const [open, setOpen] = useState<K | null>(null);
@@ -72,6 +72,7 @@ export function Knowledge({ toast, refreshOverview }: { toast: ToastFn; refreshO
           <span className="muted" style={{ fontWeight: 500 }}>{items.length} items, {Math.round(machineShare * 100)}% from AI</span>
           <span className="grow" />
           {filter !== "all" && <button className="btn ghost sm" onClick={() => setFilter("all")}>Clear filter</button>}
+          {orgId && <a className="btn sm" href={`/api/rules/export?org=${encodeURIComponent(orgId)}`} download={`sentinel-${orgId}-rules.yml`}><Icon name="code" size={13} />Export rules</a>}
         </div>
         <table className="k-table">
           <thead><tr><th>Fact</th><th>Scope</th><th>Origin</th><th>Support</th><th>Checks</th><th>Findings</th><th>Status</th></tr></thead>
@@ -121,8 +122,10 @@ export function Knowledge({ toast, refreshOverview }: { toast: ToastFn; refreshO
             <div>
               <div className="section-title">Checks</div>
               <div className="gates" style={{ borderTop: 0, paddingTop: 0 }}>
-                {[["sanity", open.gate?.sanity ?? "pending"], ["canaries", open.gate?.canary ?? "pending"],
-                  ["impact", `closes ${open.gate?.suppresses ?? 0}${open.gate?.over_budget ? ", over budget" : ""}`],
+                {[["sanity", open.gate?.sanity ?? "pending"],
+                  ...(open.pred === "spec_rule" ? [["vuln/fixed", open.gate?.differential ?? "pending"], ["matches origin", open.gate?.generalization ?? "pending"]] : []),
+                  ["canaries", open.gate?.canary ?? "pending"],
+                  ["impact", `closes ${open.gate?.suppresses ?? 0}${open.gate?.adds ? `, adds ${open.gate.adds}` : ""}${open.gate?.over_budget ? ", over budget" : ""}`],
                   ["support", `${open.support ?? 0} independent`]].map(([g, d]) => (
                   <div key={g} className="gate">
                     <span style={{ color: String(d).startsWith("fail") ? "var(--critical-text)" : "var(--good-text)" }}><Icon name={String(d).startsWith("fail") ? "x" : "check"} size={14} /></span>
@@ -131,6 +134,21 @@ export function Knowledge({ toast, refreshOverview }: { toast: ToastFn; refreshO
                 ))}
               </div>
             </div>
+            {open.payload?.yaml && (
+              <div>
+                <div className="section-title">Semgrep rule</div>
+                <pre className="yaml">{open.payload.yaml}</pre>
+                {open.payload.vulnerable_example && (
+                  <details>
+                    <summary className="muted" style={{ cursor: "pointer", fontSize: 12 }}>Validation pair</summary>
+                    <div className="muted" style={{ fontSize: 11.5, margin: "8px 0 4px" }}>Vulnerable</div>
+                    <pre className="yaml">{open.payload.vulnerable_example}</pre>
+                    <div className="muted" style={{ fontSize: 11.5, margin: "8px 0 4px" }}>Fixed</div>
+                    <pre className="yaml">{open.payload.fixed_example}</pre>
+                  </details>
+                )}
+              </div>
+            )}
             <div>
               <div className="section-title">Source findings</div>
               {(open.links ?? []).length === 0 && <span className="muted">None</span>}

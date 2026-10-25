@@ -77,7 +77,10 @@ export interface Knowledge {
   origin: string;
   confidence: number | null;
   rationale: string | null;
-  gate: { canary?: string; sanity?: string; suppresses?: number; over_budget?: boolean; impact?: ImpactRow[]; conflicts?: ImpactRow[] };
+  gate: { canary?: string; sanity?: string; suppresses?: number; over_budget?: boolean; impact?: ImpactRow[]; conflicts?: ImpactRow[];
+          differential?: string; generalization?: string; adds?: number };
+  payload?: { rule_id?: string; role?: string; cls?: string; yaml?: string; vulnerable_example?: string; fixed_example?: string;
+              site?: { file: string; line: number } } | null;
   corroborations: number;
   created_at: number;
   updated_at: number;
