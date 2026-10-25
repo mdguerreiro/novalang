@@ -11,8 +11,11 @@ The LLM (or the mock) only *proposes*. The orchestrator decides, using code, nev
 """
 from __future__ import annotations
 
+import ast
 import hashlib
+import io
 import re
+import tokenize
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -62,6 +65,67 @@ class Tools(AgentTools):
                    for f in after.findings if f.key in before and before[f.key].status != f.status]
         return {"findings": {fp: {"status": f.status, "mitigations": f.mitigations} for fp, f in by_fp.items()},
                 "changed": changed}
+
+
+def strip_comments(source: str) -> str:
+    """Blank out comments and docstrings, keeping every line in place (same line count and numbering)."""
+    lines = source.splitlines(keepends=True)
+    spans: list[tuple[tuple[int, int], tuple[int, int]]] = []
+    try:
+        for tok in tokenize.generate_tokens(io.StringIO(source).readline):
+            if tok.type == tokenize.COMMENT:
+                spans.append((tok.start, tok.end))
+        for node in ast.walk(ast.parse(source)):
+            body = getattr(node, "body", None)
+            if isinstance(body, list) and body and isinstance(body[0], ast.Expr) \
+                    and isinstance(body[0].value, ast.Constant) and isinstance(body[0].value.value, str):
+                d = body[0]
+                spans.append(((d.lineno, d.col_offset), (d.end_lineno, d.end_col_offset)))
+    except (SyntaxError, tokenize.TokenError):
+        return source
+    out = [list(ln) for ln in lines]
+    for (l1, c1), (l2, c2) in spans:
+        for ln in range(l1, l2 + 1):
+            row = out[ln - 1]
+            a = c1 if ln == l1 else 0
+            b = c2 if ln == l2 else len(row) - (1 if row and row[-1] == "\n" else 0)
+            for i in range(a, min(b, len(row))):
+                if row[i] != "\n":
+                    row[i] = " "
+    return "".join("".join(r).rstrip() + ("\n" if r and r[-1] == "\n" else "") for r in out)
+
+
+class StrippedTools(AgentTools):
+    """The same tools over comment- and docstring-free code. Hashes still refer to the original lines,
+    so a citation made from stripped code verifies against the real file."""
+
+    def __init__(self, inner: Tools):
+        self.inner = inner
+        self._cache: dict[str, list[str]] = {}
+
+    def _stripped(self, file: str) -> list[str]:
+        if file not in self._cache:
+            self._cache[file] = strip_comments(self.inner.facts.files.get(file, "")).splitlines()
+        return self._cache[file]
+
+    def read_span(self, file: str, l1: int, l2: int) -> tuple[str, str]:
+        _, sha = self.inner.read_span(file, l1, l2)
+        return "\n".join(self._stripped(file)[max(l1 - 1, 0): l2]), sha
+
+    def function_source(self, qname: str):
+        found = self.inner.function_source(qname)
+        if found is None:
+            return None
+        file, l1, l2, _text, sha = found
+        return file, l1, l2, "\n".join(self._stripped(file)[l1 - 1: l2]), sha
+
+    def grep(self, pattern: str) -> list[tuple[str, int, str]]:
+        rx = re.compile(pattern)
+        return [(f, i, ln) for f in sorted(self.inner.facts.files)
+                for i, ln in enumerate(self._stripped(f), 1) if rx.search(ln)]
+
+    def what_if(self, facts: list[dict]) -> dict:
+        return self.inner.what_if(facts)
 
 
 @dataclass

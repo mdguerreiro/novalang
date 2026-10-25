@@ -177,7 +177,9 @@ class Scanner:
 
     # ── tiers ────────────────────────────────────────────────────────────────────────────
     def _tier1(self, undecided: list[Finding], facts: Facts, org: str, repo_id: str):
-        """Ask the spec oracle about each distinct unknown API / unknown guard, once (cross-scan cache)."""
+        """Ask the spec oracle about each distinct unknown API / unknown guard, once (cross-scan cache).
+        With SENTINEL_ORACLE_BATCH=1 and an oracle that supports it, the questions go out as one
+        Message Batch (half price, minutes to an hour): meant for scheduled scans, not interactive ones."""
         questions: dict[tuple, None] = {}
         for f in undecided:
             for a in f.assumptions:
@@ -185,36 +187,36 @@ class Scanner:
                 if kind in ("unknown_api", "unknown_guard"):
                     questions[(kind, args[0])] = None
         out: list[KnowledgeFact] = []
-        calls = hits = 0
+        hits = 0
 
         def admit(item: dict) -> None:
             item = self._gate_item(item["id"])
             if _gate_ok(item):
                 out.append(KnowledgeFact(item["id"], item["pred"], tuple(item["args"])))
+
+        todo = []
         for kind, subject in questions:
+            preds = ("sanitizer_api", "propagator_api") if kind == "unknown_api" else ("safe_pred", "not_safe_pred")
+            cached = [k for p in preds for k in self._cached(p, subject)]
+            if cached:
+                hits += 1
+                out += [KnowledgeFact(k["id"], k["pred"], tuple(k["args"])) for k in cached]
+            else:
+                todo.append((kind, subject, "" if kind == "unknown_api" else facts.pred_sources.get(subject, "")))
+        if os.environ.get("SENTINEL_ORACLE_BATCH") == "1" and hasattr(self.oracle, "ask_many"):
+            labels = self.oracle.ask_many(todo)
+        else:
+            labels = {(k, s): (self.oracle.classify_api(s, ctx) if k == "unknown_api" else self.oracle.judge_guard(s, ctx))
+                      for k, s, ctx in todo}
+        for (kind, subject), label in labels.items():
+            origin = f"oracle:{label.model}"
             if kind == "unknown_api":
-                cached = [k for p in ("sanitizer_api", "propagator_api") for k in self._cached(p, subject)]
-                if cached:
-                    hits += 1
-                    out += [KnowledgeFact(k["id"], k["pred"], tuple(k["args"])) for k in cached if k["status"] != "retired"]
-                    continue
-                calls += 1
-                label = self.oracle.classify_api(subject, "")
-                origin = f"oracle:{label.model}"
                 if label.role == "sanitizer":
                     for c in label.classes:
                         admit(self.ks.propose("sanitizer_api", [subject, c], "global", None, None, origin, label.confidence, label.rationale))
                 elif label.role == "propagator" and label.confidence >= 0.8:
                     admit(self.ks.propose("propagator_api", [subject], "global", None, None, origin, label.confidence, label.rationale))
             else:
-                cached = self._cached("safe_pred", subject) + self._cached("not_safe_pred", subject)
-                if cached:
-                    hits += 1
-                    out += [KnowledgeFact(k["id"], k["pred"], tuple(k["args"])) for k in cached]
-                    continue
-                calls += 1
-                label = self.oracle.judge_guard(subject, facts.pred_sources.get(subject, ""))
-                origin = f"oracle:{label.model}"
                 # Validators in customer code are org knowledge; regex literals are portable facts.
                 scope = "global" if subject.startswith("regex:") else "org"
                 if label.safe_for:
@@ -222,7 +224,7 @@ class Scanner:
                         admit(self.ks.propose("safe_pred", [subject, c], scope, org, repo_id, origin, label.confidence, label.rationale))
                 elif label.confidence >= 0.8:
                     admit(self.ks.propose("not_safe_pred", [subject], scope, org, repo_id, origin, label.confidence, label.rationale))
-        return out, calls, hits
+        return out, len(todo), hits
 
     def _cached(self, pred: str, subject: str) -> list[dict]:
         rows = self.store.q("SELECT * FROM knowledge WHERE pred=? AND json_extract(args, '$[0]')=? AND status != 'retired'",
