@@ -182,3 +182,21 @@ def test_classify_api_known_and_unknown():
     assert o.classify_api("slugify.slugify", "").role == "sanitizer"
     assert o.classify_api("hashlib.sha512().hexdigest", "").classes == ["all"]
     assert o.classify_api("mylib.transform", "").role == "unknown"
+
+
+def test_sliced_what_if_decides_like_the_whole_program(demo_inputs, demo_tier0):
+    """A what-if focused on one finding re-analyses only its chop; the verdict must not change."""
+    for repo in ("acme-shop", "acme-billing"):
+        facts, matches = demo_inputs[repo]
+        a = demo_tier0[repo]
+        rerun = lambda extra, sl=None: analyze(facts.slice(*sl) if sl else facts,
+                                               [m for m in matches if not sl or m.node in facts.slice(*sl).nodes], extra)
+        whole, sliced = Tools(facts, a, rerun), Tools(facts, a, rerun, lambda extra, sl: rerun(extra, sl))
+        for f in a.findings:
+            hyps = [[]] + [[{"pred": "sanitizer_api", "args": [x["asm"][1], "all"]}] for x in f.assumptions
+                           if x["asm"][0] == "unknown_api"][:1]
+            for h in hyps:
+                full = whole.what_if(h)["findings"][f.fingerprint]
+                part = sliced.what_if(h, [f.fingerprint])["findings"].get(f.fingerprint)
+                assert part is not None and (part["status"], part["mitigations"]) == (full["status"], full["mitigations"]), \
+                    (repo, f.source_fn, f.sink_fn, h)

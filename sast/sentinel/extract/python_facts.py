@@ -20,6 +20,7 @@ import hashlib
 import re
 import textwrap
 import warnings
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -128,6 +129,108 @@ class Facts:
     ambiguous: set[tuple[int, str, int]] = field(default_factory=set)  # call, method name, candidate count
     resolved: dict[int, str] = field(default_factory=dict)  # call node -> how it was resolved (cha | self | import | ctor)
     pred_sources: dict[str, str] = field(default_factory=dict)  # predicate -> source text (for the oracle)
+
+    def _flow_graph(self) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
+        """Over-approximate interprocedural value flow between nodes (intra edges, argument -> parameter,
+        returned value -> call site, lookup argument -> lookup), ignoring call/return matching. Cached."""
+        g = self.__dict__.get("_flow")
+        if g is None:
+            succ: dict[int, set[int]] = defaultdict(set)
+            for a, b in self.edges:
+                succ[a].add(b)
+            params = defaultdict(dict)
+            for f, i, p in self.params:
+                params[f][i] = p
+            rets = defaultdict(list)
+            for f, r in self.rets:
+                rets[f].append(r)
+            callee = defaultdict(set)
+            for k, gq in self.calls:
+                callee[k].add(gq)
+                for r in rets.get(gq, ()):
+                    succ[r].add(k)
+            for k, i, a in self.arg_in:
+                for gq in callee.get(k, ()):
+                    p = params.get(gq, {}).get(i)
+                    if p is not None:
+                        succ[a].add(p)
+            for k, n in self.lookup_deps:
+                succ[n].add(k)
+            pred: dict[int, set[int]] = defaultdict(set)
+            for a, bs in succ.items():
+                for b in bs:
+                    pred[b].add(a)
+            g = self.__dict__["_flow"] = (succ, pred)
+        return g
+
+    def chop(self, pairs, all_callees: bool = False) -> tuple[set[str], set[int]]:
+        """Functions (and heap cells) that can matter to the given (source node, sink node) findings: every
+        node value-reachable from the sources, interprocedurally and through heap cells, where a function
+        that holds a reached node also contributes its parameters (its summaries start there) and, with
+        `all_callees`, every function it calls. A re-analysis of the slice decides those findings as the
+        whole program would (checked against whole-program solves on the held-out repositories)."""
+        succ, _pred = self._flow_graph()
+        idx = self.__dict__.get("_fn_index")
+        if idx is None:
+            fparams, callees = defaultdict(list), defaultdict(set)
+            for f, _i, p in self.params:
+                fparams[f].append(p)
+            for k, g in self.calls:
+                if k in self.nodes:
+                    callees[self.nodes[k].fn].add(g)
+            idx = self.__dict__["_fn_index"] = (fparams, callees)
+        fparams, callees = idx
+        seen = {s for s, _k in pairs} | {k for _s, k in pairs}
+        todo, fns = list(seen), set()
+
+        def add_fn(f: str) -> None:
+            stack = [f]
+            while stack:
+                g = stack.pop()
+                if g in fns:
+                    continue
+                fns.add(g)
+                for p in fparams.get(g, ()):
+                    if p not in seen:
+                        seen.add(p); todo.append(p)
+                if all_callees:
+                    stack += [h for h in callees.get(g, ()) if h not in fns]
+        while todo:
+            n = todo.pop()
+            nd = self.nodes.get(n)
+            if nd is not None and nd.kind != "heap" and nd.fn not in fns:
+                add_fn(nd.fn)
+            for m in succ.get(n, ()):
+                if m not in seen:
+                    seen.add(m); todo.append(m)
+        heap = {n for n in seen if n in self.nodes and self.nodes[n].kind == "heap"}
+        return fns, heap
+
+    def slice(self, fns: set[str], extra_nodes: set[int] = frozenset()) -> "Facts":
+        """The facts of `fns` (all their nodes) plus `extra_nodes`; relations are restricted to kept nodes."""
+        keep = {i for i, n in self.nodes.items() if n.fn in fns} | set(extra_nodes)
+        kf = set(fns)
+        return Facts(
+            nodes={i: self.nodes[i] for i in keep}, functions={q: f for q, f in self.functions.items() if q in kf},
+            files=self.files, edges={(a, b) for a, b in self.edges if a in keep and b in keep},
+            calls={(k, g) for k, g in self.calls if k in keep and g in kf},
+            arg_in={x for x in self.arg_in if x[0] in keep and x[2] in keep},
+            params={x for x in self.params if x[0] in kf}, rets={x for x in self.rets if x[0] in kf},
+            libcalls={k: q for k, q in self.libcalls.items() if k in keep},
+            guards={x for x in self.guards if x[0] in keep}, typed={x for x in self.typed if x[0] in keep},
+            route_params={x for x in self.route_params if x[0] in kf},
+            entrypoints={x for x in self.entrypoints if x[0] in kf},
+            callnames={x for x in self.callnames if x[0] in keep},
+            lib_args={x for x in self.lib_args if x[0] in keep and x[2] in keep},
+            decorated={x for x in self.decorated if x[0] in kf}, classes=self.classes,
+            extra_sinks={x for x in self.extra_sinks if x[0] in keep},
+            lookups={x for x in self.lookups if x[0] in keep},
+            lookup_deps={x for x in self.lookup_deps if x[0] in keep and x[1] in keep},
+            user_refs={n for n in self.user_refs if n in keep}, scoped={n for n in self.scoped if n in keep},
+            compares={x for x in self.compares if x[0] in keep and x[1] in keep}, owner_fields=self.owner_fields,
+            fn_refs={x for x in self.fn_refs if x[0] in keep and x[2] in kf},
+            attrnames={x for x in self.attrnames if x[0] in keep}, config_sites=self.config_sites,
+            resolved={k: v for k, v in self.resolved.items() if k in keep}, pred_sources=self.pred_sources)
 
     def node_at(self, file: str, l1: int, c1: int, l2: int, c2: int) -> Node | None:
         """Exact span match first, then the smallest node that contains the span."""

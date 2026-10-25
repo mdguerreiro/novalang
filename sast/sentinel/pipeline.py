@@ -98,12 +98,16 @@ class Scanner:
         return [m for k in items for m in self._rule_matches[key(k)]]
 
     def analyze_repo(self, repo_id: str, extra: list[KnowledgeFact] | None = None,
-                     statuses: tuple[str, ...] = ("active",), extra_matches: list[SpecMatch] | None = None) -> Analysis:
+                     statuses: tuple[str, ...] = ("active",), extra_matches: list[SpecMatch] | None = None,
+                     slice_: tuple[set[str], set[int]] | None = None) -> Analysis:
         repo = self.store.repo(repo_id)
         facts, matches = self.inputs(repo_id)
         kn = self.ks.engine_facts(repo["org_id"], repo_id, statuses) + list(extra or [])
         rules = self.ks.spec_rules(repo["org_id"], repo_id, statuses)
         matches = matches + (self.learned_matches(repo_id, rules) if rules else []) + list(extra_matches or [])
+        if slice_ is not None:  # re-analysis of a chop (what-if questions about a few findings)
+            facts = facts.slice(*slice_)
+            matches = [m for m in matches if m.node in facts.nodes]
         return analyze(facts, matches, kn, self.program)
 
     # ── the scan ─────────────────────────────────────────────────────────────────────────
@@ -172,7 +176,7 @@ class Scanner:
         stage_marks.append(('tier1', time.time()))
         # Tier 2: the verifier agent on what is still undecided, behind symbolic gates.
         rerun = lambda extra: self.analyze_repo(repo_id, t1_facts + extra)
-        tools = Tools(facts, a1, rerun)
+        tools = Tools(facts, a1, rerun, lambda extra, sl: self.analyze_repo(repo_id, t1_facts + extra, slice_=sl))
         t2_calls, t2_hits, t2_cost = 0, 0, {"tokens_in": 0, "tokens_out": 0, "tool_calls": 0}
         todo: list[tuple[str, dict, str]] = []
         for fp, o in outcome.items():
@@ -229,7 +233,7 @@ class Scanner:
             facts_ = [c.fact for c in verdict.claims if c.fact]
             if not (result.accepted and verdict.verdict == "FALSE_POSITIVE" and facts_ and len(group) > 1):
                 continue
-            after = tools.what_if(facts_)["findings"]
+            after = tools.what_if(facts_, [g[0] for g in group])["findings"]
             for sfp, so, skey in group[1:]:
                 st_ = after.get(sfp)
                 if st_ and st_["status"] == "mitigated":

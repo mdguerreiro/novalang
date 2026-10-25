@@ -31,8 +31,11 @@ def span_hash(text: str) -> str:
 class Tools(AgentTools):
     """Read-only tools over one scanned repository."""
 
-    def __init__(self, facts: Facts, analysis: Analysis, rerun: Callable[[list[KnowledgeFact]], Analysis]):
-        self.facts, self.analysis, self._rerun = facts, analysis, rerun
+    SLICE_MAX = 0.6  # a slice bigger than this share of the program is not worth it: solve the whole program
+
+    def __init__(self, facts: Facts, analysis: Analysis, rerun: Callable[[list[KnowledgeFact]], Analysis],
+                 rerun_slice: Callable[[list[KnowledgeFact], tuple], Analysis] | None = None):
+        self.facts, self.analysis, self._rerun, self._rerun_slice = facts, analysis, rerun, rerun_slice
         self.calls: list[tuple[str, tuple]] = []
         self.served: dict[str, list[tuple[int, int]]] = {}  # line ranges the agent was actually shown
 
@@ -70,16 +73,35 @@ class Tools(AgentTools):
             self.served.setdefault(f, []).append((i, i))
         return hits
 
-    def what_if(self, facts: list[dict]) -> dict:
+    def what_if(self, facts: list[dict], focus: list[str] | None = None) -> dict:
+        """Re-derive with extra facts. With `focus` (finding fingerprints), only the chop of those findings is
+        re-analysed: every source -> sink flow of theirs lies inside it, so their statuses are exact, and the
+        solve is a fraction of the whole program's. Findings outside the focus are then not reported."""
         self.calls.append(("what_if", (tuple((f["pred"], tuple(f["args"])) for f in facts),)))
         extra = [KnowledgeFact(f"WHATIF-{i}", f["pred"], tuple(f["args"])) for i, f in enumerate(facts)]
-        after = self._rerun(extra)
+        sl = self._slice(focus) if focus and self._rerun_slice else None
+        after = self._rerun_slice(extra + sl[1], sl[0]) if sl else self._rerun(extra)
         before = self.analysis.by_key()
         by_fp = {f.fingerprint: f for f in after.findings}
         changed = [{"fingerprint": f.fingerprint, "from": before[f.key].status, "to": f.status}
                    for f in after.findings if f.key in before and before[f.key].status != f.status]
         return {"findings": {fp: {"status": f.status, "mitigations": f.mitigations} for fp, f in by_fp.items()},
                 "changed": changed}
+
+    def _slice(self, focus: list[str]) -> tuple[tuple, list[KnowledgeFact]] | None:
+        by_fp = {f.fingerprint: f for f in self.analysis.findings}
+        found = [by_fp[fp] for fp in focus if fp in by_fp]
+        if not found or len(found) < len(set(focus)) or any(f.cls == "idor" for f in found):
+            return None  # IDOR decisions depend on code after the lookup (owner checks): whole program
+        fns, heap = self.facts.chop([(f.source, f.sink) for f in found])
+        if len(fns) > self.SLICE_MAX * max(len(self.facts.functions), 1):
+            return None
+        # Facts derived from code outside the slice: the focus sources (registrations, decorators elsewhere)
+        # and reachability (callers, entry points) are carried over from the whole-program analysis.
+        reach = {r[0] for r in self.analysis.model.atoms.get("reach", [])}
+        pinned = [KnowledgeFact("SLICE-src", "src", (f.source, f.source_kind or "http")) for f in found]
+        pinned += [KnowledgeFact("SLICE-reach", "reach", (q,)) for q in sorted(fns & reach)]
+        return (fns, heap), pinned
 
 
 def strip_comments(source: str) -> str:
@@ -139,8 +161,8 @@ class StrippedTools(AgentTools):
         return [(f, i, ln) for f in sorted(self.inner.facts.files)
                 for i, ln in enumerate(self._stripped(f), 1) if rx.search(ln)]
 
-    def what_if(self, facts: list[dict]) -> dict:
-        return self.inner.what_if(facts)
+    def what_if(self, facts: list[dict], focus: list[str] | None = None) -> dict:
+        return self.inner.what_if(facts, focus)
 
 
 @dataclass
@@ -189,7 +211,7 @@ def gate(verdict: Verdict, tools: Tools, never_auto_suppress: set[str] | None = 
         ok &= check("votes", agree * 2 > k, f"{agree}/{k} agree (confirming needs a majority)")
     # G3 symbolic discharge
     facts = [c.fact for c in verdict.claims if c.fact]
-    wi = tools.what_if(facts) if facts else None
+    wi = tools.what_if(facts, [verdict.fingerprint]) if facts else None
     after = wi["findings"].get(verdict.fingerprint) if wi else None
     if verdict.verdict == "FALSE_POSITIVE":
         if after is None:

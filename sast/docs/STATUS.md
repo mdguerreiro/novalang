@@ -47,6 +47,11 @@ Running plan/status, updated every loop iteration so work can resume from here.
 - Profiled (redash, 230k input facts): a full solve is ~20 s and >95% of it is clingo *grounding*; provenance costs ~1 s.
   A scan does 2 full solves per frontier round; the ~70 gate canary solves are tiny (1 s total).
 - Done: solves are memoised on the exact input (in-process rescans skip the engine) and counted per scan (`stats.solves`).
+- Done: live scans were CPU-bound in the verifier's `what_if` (one whole-program solve per call, 20-140 s on large repos).
+  `what_if` now re-analyses only the chop of the finding(s) it is about (value-reachable nodes from the source, through
+  heap cells and argument->parameter flow, plus parameters of every function touched; registrations and reachability
+  pinned from the whole-program model). Checked equal to whole-program what-if on flaskbb (29 findings, 19 hypotheses),
+  redash, microblog, flasky, Mycodo; redash 25 s -> 0.03 s, Mycodo ~72 s -> ~9 s, flaskbb 3.3x. IDOR stays whole-program.
 - Soufflé backend: port the .lp rules behind the Program interface, compiled once; learned knowledge stays EDB facts
   (learned spec rules become rows, not rule text) so the compiled binary never changes; clingo kept as the reference
   for result equivalence on the demo corpora and held-out repos. Expected 10-100x per solve (unmeasured).

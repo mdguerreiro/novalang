@@ -485,7 +485,7 @@ class ClaudeVerifier:
                 if block.type != "tool_use":
                     continue
                 usage["tool_calls"] += 1
-                results.append(_run_tool(tools, block))
+                results.append(_run_tool(tools, block, [case.fingerprint]))
             messages.append({"role": "user", "content": results})
         return _abstain("turn budget exhausted"), usage
 
@@ -562,7 +562,7 @@ class ClaudeRuleSynthesizer:
                              self.name) for r in d.get("rules", [])[:1]]
 
 
-def _run_tool(tools: AgentTools, block) -> dict:
+def _run_tool(tools: AgentTools, block, focus: list[str] | None = None) -> dict:
     args = block.input
     try:
         if block.name == "read_span":
@@ -574,7 +574,7 @@ def _run_tool(tools: AgentTools, block) -> dict:
         elif block.name == "grep":
             out = [f"{f}:{ln}: {t.strip()[:200]}" for f, ln, t in tools.grep(args["pattern"])[:50]]
         elif block.name == "what_if":
-            res = tools.what_if(args["facts"])
+            res = tools.what_if(args["facts"], focus)
             out = {"changed": res["changed"]}
         else:
             return {"type": "tool_result", "tool_use_id": block.id, "content": f"unknown tool {block.name}", "is_error": True}
