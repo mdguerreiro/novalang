@@ -26,6 +26,7 @@ import json
 import os
 import time
 from collections import Counter
+from concurrent.futures import ThreadPoolExecutor
 
 import anthropic
 
@@ -64,6 +65,8 @@ Rules:
   Abstaining is better than guessing.
 - Sanitizers are class-specific: HTML escaping does not stop SQL injection; quote escaping protects
   only quoted SQL literals; single-pass "../" removal does not stop path traversal.
+- Output style: rationale is at most two plain sentences for an AppSec analyst. Claim statements are one
+  short sentence each. Put detail in claims, not in the rationale. No headings, no em dashes.
 """
 
 TOOLS = [
@@ -86,7 +89,9 @@ VERDICT_SCHEMA = {
     "type": "object",
     "properties": {
         "verdict": {"type": "string", "enum": ["TRUE_POSITIVE", "FALSE_POSITIVE", "NEEDS_HUMAN", "ABSTAIN"]},
-        "reason_code": {"type": ["string", "null"]},
+        "reason_code": {"anyOf": [{"type": "string", "enum": ["SANITIZED", "GUARDED", "NOT_ATTACKER_CONTROLLED", "UNREACHABLE",
+                                                               "TEST_CODE", "SAFE_TYPE", "NOT_A_SANITIZER", "EXPLOITABLE"]},
+                                   {"type": "null"}]},
         "rationale": {"type": "string"},
         "claims": {"type": "array", "items": {"type": "object", "properties": {
             "id": {"type": "string"},
@@ -220,13 +225,18 @@ class ClaudeVerifier:
 
     name = f"claude-verifier:{'+'.join(VOTERS)}"
     k = SAMPLES
+    parallel = True  # tests driving a scripted fake set this to False for a deterministic call order
 
     def __init__(self, client: anthropic.Anthropic | None = None):
         self.client = client or anthropic.Anthropic()
 
     def verify(self, case: VerificationCase, tools: AgentTools) -> Verdict:
-        runs = [self._trajectory(case, tools, VOTERS[i % len(VOTERS)]) for i in range(self.k)]
-        stripped, stripped_usage = self._trajectory(case, StrippedTools(tools), VOTERS[0])
+        # The k voting samples and the comment-stripped re-check are independent: run them concurrently.
+        with ThreadPoolExecutor(max_workers=self.k + 1 if self.parallel else 1) as pool:
+            futures = [pool.submit(self._trajectory, case, tools, VOTERS[i % len(VOTERS)]) for i in range(self.k)]
+            stripped_future = pool.submit(self._trajectory, case, StrippedTools(tools), VOTERS[0])
+            runs = [f.result() for f in futures]
+            stripped, stripped_usage = stripped_future.result()
         usages = [r[1] for r in runs] + [stripped_usage]
         cost = {"samples": self.k + 1, "models": VOTERS, **{key: sum(u[key] for u in usages) for key in usages[0]}}
         verdicts = [r[0] for r in runs]

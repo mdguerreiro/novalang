@@ -13,6 +13,8 @@ import pytest
 pytest.importorskip("anthropic")
 
 from sentinel.agent.claude import ClaudeVerifier  # noqa: E402
+
+ClaudeVerifier.parallel = False  # the scripted fake replays responses in order
 from sentinel.agent.interfaces import VerificationCase  # noqa: E402
 from sentinel.agent.orchestrator import Tools, gate  # noqa: E402
 from sentinel.eval import fresh_scanner  # noqa: E402
