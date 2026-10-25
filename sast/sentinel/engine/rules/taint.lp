@@ -137,7 +137,7 @@ learned_sink(A,Q)  :- lib_arg(K,I,A), callname(K,Q), sink_api(Q,I,_).
 modeled_api(Q)     :- sink_api(Q,_,_).
 % Functions registered with a framework decorator learned to deliver request data, or a specific
 % entrypoint parameter learned to be attacker-controlled (e.g. an AWS Lambda event).
-src(P,K)           :- decorated(F,D), framework_source(D,K), param(F,_,P).
+src(P,K)           :- decorated(F,D), framework_source(D,K), param(F,_,P), not self_param(P).
 src(P,K)           :- entry_source(F,I,K), param(F,I,P).
 learned_src(P,D)   :- decorated(F,D), framework_source(D,_), param(F,_,P).
 learned_src(P,F)   :- entry_source(F,I,_), param(F,I,P).
@@ -163,7 +163,7 @@ src_frontier(F,I)  :- param(F,I,P), p2s_raw(F,I,_), not reach(F), not has_caller
 
 % Handlers registered by passing the function to a framework call (`app.router.add_route("GET", "/", view)`):
 % one question about the registrar covers every handler it registers.
-src(P,"http")      :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I), param(F,_,P), not typed(P,_).
+src(P,"http")      :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I), param(F,_,P), not typed(P,_), not self_param(P).
 learned_src(P,Q)   :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I), param(F,_,P).
 answered_reg(Q)    :- registrar(Q,_).
 answered_reg(Q)    :- not_registrar(Q).
@@ -196,8 +196,8 @@ answered_src(Q) :- source_api(Q,_).
 answered_src(Q) :- not_source_api(Q).
 answered_src(Q) :- sink_api(Q,_,_).
 srcapi_frontier(Q) :- attrname(N,Q), rs(N), not traw(N,_), not answered_src(Q), node(N,F), not test_fn(F).
-srcapi_frontier(Q) :- callname(N,Q), libcall(N,Q), rs(N), not traw(N,_), not lib_input(N), not answered_src(Q),
-                      not generic_api(Q), node(N,F), not test_fn(F).
+srcapi_frontier(Q) :- callname(N,Q), not call(N,_), not spec_call(N), rs(N), not traw(N,_), not lib_input(N),
+                      not answered_src(Q), not generic_api(Q), node(N,F), not test_fn(F).
 % Seed for "unknown source + unknown sink": library values read inside a route-shaped handler are asked about
 % directly (bounded: request objects, app config, globals), so either side can be learned first.
 handler_has_src(F) :- traw(N,_), node(N,F).

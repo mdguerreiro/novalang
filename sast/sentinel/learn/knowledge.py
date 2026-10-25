@@ -104,6 +104,10 @@ class KnowledgeService:
     # ── proposing ────────────────────────────────────────────────────────────────────────
     def propose(self, pred: str, args: list, scope: str, org_id: str | None, repo_id: str | None, origin: str,
                 confidence: float, rationale: str, finding_id: int | None = None, verdict_id: int | None = None) -> dict:
+        with self.store._lock:  # frontier questions are answered concurrently: id allocation + insert must be atomic
+            return self._propose(pred, args, scope, org_id, repo_id, origin, confidence, rationale, finding_id, verdict_id)
+
+    def _propose(self, pred, args, scope, org_id, repo_id, origin, confidence, rationale, finding_id, verdict_id) -> dict:
         if pred not in PREDICATES or len(args) != PREDICATES[pred]:
             raise ValueError(f"unknown knowledge predicate {pred}/{len(args)}")
         if scope == "global":

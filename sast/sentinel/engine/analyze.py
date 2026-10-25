@@ -56,6 +56,7 @@ CURATED: list[KnowledgeFact] = [
     KnowledgeFact("K-cur-float", "safe_type", ("float", "all")),
     KnowledgeFact("K-cur-uuid", "safe_type", ("uuid", "all")),
     KnowledgeFact("K-cur-bool", "safe_type", ("bool", "all")),
+    KnowledgeFact("K-cur-any-conv", "safe_type", ("any", "all")),
     KnowledgeFact("K-cur-cli-weak", "weak_kind", ("cli",)),
     KnowledgeFact("K-cur-fixed-host", "safe_type", ("fixed_host", "ssrf")),
     KnowledgeFact("K-cur-fixed-host-r", "safe_type", ("fixed_host", "redirect")),
@@ -150,6 +151,8 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out += [fact("decorated", f, d) for f, d in facts.decorated]
     out += [fact("fn_ref", k, i, f) for k, i, f in facts.fn_refs]
     out += [fact("attrname", n, q) for n, q in facts.attrnames]
+    out += [fact("self_param", p) for q, i, p in facts.params if i == 0 and facts.functions[q].cls
+            and facts.functions[q].params[:1] in (["self"], ["cls"])]
     out += [fact("lookup", k, m) for k, m in facts.lookups]
     out += [fact("lookup_dep", k, n) for k, n in facts.lookup_deps]
     out += [fact("user_ref", n) for n in facts.user_refs]

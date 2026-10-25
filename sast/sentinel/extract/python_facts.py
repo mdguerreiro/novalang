@@ -55,11 +55,12 @@ OWNER_FIELD_RE = re.compile(r"^(owner|user|author|created_by|account|tenant|cust
 LOOKUP_RE = re.compile(r"^(?P<m>.+)\.(query\.(get|get_or_404|filter_by|filter|first_or_404)|objects\.(get|filter))$")
 CHA_MAX_TARGETS = 12
 HTTP_VERBS = ("get", "post", "put", "patch", "delete", "head", "options")
+CONFIG_BARE_RE = re.compile(r"\s*-?\s*[\"']?([A-Za-z_][\w-]*)[\"']?\s*[:=]\s*[\"']?([A-Za-z_][\w.]*)[\"']?\s*,?\s*$")
 CONFIG_SUFFIXES = {".yml", ".yaml", ".json", ".toml", ".ini", ".cfg"}
 CONFIG_REF_RE = re.compile(r"[\"']?([A-Za-z_][\w-]*)[\"']?\s*[:=]\s*[\"']?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*[.:][A-Za-z_]\w*)[\"']?\s*,?\s*$")
 FIXED_HOST_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/?#{}%@]+[/?#]")
 EXIT_CALLS = {"abort", "flask.abort", "sys.exit", "exit", "os._exit"}
-SAFE_CONVERTERS = {"int", "float", "uuid"}
+SAFE_CONVERTERS = {"int", "float", "uuid", "any"}  # werkzeug any(a, b): one of the listed literals
 TEST_PATH_RE = re.compile(r"(^|/)(tests?|testing)/|(^|/)test_[^/]*\.py$|_test\.py$|(^|/)conftest\.py$")
 HOST_ATTRS = {"hostname", "netloc"}
 
@@ -249,9 +250,19 @@ class PythonExtractor:
                 text = path.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-            for ln, line in enumerate(text.splitlines(), 1):
-                for m in CONFIG_REF_RE.finditer(line):
-                    key, ref = m.group(1), m.group(2).replace(":", ".")
+            lines = text.splitlines()
+            for ln, line in enumerate(lines, 1):
+                refs = [(m.group(1), m.group(2).replace(":", ".")) for m in CONFIG_REF_RE.finditer(line)]
+                bare = CONFIG_BARE_RE.match(line)
+                if not refs and bare:
+                    # Module and function on adjacent keys (`x-openapi-router-controller: vAPI` + `operationId:
+                    # get_token`): combine with a nearby value that names a project module.
+                    for near in lines[max(0, ln - 4): ln + 3]:
+                        mm = CONFIG_BARE_RE.match(near)
+                        if mm and mm.group(2) in self._by_name:
+                            refs.append((bare.group(1), f"{mm.group(2)}.{bare.group(2)}"))
+                            break
+                for key, ref in refs:
                     target = self._config_target(ref)
                     if not target:
                         continue
@@ -1058,7 +1069,7 @@ def _route_converters(route: str | None) -> dict[str, str]:
     if not route:
         return {}
     out = {}
-    for m in re.finditer(r"<(?:(\w+):)?(\w+)>", route):
+    for m in re.finditer(r"<(?:(\w+)(?:\([^)]*\))?:)?(\w+)>", route):  # <int:id>, <any(a, b):js>
         out[m.group(2)] = m.group(1) or "string"
     return out
 

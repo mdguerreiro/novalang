@@ -133,8 +133,9 @@ class Store:
     # ── knowledge ────────────────────────────────────────────────────────────────────────
     def next_knowledge_id(self, prefix: str = "K") -> str:
         """K-NNN for Datalog facts, R-NNN for learned spec rules (separate sequences)."""
-        r = self.one("SELECT COUNT(*) AS n FROM knowledge WHERE id LIKE ?", f"{prefix}-%")
-        return f"{prefix}-{(r['n'] if r else 0) + 1:03d}"
+        r = self.one("SELECT MAX(CAST(SUBSTR(id, ?) AS INTEGER)) AS n FROM knowledge WHERE id LIKE ?",
+                     len(prefix) + 2, f"{prefix}-%")
+        return f"{prefix}-{((r['n'] or 0) if r else 0) + 1:03d}"
 
     def knowledge(self, kid: str) -> dict | None:
         return self.one("SELECT * FROM knowledge WHERE id=?", kid)
