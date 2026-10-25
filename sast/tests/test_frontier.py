@@ -111,3 +111,25 @@ def test_same_rule_text_is_corroboration():
     b = ks.propose_rule({"yaml": y.format(id="b"), "role": "sanitizer", "cls": "sqli", "rule_id": "b"}, "org", "acme", "r2",
                         "agent:x", 0.9, "", finding_id=1)
     assert a["id"] == b["id"] and b["corroborations"] == 2
+
+
+def test_dynamic_dispatch_and_framework_attributes(tmp_path):
+    root = _write(tmp_path, {
+        "srv/h.py": """
+            import os
+            from http.server import BaseHTTPRequestHandler
+            class Ping:
+                def run(self, arg):
+                    os.system("ping " + arg)
+            class Echo:
+                def run(self, arg):
+                    return arg
+            ATTACKS = {"ping": Ping(), "echo": Echo()}
+            class H(BaseHTTPRequestHandler):
+                def do_GET(self):
+                    attack = ATTACKS[self.path.split("/")[1]]
+                    self.wfile.write(attack.run(self.path).encode())
+        """})
+    f = extract(root)
+    assert {g for k, g in f.calls if f.resolved.get(k) == "cha-name"} == {"srv.h.Ping.run", "srv.h.Echo.run"}
+    assert "http.server.BaseHTTPRequestHandler.wfile.write" in set(f.libcalls.values())

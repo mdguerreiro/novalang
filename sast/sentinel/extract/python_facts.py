@@ -51,6 +51,7 @@ IDENTITY_RE = re.compile(r"(^|\.)(current_user|current_identity)(\.|\(|$)|"
 IDENTITY_PARAMS = {"current_user", "user_identity", "auth_user"}  # FastAPI-style `current_user: User = Depends(...)`
 OWNER_FIELD_RE = re.compile(r"^(owner|user|author|created_by|account|tenant|customer|patient|member|uploader)(_id)?$")
 LOOKUP_RE = re.compile(r"^(?P<m>.+)\.(query\.(get|get_or_404|filter_by|filter|first_or_404)|objects\.(get|filter))$")
+CHA_MAX_TARGETS = 12
 FIXED_HOST_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/?#{}%@]+[/?#]")
 EXIT_CALLS = {"abort", "flask.abort", "sys.exit", "exit", "os._exit"}
 SAFE_CONVERTERS = {"int", "float", "uuid"}
@@ -111,6 +112,7 @@ class Facts:
     compares: set[tuple[int, int]] = field(default_factory=set)  # operand nodes compared with each other
     owner_fields: set[tuple[str, str]] = field(default_factory=set)  # model class, owner-like column
     fn_refs: set[tuple[int, int | str, str]] = field(default_factory=set)  # call, arg position/keyword, project fn passed
+    ambiguous: set[tuple[int, str, int]] = field(default_factory=set)  # call, method name, candidate count
     resolved: dict[int, str] = field(default_factory=dict)  # call node -> how it was resolved (cha | self | import | ctor)
     pred_sources: dict[str, str] = field(default_factory=dict)  # predicate -> source text (for the oracle)
 
@@ -340,6 +342,28 @@ class PythonExtractor:
         if any(".".join(parts[:i]) in self._by_name for i in range(len(parts), mod.package.count(".") + 1, -1)):
             return cand
         return base
+
+    def self_attrs(self, cls: str) -> set[str]:
+        if not hasattr(self, "_self_attrs"):
+            self._self_attrs: dict[str, set[str]] = {}
+            for mod in self._modules.values():
+                for node in ast.walk(mod.tree):
+                    if isinstance(node, ast.ClassDef):
+                        cq = next((c for c in self.facts.classes if c.endswith("." + node.name) and
+                                   c.startswith(mod.name)), None)
+                        if cq:
+                            self._self_attrs[cq] = {t.attr for t in ast.walk(node) if isinstance(t, ast.Attribute)
+                                                    and isinstance(t.ctx, ast.Store) and isinstance(t.value, ast.Name)
+                                                    and t.value.id == "self"}
+        return self._self_attrs.get(cls, set())
+
+    def methods_named(self, name: str) -> list[str]:
+        if not hasattr(self, "_by_method"):
+            self._by_method: dict[str, list[str]] = {}
+            for q, fn in self.facts.functions.items():
+                if fn.cls and fn.params[:1] == ["self"] and not q.rsplit(".", 1)[1].startswith("__"):
+                    self._by_method.setdefault(q.rsplit(".", 1)[1], []).append(q)
+        return sorted(self._by_method.get(name, []))
 
     def method(self, cls: str, name: str, depth: int = 0) -> str | None:
         """Class-hierarchy lookup of `name` on project class `cls`: a project function, or None."""
@@ -778,6 +802,28 @@ class _FunctionWalker:
             parts = []
         return [x for x in (self.expr(p, env) for p in parts) if x]
 
+    def _self_attr_base(self, dotted: str | None) -> str | None:
+        """`self.a.m` where the method's class (and its project bases) never defines `a`: the attribute comes from
+        a library base class, so name the call after it (one question per framework API)."""
+        if not dotted or not self.fn.cls or not dotted.startswith("self.") or dotted.count(".") < 2:
+            return None
+        rest = dotted.split(".")[1:]
+        cls, seen = self.fn.cls, set()
+        while cls in self.f.classes and cls not in seen:
+            seen.add(cls)
+            if self.ex.method(cls, rest[0]) or self._assigns_self_attr(cls, rest[0]):
+                return None
+            bases = self.f.classes[cls]
+            ext = [b for b in bases if b not in self.f.classes]
+            if ext:
+                return ".".join([ext[0]] + rest)
+            cls = next((b for b in bases if b in self.f.classes), None)
+        return None
+
+    def _assigns_self_attr(self, cls: str, attr: str) -> bool:
+        """Some method of `cls` assigns `self.attr` (then it is project state, not a library attribute)."""
+        return attr in self.ex.self_attrs(cls)
+
     def _ctor_class(self, value: ast.expr) -> str | None:
         if isinstance(value, ast.Call):
             d = self.ex._dotted(value.func)
@@ -847,6 +893,9 @@ class _FunctionWalker:
                 base_callee = self.ex.resolve(self.mod, inner) if inner else None
             qual = f"{base_callee}().{func.attr}" if base_callee else f"*.{func.attr}"
             method = func.attr
+            ext = self._self_attr_base(dotted)
+            if ext:  # `self.wfile.write` in a BaseHTTPRequestHandler subclass
+                qual, method, how = ext, None, "cha-attr"
         else:
             qual = self.ex.resolve(self.mod, dotted) if dotted else "<dynamic>"
             method = None
@@ -892,18 +941,29 @@ class _FunctionWalker:
                 qual, offset, how = hit, 1, "global-type"
         if how:
             self.f.resolved[nid] = how
-        target = qual if qual in self.f.functions else None
-        if target is not None:
-            self.f.calls.add((nid, target))
-            params = self.f.functions[target].params
+        targets = [qual] if qual in self.f.functions else []
+        if not targets and qual.startswith("*.") and method and method not in PROPAGATOR_METHODS | NEUTRAL_METHODS:
+            # Receiver type unknown (`attack.run(handler)` with `attack` picked at runtime): class-hierarchy
+            # analysis binds the call to every project method of that name. Sound over-approximation; the
+            # verifier filters. Too many candidates = genuinely ambiguous: left unresolved and counted.
+            cands = self.ex.methods_named(method)
+            if 0 < len(cands) <= CHA_MAX_TARGETS:
+                targets, offset = cands, 1
+                self.f.resolved[nid] = "cha-name"
+            elif cands:
+                self.f.ambiguous.add((nid, method, len(cands)))
+        if targets:
             if offset and receiver:
                 self.f.arg_in.add((nid, 0, receiver))
             for i, a in arg_nodes:
                 if a:
                     self.f.arg_in.add((nid, i + offset, a))
-            for k, a in kw_nodes:
-                if a and k in params:
-                    self.f.arg_in.add((nid, params.index(k), a))
+            for target in targets:
+                self.f.calls.add((nid, target))
+                params = self.f.functions[target].params
+                for k, a in kw_nodes:
+                    if a and k in params:
+                        self.f.arg_in.add((nid, params.index(k), a))
             return nid
 
         # Library call: propagate argument (and receiver) taint into the result.
