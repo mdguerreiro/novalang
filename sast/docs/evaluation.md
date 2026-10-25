@@ -142,7 +142,7 @@ ground-truth function. Published numbers for PyFlow (IFDS) are from its README; 
 | LLM reads every file | 120 | 0.966 | 0.950 | 0.958 | $1.52 |
 | Sentinel + model (before heap/guard fixes) | 120 | 0.875 | 0.700 | 0.778 | $7.98 |
 | Sentinel + model (heap, templates, containment) | 120 | 0.917 | 0.733 | 0.815 | $9.56 |
-| Sentinel + model (current: guard summaries, cheaper verifier) | 120 | PENDING | | | |
+| Sentinel + model (current: guard summaries, cheaper verifier) | 120 | 0.978 | 0.750 | 0.849 | $5.59 |
 
 Reading: on single-file synthetic programs, reading everything is the LLM's best case (the whole program fits in
 one prompt). The engine alone (no model, deterministic, explainable) already has zero false positives on 240 files.
