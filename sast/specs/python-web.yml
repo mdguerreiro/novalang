@@ -25,6 +25,13 @@ rules:
       - pattern: flask.request.get_data(...)
       - pattern: flask.request.data
       - pattern: flask.request.json
+      - pattern: flask.request.url
+      - pattern: flask.request.full_path
+      - pattern: flask.request.path
+      - pattern: flask.request.query_string
+      - pattern: flask.request.view_args
+      - pattern: flask.request.files[...].filename
+      - pattern: flask.request.files.get(...).filename
   - id: spec.source.flask.cookies
     languages: [python]
     severity: INFO

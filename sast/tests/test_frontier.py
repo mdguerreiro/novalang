@@ -83,7 +83,8 @@ def test_idor_statuses():
     root = Path(__file__).resolve().parents[1] / "demo" / "acme-docs"
     f = extract(root)
     by = {x.source_fn.rsplit(".", 1)[-1]: x for x in analyze(f, match_specs(root, f), list(CURATED)).findings}
-    assert by["get_document"].status == "confirmed" and by["comment_raw"].status == "confirmed"
+    # The engine proposes IDOR candidates but never confirms one alone (authorization may live elsewhere).
+    assert by["get_document"].status == "undecided" and by["comment_raw"].status == "undecided"
     assert by["get_document_checked"].status == "mitigated" and by["delete_comment"].status == "mitigated"
     assert by["get_invoice"].mitigations[0]["label"] == "Query scoped to current user"
     assert by["admin_invoice"].status == "undecided" and "get_product" not in by

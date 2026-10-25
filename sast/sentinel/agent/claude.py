@@ -32,7 +32,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import anthropic
 
-from .interfaces import (AgentTools, ApiLabel, AuthzLabel, Citation, Claim, EntryLabel, GuardLabel, RegistrarLabel, SinkLabel, ProposedKnowledge, RuleContext,
+from .interfaces import (AgentTools, ApiLabel, AuthzLabel, ModelLabel, Citation, Claim, EntryLabel, GuardLabel, RegistrarLabel, SinkLabel, ProposedKnowledge, RuleContext,
                          RuleProposal, VerificationCase, Verdict)
 from .orchestrator import StrippedTools
 from ..engine.analyze import CLASSES
@@ -154,6 +154,10 @@ AUTHZ_SCHEMA = {"type": "object", "properties": {
     "confidence": {"type": "number"}, "rationale": {"type": "string"}},
     "required": ["kind", "confidence", "rationale"], "additionalProperties": False}
 
+MODEL_SCHEMA = {"type": "object", "properties": {
+    "private": {"type": "boolean"}, "confidence": {"type": "number"}, "rationale": {"type": "string"}},
+    "required": ["private", "confidence", "rationale"], "additionalProperties": False}
+
 
 def _text(resp) -> str:
     return next((b.text for b in resp.content if b.type == "text"), "")
@@ -248,6 +252,20 @@ class ClaudeSpecOracle:
         if d is None:
             return AuthzLabel(decorator, "none", 0.0, "oracle unavailable or declined", self.name)
         return AuthzLabel(decorator, d["kind"], float(d["confidence"]), d["rationale"], self.name)
+
+    def classify_model(self, model: str, source: str) -> ModelLabel:
+        d = self._ask(self._model_prompt(model, source), MODEL_SCHEMA)
+        if d is None:
+            return ModelLabel(model, True, 0.0, "oracle unavailable or declined", self.name)
+        return ModelLabel(model, bool(d["private"]), float(d["confidence"]), d["rationale"], self.name)
+
+    @staticmethod
+    def _model_prompt(model: str, source: str) -> str:
+        return (f"Data model `{model}` (untrusted code):\n```python\n{source or '(not shown)'}\n```\n"
+                "Are its records private to the user who owns them, so that another user reading or changing one by "
+                "id is an authorization flaw (private=true: messages, invoices, documents, orders, settings)? Or is it "
+                "content meant to be visible to other users (private=false: published articles, public profiles, "
+                "products, comments on public posts)?")
 
     @staticmethod
     def _authz_prompt(decorator: str, source: str) -> str:

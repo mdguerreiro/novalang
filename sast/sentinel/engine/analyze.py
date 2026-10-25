@@ -57,6 +57,9 @@ CURATED: list[KnowledgeFact] = [
     KnowledgeFact("K-cur-uuid", "safe_type", ("uuid", "all")),
     KnowledgeFact("K-cur-bool", "safe_type", ("bool", "all")),
     KnowledgeFact("K-cur-cli-weak", "weak_kind", ("cli",)),
+    KnowledgeFact("K-cur-fixed-host", "safe_type", ("fixed_host", "ssrf")),
+    KnowledgeFact("K-cur-fixed-host-r", "safe_type", ("fixed_host", "redirect")),
+    KnowledgeFact("K-cur-rel-path", "safe_type", ("relative_path", "redirect")),
     # Authentication is not authorization; permission/role decorators are.
     KnowledgeFact("K-cur-login-req", "not_authz_decorator", ("flask_login.login_required",)),
     KnowledgeFact("K-cur-login-req2", "not_authz_decorator", ("flask_login.utils.login_required",)),
@@ -187,7 +190,7 @@ BUILTIN_CALLS = {"map", "filter", "sorted", "min", "max", "list", "tuple", "set"
                  "signal.signal"}
 KEEP = {"cand", "alarm", "mitigated", "undecided", "confirmed", "test_only", "asm", "mit", "assume_at",
         "kill", "reach", "safe", "open", "sink_frontier", "src_frontier", "learned_sink", "learned_src", "reg_frontier",
-        "authz_frontier"}
+        "authz_frontier", "privacy_frontier"}
 
 
 def analyze(facts: Facts, matches: list[SpecMatch], knowledge: list[KnowledgeFact] | None = None,
@@ -218,7 +221,7 @@ def _why_label(why, facts: Facts) -> str:
             name = GUARD_NAMES.get(pred, f"{_tail(pred)}()" if not pred.startswith("regex") else pred)
             return f"Validation: {name}"
         if kind == "type":
-            return f"Type cast: {args[0]}"
+            return {"fixed_host": "Fixed host in URL", "relative_path": "Relative path"}.get(args[0], f"Type cast: {args[0]}")
         if kind == "dead":
             return f"Dead code: {_tail(args[0], 1)}()"
         if kind == "exposure":
@@ -245,6 +248,8 @@ def _asm_label(asm) -> str:
             "weak_source": f"Weak source: {args[0]}",
             "unreachable": f"No route or caller: {_tail(args[0], 1)}()",
             "unknown_authz": f"Unverified decorator: @{_tail(args[0])}",
+            "unknown_privacy": f"Unverified: {_tail(args[0])} records are private",
+            "authz_context": "Authorization outside the handler not checked",
         }.get(kind, str(asm))
     return str(asm)
 

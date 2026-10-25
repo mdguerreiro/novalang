@@ -120,6 +120,16 @@ class AuthzLabel:
 
 
 @dataclass
+class ModelLabel:
+    """Frontier question: are records of this model private to the user that owns them?"""
+    model: str
+    private: bool
+    confidence: float
+    rationale: str
+    model_name: str
+
+
+@dataclass
 class GuardLabel:
     pred: str
     safe_for: list[str]  # [] = does not validate; ["all"] = blocks every payload class
@@ -193,6 +203,7 @@ class SpecOracle(Protocol):
     def classify_entry(self, fn: str, decorators: list[str], params: list[str], source: str) -> EntryLabel: ...
     def classify_registrar(self, api: str, arg: int | str, usage: str) -> RegistrarLabel: ...
     def classify_authz(self, decorator: str, source: str) -> AuthzLabel: ...
+    def classify_model(self, model: str, source: str) -> ModelLabel: ...
 
 
 class Verifier(Protocol):

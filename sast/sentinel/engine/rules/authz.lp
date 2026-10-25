@@ -28,7 +28,10 @@ cmp2(A,B) :- compare(A,B).
 cmp2(A,B) :- compare(B,A).
 owner_check(K) :- cmp2(A,B), udep(A), rdep(B,K).
 
-idor_cand(P,K,M) :- handler(F), id_param(F,I), param(F,I,P), p2l(F,I,K), lookup(K,M), owned_model(M), not test_fn(F).
+% An owner-like column makes a model a candidate; whether its records are private is a per-model question.
+idor_cand(P,K,M) :- handler(F), id_param(F,I), param(F,I,P), p2l(F,I,K), lookup(K,M), owned_model(M), not public_model(M),
+                    not test_fn(F).
+privacy_frontier(M) :- idor_cand(P,K,M), not idor_safe(P,K), not private_model(M).
 idor_mit(P,K,owner_check)  :- idor_cand(P,K,_), owner_check(K).
 idor_mit(P,K,scoped_query) :- idor_cand(P,K,_), scoped(K).
 idor_mit(P,K,authz(D))     :- idor_cand(P,K,_), node(P,F), decorated(F,D), authz_decorator(D).
@@ -44,5 +47,8 @@ idor_unknown(P,K,D)     :- idor_cand(P,K,_), node(P,F), decorated(F,D), not answ
 cand(P,K,"idor")             :- idor_cand(P,K,_).
 mit(P,K,"idor",W)            :- idor_mit(P,K,W).
 alarm(P,K,"idor",any)        :- idor_cand(P,K,_), not idor_safe(P,K).
-alarm(P,K,"idor",clean)      :- alarm(P,K,"idor",any), not idor_unknown(P,K,_).
+% Authorization often lives outside the handler (middleware, services, row-level security): the engine
+% never confirms an IDOR on its own. It proposes candidates; the verifier reads the code around them.
 asm(P,K,"idor",unknown_authz(D)) :- alarm(P,K,"idor",any), idor_unknown(P,K,D).
+asm(P,K,"idor",unknown_privacy(M)) :- alarm(P,K,"idor",any), idor_cand(P,K,M), not private_model(M).
+asm(P,K,"idor",authz_context(F)) :- alarm(P,K,"idor",any), node(P,F).

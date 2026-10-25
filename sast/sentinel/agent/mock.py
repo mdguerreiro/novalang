@@ -13,7 +13,7 @@ import re
 import yaml
 
 from ..engine.analyze import CWE
-from .interfaces import (AgentTools, ApiLabel, AuthzLabel, Citation, Claim, EntryLabel, GuardLabel, ProposedKnowledge, RegistrarLabel,
+from .interfaces import (AgentTools, ApiLabel, AuthzLabel, ModelLabel, Citation, Claim, EntryLabel, GuardLabel, ProposedKnowledge, RegistrarLabel,
                          RuleContext, RuleProposal, SinkLabel, VerificationCase, Verdict)
 
 # What a well-read model "knows" about common library APIs.
@@ -93,6 +93,11 @@ class MockSpecOracle:
         if re.search(r"(add_route|add_url_rule|add_api_route|add_view|add_get|add_post|register_handler|django\.urls\.(path|re_path)|django\.conf\.urls\.url)$", api):
             return RegistrarLabel(api, arg, True, "http", 0.92, "Registers the function as a request handler.", self.name)
         return RegistrarLabel(api, arg, False, "", 0.8, "Not a handler registration.", self.name)
+
+    def classify_model(self, model: str, source: str) -> ModelLabel:
+        if re.search(r"^\s*(slug|published|is_public|public)\s*[:=]", source, re.M):
+            return ModelLabel(model, False, 0.8, "Published content addressed by slug.", self.name)
+        return ModelLabel(model, True, 0.8, "Records belong to one user.", self.name)
 
     def classify_authz(self, decorator: str, source: str) -> AuthzLabel:
         code = "\n".join(l.split("#")[0] for l in source.splitlines())  # comments are not code

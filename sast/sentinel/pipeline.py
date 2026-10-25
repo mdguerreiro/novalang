@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import time
 from collections import defaultdict
 from dataclasses import asdict
@@ -340,8 +341,9 @@ class Scanner:
             entries = sorted({fn for fn, _i in a.model.get("src_frontier")})
             regs = sorted(set(a.model.get("reg_frontier")), key=str)
             decs = sorted({d for (d,) in a.model.get("authz_frontier")})
+            models = sorted({m for (m,) in a.model.get("privacy_frontier")})
             todo = [("sink", q) for q in sorted(sinks)] + [("reg", r) for r in regs] + [("entry", fn) for fn in entries] \
-                + [("authz", d) for d in decs]
+                + [("authz", d) for d in decs] + [("model", m) for m in models]
             todo = [t for t in todo if t not in asked]
             if not todo:
                 break
@@ -351,7 +353,8 @@ class Scanner:
                 asked.add((kind, subj))
                 preds = {"sink": ("sink_api", "not_sink_api"), "entry": ("entry_source", "not_entry"),
                          "reg": ("registrar", "not_registrar"),
-                         "authz": ("authz_decorator", "not_authz_decorator")}[kind]
+                         "authz": ("authz_decorator", "not_authz_decorator"),
+                         "model": ("private_model", "public_model")}[kind]
                 key = subj[0] if kind == "reg" else subj
                 if any(self._known(p, key, org, repo_id) for p in preds) or (
                         kind == "entry" and any(self._known(p, d, org, repo_id)
@@ -363,6 +366,7 @@ class Scanner:
                 items = (self._ask_sink(subj, sorted(sinks[subj], key=str), facts) if kind == "sink"
                          else self._ask_registrar(*subj, facts) if kind == "reg"
                          else self._ask_authz(subj, facts, org) if kind == "authz"
+                         else self._ask_model(subj, facts, org) if kind == "model"
                          else self._ask_entry(subj, facts, org, repo_id))
                 for item in items:
                     item = self._gate_item(item["id"])
@@ -404,6 +408,20 @@ class Scanner:
         if not label.registers and label.confidence >= 0.8:
             return [self.ks.propose("not_registrar", [api], scope, org, repo, origin, label.confidence, label.rationale)]
         return []
+
+    def _ask_model(self, model: str, facts: Facts, org: str) -> list[dict]:
+        fn = facts.functions.get(model)
+        src = ""
+        for rel, text in facts.files.items():  # class source: the model is a class, not a function
+            m = re.search(rf"^class {re.escape(model.rsplit('.', 1)[-1])}\b.*?(?=^\S|\Z)", text, re.M | re.S)
+            if m and rel.replace("/", ".").startswith(model.rsplit(".", 2)[0].split(".")[0]):
+                src = m.group(0)[:3000]
+                break
+        label = self.oracle.classify_model(model, src)
+        if label.confidence < 0.7:
+            return []
+        return [self.ks.propose("private_model" if label.private else "public_model", [model], "org", org, None,
+                                f"oracle:{label.model_name}", label.confidence, label.rationale)]
 
     def _ask_authz(self, dec: str, facts: Facts, org: str) -> list[dict]:
         label = self.oracle.classify_authz(dec, self._source_of(facts, dec))

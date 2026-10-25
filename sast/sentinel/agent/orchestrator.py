@@ -189,7 +189,9 @@ def gate(verdict: Verdict, tools: Tools, never_auto_suppress: set[str] | None = 
     has_alarm = current is not None and current.status in ("confirmed", "undecided")
     ok &= check("alarm", has_alarm, "source to sink flow exists" if has_alarm else "no flow")
     if after is not None:
-        ok &= check("discharge", after["status"] == "confirmed",
-                    "all assumptions resolved" if after["status"] == "confirmed"
+        # IDOR keeps an "authorization elsewhere" assumption the verifier itself answers by reading the code.
+        done = after["status"] == "confirmed" or (verdict.cls == "idor" and after["status"] == "undecided")
+        ok &= check("discharge", done,
+                    "all assumptions resolved" if done
                     else f"assumptions still open (status {after['status']})")
     return GateResult(bool(ok), "confirmed" if ok else "review", checks)

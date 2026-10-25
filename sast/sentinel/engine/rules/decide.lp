@@ -14,6 +14,7 @@ open(S,K,C)       :- alarm(S,K,C,any), not safe(S,K,C), not test_only(S,K,C).
 has_asm(S,K,C)    :- open(S,K,C), asm(S,K,C,_), not alarm(S,K,C,clean).
 has_asm(S,K,C)    :- open(S,K,C), asm(S,K,C,weak_source(_)).
 has_asm(S,K,C)    :- open(S,K,C), asm(S,K,C,unreachable(_)).
+has_asm(S,K,C)    :- open(S,K,C), asm(S,K,C,authz_context(_)).
 
 undecided(S,K,C)  :- open(S,K,C), has_asm(S,K,C).
 confirmed(S,K,C)  :- open(S,K,C), not has_asm(S,K,C).

@@ -45,10 +45,13 @@ NEUTRAL_METHODS = {
     "isdecimal", "isalpha", "startswith", "endswith", "count", "index", "find",
 }
 # Current-user identity (object-level authorization).
-IDENTITY_RE = re.compile(r"^(flask_login(\.utils)?\.current_user|flask\.g\.user|flask\.session|flask_jwt_extended\.get_jwt_identity|"
-                         r"django\.contrib\.auth\.get_user)(\.|\(|$)")
+IDENTITY_RE = re.compile(r"(^|\.)(current_user|current_identity)(\.|\(|$)|"
+                         r"(^|\.)(get_current_user|get_jwt_identity|get_current_identity|get_user)(\(|$)|"
+                         r"^flask\.(g\.user|session)(\.|\[|$)")
+IDENTITY_PARAMS = {"current_user", "user_identity", "auth_user"}  # FastAPI-style `current_user: User = Depends(...)`
 OWNER_FIELD_RE = re.compile(r"^(owner|user|author|created_by|account|tenant|customer|patient|member|uploader)(_id)?$")
 LOOKUP_RE = re.compile(r"^(?P<m>.+)\.(query\.(get|get_or_404|filter_by|filter|first_or_404)|objects\.(get|filter))$")
+FIXED_HOST_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/?#{}%@]+[/?#]")
 EXIT_CALLS = {"abort", "flask.abort", "sys.exit", "exit", "os._exit"}
 SAFE_CONVERTERS = {"int", "float", "uuid"}
 TEST_PATH_RE = re.compile(r"(^|/)(tests?|testing)/|(^|/)test_[^/]*\.py$|_test\.py$|(^|/)conftest\.py$")
@@ -399,6 +402,8 @@ class _FunctionWalker:
         for i, a in enumerate(all_args):
             pid = self.ex.new_node(self.fn.qname, self.file, a, "param", label=a.arg)
             self.f.params.add((self.fn.qname, i, pid))
+            if a.arg in IDENTITY_PARAMS:
+                self.f.user_refs.add(pid)
             env[a.arg] = frozenset({pid})
             if self.fn.is_entry and a.arg in route_conv:
                 conv = route_conv[a.arg]
@@ -492,6 +497,8 @@ class _FunctionWalker:
         self.expr(s.test, env)
         g_pos = self.guard_info(s.test)
         g_neg = self.guard_info(s.test, negate=True)
+        if not g_pos and not g_neg:
+            g_pos, g_neg = self._opaque_guard(s.test, env)
         body_env = self.refine(env, g_pos, s) if g_pos else env
         else_env = self.refine(env, g_neg, s) if g_neg else env
         out_body = self.block(s.body, body_env)
@@ -536,6 +543,25 @@ class _FunctionWalker:
             inner = self._positive_guard(test, negated_context=True)
             return inner
         return self._positive_guard(test, negated_context=False)
+
+    def _opaque_guard(self, test: ast.expr, env: Env) -> tuple[list | None, list | None]:
+        """A check the engine cannot interpret (`urlsplit(nxt).netloc != ""`, `is_safe(u)`) that inspects a
+        variable through a call or attribute: both branches become unverified-validation points instead of the
+        check being invisible. Truthiness/emptiness tests (`if not x`) are not validation and stay invisible."""
+        inspected = set()
+        for node in ast.walk(test):
+            if isinstance(node, ast.Call):
+                for a in list(node.args) + [k.value for k in node.keywords]:
+                    inspected |= {n.id for n in ast.walk(a) if isinstance(n, ast.Name) and n.id in env}
+                if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name) and node.func.value.id in env:
+                    inspected.add(node.func.value.id)
+        if not inspected:
+            return None, None
+        text = ast.get_source_segment(self.f.files[self.file], test) or ast.unparse(test)
+        pred = "expr:" + " ".join(text.split())[:160]
+        self.f.pred_sources[pred] = text
+        self.f.pred_sources["not " + pred] = "not (" + text + ")"
+        return [(v, pred) for v in sorted(inspected)], [(v, "not " + pred) for v in sorted(inspected)]
 
     def _positive_guard(self, test: ast.expr, negated_context: bool) -> list[tuple[str, str]] | None:
         # For negated_context we want predicates that hold when `test` is FALSE.
@@ -666,7 +692,7 @@ class _FunctionWalker:
         if isinstance(e, ast.Name):
             defs = env.get(e.id)
             if not defs:
-                if IDENTITY_RE.match(self.ex.resolve(self.mod, e.id)):
+                if IDENTITY_RE.search(self.ex.resolve(self.mod, e.id)):
                     nid = new("use", e.id)
                     self.f.user_refs.add(nid)
                     return nid
@@ -681,8 +707,8 @@ class _FunctionWalker:
             if b:
                 self.f.edges.add((b, nid))
             d = self.ex._dotted(e)
-            if b in self.f.user_refs or (d and (IDENTITY_RE.match(self.ex.resolve(self.mod, d))
-                                                or d.startswith("request.user") and "request" in env)):
+            if b in self.f.user_refs or (d and (IDENTITY_RE.search(self.ex.resolve(self.mod, d))
+                                                or d.startswith(("request.user", "request.auth")) and "request" in env)):
                 self.f.user_refs.add(nid)
             return nid
         if isinstance(e, ast.Subscript):
@@ -710,6 +736,7 @@ class _FunctionWalker:
             nid = new("expr", ast.unparse(e)[:80])
             for c in children:
                 self.f.edges.add((c, nid))
+            self._mark_url_prefix(nid, _leading_literal(e))
             return nid
         if isinstance(e, ast.Lambda):
             return None
@@ -767,6 +794,16 @@ class _FunctionWalker:
                 return self.fn.cls
             return self.types.get(name)
         return None
+
+    def _mark_url_prefix(self, nid: int, prefix: str | None) -> None:
+        """A string built after a constant `scheme://host/` (or `/path`) prefix cannot choose the host it
+        reaches: safe for SSRF (and open redirect) whatever follows. Path/query injection is a different class."""
+        if not prefix:
+            return
+        if FIXED_HOST_RE.match(prefix):
+            self.f.typed.add((nid, "fixed_host"))
+        elif prefix.startswith("/") and not prefix.startswith(("//", "/\\")) and len(prefix) > 1:
+            self.f.typed.add((nid, "relative_path"))
 
     def _lookup_model(self, e: ast.Call, dotted: str | None) -> str | None:
         """`Doc.query.get(x)`, `Doc.objects.get(pk=x)`, `session.get(Doc, x)`, `get_object_or_404(Doc, pk=x)`."""
@@ -830,6 +867,8 @@ class _FunctionWalker:
 
         nid = self.ex.new_node(self.fn.qname, self.file, e, "call", label=ast.unparse(e)[:80], callee=qual)
         self.f.callnames.add((nid, qual))
+        if isinstance(func, ast.Attribute) and func.attr == "format" and isinstance(func.value, ast.Constant):
+            self._mark_url_prefix(nid, func.value.value if isinstance(func.value.value, str) else None)
         model = self._lookup_model(e, dotted)
         if model:
             self.f.lookups.add((nid, model))
@@ -838,7 +877,7 @@ class _FunctionWalker:
                     self.f.lookup_deps.add((nid, x))
                 if x in self.f.user_refs:
                     self.f.scoped.add(nid)
-        if IDENTITY_RE.match(qual):
+        if IDENTITY_RE.search(qual):
             self.f.user_refs.add(nid)
 
         for key, a in [(i, x) for i, x in enumerate(e.args)] + [(k.arg, k.value) for k in e.keywords if k.arg]:
@@ -905,6 +944,17 @@ def _host_of(value: ast.expr | None) -> str | None:
             fname = c.func.attr if isinstance(c.func, ast.Attribute) else getattr(c.func, "id", "")
             if fname in ("urlparse", "urlsplit"):
                 return c.args[0].id
+    return None
+
+
+def _leading_literal(e: ast.expr) -> str | None:
+    """The constant text a string expression starts with: `"https://h/" + x`, f"https://h/{x}", `"..%s" % x`."""
+    if isinstance(e, ast.BinOp) and isinstance(e.op, (ast.Add, ast.Mod)):
+        return _leading_literal(e.left)
+    if isinstance(e, ast.Constant) and isinstance(e.value, str):
+        return e.value
+    if isinstance(e, ast.JoinedStr) and e.values and isinstance(e.values[0], ast.Constant):
+        return str(e.values[0].value)
     return None
 
 
