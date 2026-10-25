@@ -170,3 +170,9 @@ pending_reg(F)     :- fn_ref(K,_,F), callname(K,Q), not answered_reg(Q).
 reg_frontier(Q,I)  :- fn_ref(K,I,F), callname(K,Q), param(F,_,_), not has_caller(F), not answered_reg(Q), not test_fn(F),
                       not generic_reg(Q).
 answered_entry(F)  :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I).
+
+% Route-shaped decorators (`app.get`, `router.post`, `bp.route`) are asked about even before a known sink is
+% reachable: an unknown framework plus an unknown sink is common, and there are few such decorators.
+dec_frontier(D) :- decorated(F,D), route_dec(D), param(F,_,_), not answered_dec_src(D), not test_fn(F).
+answered_dec_src(D) :- framework_source(D,_).
+answered_dec_src(D) :- not_framework_source(D).

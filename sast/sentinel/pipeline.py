@@ -348,6 +348,11 @@ class Scanner:
             for q, i in a.model.get("sink_frontier"):
                 sinks[q].add(i)
             entries = sorted({fn for fn, _i in a.model.get("src_frontier")})
+            # One representative handler per unanswered route-shaped decorator.
+            for (d,) in sorted(set(a.model.get("dec_frontier"))):
+                rep = min((f for f, dd in facts.decorated if dd == d), default=None)
+                if rep and rep not in entries:
+                    entries.append(rep)
             regs = sorted(set(a.model.get("reg_frontier")), key=str)
             decs = sorted({d for (d,) in a.model.get("authz_frontier")})
             models = sorted({m for (m,) in a.model.get("privacy_frontier")})

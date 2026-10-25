@@ -16,11 +16,11 @@ rules:
     message: source
     metadata: {sentinel: {role: source, kind: http}}
     pattern-either:
-      - pattern: flask.request.args.get(...)
+      - pattern: flask.request.args.$M(...)
       - pattern: flask.request.args[...]
-      - pattern: flask.request.form.get(...)
+      - pattern: flask.request.form.$M(...)
       - pattern: flask.request.form[...]
-      - pattern: flask.request.values.get(...)
+      - pattern: flask.request.values.$M(...)
       - pattern: flask.request.get_json(...)
       - pattern: flask.request.get_data(...)
       - pattern: flask.request.data
@@ -38,7 +38,7 @@ rules:
     message: source
     metadata: {sentinel: {role: source, kind: cookie}}
     pattern-either:
-      - pattern: flask.request.cookies.get(...)
+      - pattern: flask.request.cookies.$M(...)
       - pattern: flask.request.cookies[...]
   - id: spec.source.flask.headers
     languages: [python]
@@ -46,7 +46,7 @@ rules:
     message: source
     metadata: {sentinel: {role: source, kind: header}}
     pattern-either:
-      - pattern: flask.request.headers.get(...)
+      - pattern: flask.request.headers.$M(...)
       - pattern: flask.request.headers[...]
   - id: spec.source.cli.argv
     languages: [python]
@@ -182,7 +182,14 @@ rules:
     message: sink
     metadata: {sentinel: {role: sink, cls: redirect, cwe: CWE-601}}
     patterns:
-      - pattern: flask.redirect($U, ...)
+      - pattern-either:
+          - pattern: flask.redirect($U, ...)
+          - pattern: django.shortcuts.redirect($U, ...)
+          - pattern: django.http.HttpResponseRedirect($U, ...)
+          - pattern: starlette.responses.RedirectResponse($U, ...)
+          - pattern: fastapi.responses.RedirectResponse($U, ...)
+          - pattern: $R.headers["Location"] = $U
+          - pattern: $R.headers['Location'] = $U
       - focus-metavariable: $U
 
   # ───────────────────────────── sanitizers ─────────────────────────────
