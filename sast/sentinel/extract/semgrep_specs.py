@@ -49,23 +49,36 @@ class SpecMatch:
     l2: int
     c2: int
     node: int | None
+    knowledge: str | None = None  # id of the learned spec_rule item that produced the match (None = curated pack)
+
+
+def run_semgrep_raw(config_paths: list[Path], cwd: Path, targets: list[str]) -> tuple[int, dict | None, str]:
+    """Run Semgrep without raising: (exit code, parsed JSON or None, stderr tail). Used where a broken
+    rule is an expected outcome (validating a proposed spec rule), not an internal error."""
+    cmd = [semgrep_bin(), "--json", "--metrics=off", "--disable-version-check", "--quiet", "--no-git-ignore"]
+    for c in config_paths:
+        cmd += ["--config", str(c)]
+    cmd += targets  # explicit targets: Semgrep's default ignores (e.g. tests/) do not apply
+    env = dict(os.environ, SEMGREP_ENABLE_VERSION_CHECK="0", SEMGREP_SEND_METRICS="off")
+    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, env=env, timeout=600)
+    try:
+        out = json.loads(proc.stdout) if proc.stdout.strip() else None
+    except json.JSONDecodeError:
+        out = None
+    return proc.returncode, out, proc.stderr[-2000:]
 
 
 def _run_semgrep(config_paths: list[Path], root: Path, files: list[str]) -> dict:
     if not files:
         return {"results": [], "errors": []}
-    cmd = [semgrep_bin(), "--json", "--metrics=off", "--disable-version-check", "--quiet", "--no-git-ignore"]
-    for c in config_paths:
-        cmd += ["--config", str(c)]
-    cmd += files  # explicit targets: Semgrep's default ignores (e.g. tests/) do not apply
-    env = dict(os.environ, SEMGREP_ENABLE_VERSION_CHECK="0", SEMGREP_SEND_METRICS="off")
-    proc = subprocess.run(cmd, cwd=root, capture_output=True, text=True, env=env, timeout=600)
-    if proc.returncode not in (0, 1):
-        raise RuntimeError(f"semgrep failed ({proc.returncode}): {proc.stderr[-2000:]}")
-    return json.loads(proc.stdout)
+    code, out, err = run_semgrep_raw(config_paths, root, files)
+    if code not in (0, 1) or out is None:
+        raise RuntimeError(f"semgrep failed ({code}): {err}")
+    return out
 
 
-def _rule_meta(config_paths: list[Path]) -> dict[str, dict]:
+def rule_meta(config_paths: list[Path]) -> dict[str, dict]:
+    """rule id -> metadata.sentinel (role, cls, kind, cwe, and `knowledge` for learned rules)."""
     meta = {}
     for p in config_paths:
         for r in (yaml.safe_load(p.read_text()) or {}).get("rules", []):
@@ -75,28 +88,44 @@ def _rule_meta(config_paths: list[Path]) -> dict[str, dict]:
 
 def _short_id(check_id: str, known: dict[str, dict]) -> str:
     # Semgrep prefixes rule ids with the config's directory name; recover the declared id.
-    for rid in known:
+    # Longest first, so a learned id never resolves to a curated id that happens to be its suffix.
+    for rid in sorted(known, key=len, reverse=True):
         if check_id == rid or check_id.endswith("." + rid):
             return rid
     return check_id
 
 
-def match_specs(root: Path, facts: Facts, extra_specs: list[Path] | None = None) -> list[SpecMatch]:
-    configs = DEFAULT_SPECS + list(extra_specs or [])
-    meta = _rule_meta(configs)
-    out = _run_semgrep(configs, root, sorted(facts.files))
+def lift(results: list[dict], facts: Facts, meta: dict[str, dict], path_of=lambda r: r["path"]) -> list[SpecMatch]:
+    """Semgrep results -> spec matches attached to the AST node with the same span."""
     matches = []
-    for r in out.get("results", []):
+    for r in results:
         rid = _short_id(r["check_id"], meta)
         m = meta.get(rid, {})
         role = m.get("role")
         if role not in ("source", "sink", "sanitizer"):
             continue
         s, e = r["start"], r["end"]
-        node = facts.node_at(r["path"], s["line"], s["col"], e["line"], e["col"])
-        matches.append(SpecMatch(rid, role, m.get("cls"), m.get("kind"), m.get("cwe"), r["path"],
-                                 s["line"], s["col"], e["line"], e["col"], node.id if node else None))
+        path = path_of(r)
+        node = facts.node_at(path, s["line"], s["col"], e["line"], e["col"])
+        if node is not None and m.get("knowledge") and role != "sanitizer" and \
+                (node.l1, node.c1, node.l2, node.c2) != (s["line"], s["col"], e["line"], e["col"]):
+            # A learned sink/source focused on an expression with no node of its own (a literal) must not
+            # fall back to the enclosing call: that would taint-check the call's other arguments.
+            # (The curated pack keeps the original fallback; see docs/evaluation.md.)
+            node = None
+        matches.append(SpecMatch(rid, role, m.get("cls"), m.get("kind"), m.get("cwe"), path, s["line"], s["col"],
+                                 e["line"], e["col"], node.id if node else None, m.get("knowledge")))
     return matches
+
+
+def match_specs(root: Path, facts: Facts, extra_specs: list[Path] | None = None,
+                include_default: bool = True) -> list[SpecMatch]:
+    """`include_default=False` matches only `extra_specs` (learned rules on top of cached curated matches)."""
+    configs = (DEFAULT_SPECS if include_default else []) + list(extra_specs or [])
+    if not configs:
+        return []
+    out = _run_semgrep(configs, root, sorted(facts.files))
+    return lift(out.get("results", []), facts, rule_meta(configs))
 
 
 # ── baseline: Semgrep taint mode generated from the same specs ─────────────────
@@ -107,11 +136,17 @@ def _patterns_of(rule: dict) -> list[dict]:
     return [body]
 
 
-def build_baseline_rules(config_paths: list[Path] | None = None) -> dict:
-    configs = config_paths or DEFAULT_SPECS
+def load_rules(config_paths: list[Path] | None = None) -> list[dict]:
     rules = []
-    for p in configs:
+    for p in config_paths or DEFAULT_SPECS:
         rules += (yaml.safe_load(p.read_text()) or {}).get("rules", [])
+    return rules
+
+
+def build_baseline_rules(config_paths: list[Path] | None = None, rules: list[dict] | None = None) -> dict:
+    """Plain Semgrep taint-mode rules (one per class) generated from spec rules: what Semgrep OSS does
+    with the same knowledge, and what `export-rules --format taint` hands to CI."""
+    rules = rules if rules is not None else load_rules(config_paths)
     by_role: dict[str, list[dict]] = {"source": [], "sink": [], "sanitizer": []}
     for r in rules:
         m = r.get("metadata", {}).get("sentinel", {})
@@ -142,10 +177,11 @@ class BaselineFinding:
     snippet: str
 
 
-def run_baseline(root: Path, files: list[str]) -> list[BaselineFinding]:
+def run_baseline(root: Path, files: list[str], rules: list[dict] | None = None) -> list[BaselineFinding]:
+    """`rules`: spec rules to generate the taint rules from (default: the curated pack)."""
     with tempfile.TemporaryDirectory() as td:
         cfg = Path(td) / "baseline.yml"
-        cfg.write_text(yaml.safe_dump(build_baseline_rules(), sort_keys=False))
+        cfg.write_text(yaml.safe_dump(build_baseline_rules(rules=rules), sort_keys=False))
         out = _run_semgrep([cfg], root, files)
     res = []
     for r in out.get("results", []):

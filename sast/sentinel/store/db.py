@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS knowledge (
   id TEXT PRIMARY KEY, scope TEXT NOT NULL, org_id TEXT, repo_id TEXT,
   pred TEXT NOT NULL, args TEXT NOT NULL, status TEXT NOT NULL, origin TEXT NOT NULL,
   confidence REAL, rationale TEXT, gate TEXT NOT NULL DEFAULT '{}', corroborations INTEGER NOT NULL DEFAULT 0,
-  created_at REAL NOT NULL, updated_at REAL NOT NULL);
+  created_at REAL NOT NULL, updated_at REAL NOT NULL, payload TEXT NOT NULL DEFAULT '{}');
 CREATE TABLE IF NOT EXISTS knowledge_links (
   knowledge_id TEXT NOT NULL, finding_id INTEGER, verdict_id INTEGER, relation TEXT NOT NULL, created_at REAL NOT NULL);
 CREATE TABLE IF NOT EXISTS events (
@@ -70,6 +70,13 @@ class Store:
         self.conn.execute("PRAGMA journal_mode=WAL" if self.path != ":memory:" else "PRAGMA journal_mode=MEMORY")
         self.conn.execute("PRAGMA foreign_keys=ON")
         self.conn.executescript(SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Columns added after a database may already exist (CREATE TABLE IF NOT EXISTS never adds them)."""
+        cols = {r["name"] for r in self.conn.execute("PRAGMA table_info(knowledge)").fetchall()}
+        if "payload" not in cols:  # spec_rule items: rule YAML, examples, originating site
+            self.conn.execute("ALTER TABLE knowledge ADD COLUMN payload TEXT NOT NULL DEFAULT '{}'")
 
     @contextmanager
     def tx(self) -> Iterator[sqlite3.Connection]:
@@ -124,9 +131,10 @@ class Store:
                       time.time(), actor, type_, finding_id, knowledge_id, json.dumps(payload, default=str))
 
     # ── knowledge ────────────────────────────────────────────────────────────────────────
-    def next_knowledge_id(self) -> str:
-        r = self.one("SELECT COUNT(*) AS n FROM knowledge")
-        return f"K-{(r['n'] if r else 0) + 1:03d}"
+    def next_knowledge_id(self, prefix: str = "K") -> str:
+        """K-NNN for Datalog facts, R-NNN for learned spec rules (separate sequences)."""
+        r = self.one("SELECT COUNT(*) AS n FROM knowledge WHERE id LIKE ?", f"{prefix}-%")
+        return f"{prefix}-{(r['n'] if r else 0) + 1:03d}"
 
     def knowledge(self, kid: str) -> dict | None:
         return self.one("SELECT * FROM knowledge WHERE id=?", kid)

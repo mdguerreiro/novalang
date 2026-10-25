@@ -6,6 +6,7 @@ symbolic gates as the mock.
 """
 import json
 from dataclasses import asdict
+from pathlib import Path
 from types import SimpleNamespace as NS
 
 import pytest
@@ -193,3 +194,77 @@ def test_oracle_batch_maps_results_by_custom_id():
     assert labels[("unknown_guard", "regex:[a-z]+")].safe_for == ["all"]
     assert labels[("unknown_api", "x.y")].role == "unknown"  # errored item: the assumption stays open
     assert all("fallbacks" not in r["params"] for r in created["requests"])  # not supported on batches
+
+
+# ── rule synthesizer ─────────────────────────────────────────────────────────────────────
+
+def _synth_ctx():
+    from sentinel.agent.interfaces import RuleContext
+    return RuleContext("sink", "cmdi", "acme_common.shell.run_shell", "acme-billing", 0, "command",
+                       "def run_shell(command):\n    return subprocess.run(command, shell=True)",
+                       {"file": "billing/app.py", "line": 56, "code": 'run_shell("tar czf /archive/" + batch)'},
+                       {"fingerprint": "f", "title": "OS command injection", "source_fn": "billing.app.archive",
+                        "sink_fn": "acme_common.shell.run_shell"})
+
+
+def test_rule_synthesizer_request_shape_and_gate(case_and_tools):
+    """The proposal parses, carries role/cls from the trigger (not the model), and passes the real gate."""
+    from sentinel.agent.claude import ClaudeRuleSynthesizer
+    from sentinel.agent.mock import MockRuleSynthesizer
+    from sentinel.learn.rules import check_rule
+    ctx = _synth_ctx()
+    good = MockRuleSynthesizer().propose(ctx, None)[0]  # what a well-behaved model would write
+    answer = {"rules": [{"yaml": good.yaml, "rationale": "run_shell passes its argument to a shell",
+                         "vulnerable_example": good.vulnerable_example, "fixed_example": good.fixed_example}]}
+    api = FakeAPI([final(lambda kw: answer)])
+    [p] = ClaudeRuleSynthesizer(client=api).propose(ctx, None)
+    assert (p.role, p.cls, p.yaml) == ("sink", "cmdi", good.yaml) and p.model.startswith("claude-synth:")
+    assert check_rule(p.yaml, p.role, p.cls)[1] == "pass"
+    req = api.calls[0]
+    assert req["model"] == "claude-opus-5-5" and req["thinking"] == {"type": "adaptive"}
+    assert req["output_config"]["effort"] in ("low", "medium", "high", "xhigh", "max")
+    assert req["output_config"]["format"]["type"] == "json_schema"
+    assert req["fallbacks"] == "default" and "server-side-fallback-2026-07-01" in req["betas"]
+    assert "tool_choice" not in req and req["system"][0]["cache_control"] == {"type": "ephemeral"}
+    prompt = req["messages"][0]["content"]
+    assert "acme_common.shell.run_shell" in prompt and "shell=True" in prompt and '"index": 0' in prompt
+
+
+def test_rule_synthesizer_failures_yield_no_proposal():
+    import anthropic
+    import httpx
+    from sentinel.agent.claude import ClaudeRuleSynthesizer
+
+    def overloaded(kw):
+        req = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
+        raise anthropic.InternalServerError("overloaded", response=httpx.Response(529, request=req), body=None)
+
+    garbage = lambda kw: NS(stop_reason="end_turn", usage=_usage(), content=[NS(type="text", text="not json")])
+    for script in ([overloaded], [refusal()], [garbage]):
+        assert ClaudeRuleSynthesizer(client=FakeAPI(script)).propose(_synth_ctx(), None) == []
+
+
+def test_rule_synthesizer_bad_rule_is_stopped_by_the_gate():
+    """A model that answers with the over-broad `$F($X, ...)` gets a proposal through the API, never past the gate."""
+    from sentinel.agent.claude import ClaudeRuleSynthesizer
+    from sentinel.agent.mock import MockRuleSynthesizer
+    from sentinel.learn.knowledge import gate_passed
+    from sentinel.learn.rules import RepoView, RuleGate
+    ctx = _synth_ctx()
+    good = MockRuleSynthesizer().propose(ctx, None)[0]
+    broad = ("rules:\n- id: learned.sink.cmdi.broad\n  languages: [python]\n  severity: INFO\n  message: sink\n"
+             "  metadata: {sentinel: {role: sink, cls: cmdi}}\n  patterns:\n  - pattern: $F($X, ...)\n"
+             "  - focus-metavariable: $X\n")
+    answer = {"rules": [{"yaml": broad, "rationale": "x", "vulnerable_example": good.vulnerable_example,
+                         "fixed_example": good.fixed_example}]}
+    [p] = ClaudeRuleSynthesizer(client=FakeAPI([final(lambda kw: answer)])).propose(ctx, None)
+    sc = fresh_scanner(repos=["acme-billing"])
+    facts, _ = sc.inputs("acme-billing")
+    item = {"id": "T-claude", "pred": "spec_rule", "scope": "org", "org_id": "acme", "repo_id": None, "origin": "agent:x",
+            "payload": {"yaml": p.yaml, "role": p.role, "cls": p.cls, "rule_id": "learned.sink.cmdi.broad",
+                        "vulnerable_example": p.vulnerable_example, "fixed_example": p.fixed_example,
+                        "origin_repo": "acme-billing", "site": ctx.site}}
+    view = RepoView(Path(sc.store.repo("acme-billing")["root"]), facts, lambda: sc.analyze_repo("acme-billing"),
+                    lambda ms: sc.analyze_repo("acme-billing", extra_matches=ms))
+    rep = RuleGate().gate(item, {"acme-billing": view}, set())
+    assert not gate_passed(rep) and "budget" in rep["canary"], rep["canary"]

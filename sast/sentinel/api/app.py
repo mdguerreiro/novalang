@@ -5,12 +5,13 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from ..explain import explain
 from ..learn import bayes
+from ..learn.rules import export_rules
 from ..pipeline import Scanner
 from ..store.db import Store
 from ..triage import Triage
@@ -47,6 +48,20 @@ class BulkIn(BaseModel):
 
 class KnowledgeIn(BaseModel):
     status: str
+    actor: str = "human:you"
+
+
+class RuleIn(BaseModel):
+    repo: str  # originating repository (the generalization gate checks the rule against it)
+    yaml: str
+    role: str
+    cls: str | None = None
+    scope: str = "repo"
+    vulnerable_example: str = ""
+    fixed_example: str = ""
+    rationale: str = ""
+    target: str | None = None
+    site: dict | None = None  # {"file", "line"} the rule must match
     actor: str = "human:you"
 
 
@@ -164,8 +179,10 @@ def create_app(store: Store | None = None, scanner: Scanner | None = None) -> Fa
                             "LEFT JOIN findings f ON f.id = l.finding_id WHERE l.knowledge_id=?", k["id"])
             k["links"] = links
             k["support"] = scanner.ks.support(k["id"])
+            # payload (spec rules: rule YAML, validation pair, originating site) and gate come with the row.
             k["applied_to"] = [r["id"] for r in store.q("SELECT id, data FROM findings WHERE is_open=1")
-                               if any(k["id"] in m.get("knowledge", []) for m in r["data"].get("mitigations", []))]
+                               if any(k["id"] in m.get("knowledge", []) for m in r["data"].get("mitigations", []))
+                               or k["id"] in r["data"].get("spec_knowledge", [])]
             k["shadowing"] = [r["id"] for r in store.q("SELECT id FROM findings WHERE shadow_by=? AND is_open=1", k["id"])]
         return rows
 
@@ -187,6 +204,28 @@ def create_app(store: Store | None = None, scanner: Scanner | None = None) -> Fa
             raise HTTPException(404, "knowledge item not found")
         rep = scanner.preview(item)
         return {**rep, "impact": triage._enrich(rep["impact"])}
+
+    @app.get("/api/rules/export")
+    def export(org: str, repo: str | None = None, format: str = "spec"):
+        """Curated pack + ACTIVE learned spec rules as one plain Semgrep config (for CI without Sentinel)."""
+        try:
+            text = export_rules(store, org, repo, format)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        return PlainTextResponse(text, media_type="application/yaml")
+
+    @app.post("/api/rules")
+    def submit_rule(body: RuleIn):
+        """A human-written spec rule. It goes through the same gates and activates only if all pass."""
+        if store.repo(body.repo) is None:
+            raise HTTPException(404, "repo not found")
+        if body.scope not in ("repo", "org"):
+            raise HTTPException(400, "scope must be repo or org")
+        item = scanner.submit_rule(body.repo, body.yaml, body.role, body.cls, body.scope, body.actor,
+                                   body.vulnerable_example, body.fixed_example, body.rationale, body.target, body.site)
+        if item["status"] == "active":
+            item["rescanned"] = triage.rescan_scope(item)
+        return item
 
     @app.post("/api/scan/{repo_id}")
     def scan(repo_id: str):

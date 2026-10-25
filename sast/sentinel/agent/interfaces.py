@@ -93,6 +93,39 @@ class VerificationCase:
     proof: dict | None
 
 
+@dataclass
+class RuleContext:
+    """Why a spec rule is wanted, and the evidence for it. Built by the pipeline from a decided finding.
+
+    role=sink:      `target` is a project helper that wraps a sink; argument `param_index` (`param_name`)
+                    reaches it. A rule makes call sites visible where the helper's body is not.
+    role=sanitizer: `target` was judged (by a human or a gated agent verdict) to neutralise `cls`.
+    """
+    role: Literal["source", "sink", "sanitizer"]
+    cls: str
+    target: str  # qualified callee, e.g. acme_common.shell.run_shell
+    repo: str
+    param_index: int | None = None
+    param_name: str | None = None
+    helper_source: str = ""  # body of `target` when the repository contains it (code under analysis: untrusted)
+    site: dict | None = None  # {"file", "line", "code"}: where the originating finding uses `target`
+    finding: dict = field(default_factory=dict)  # {"fingerprint", "source_fn", "sink_fn", "title"}
+
+
+@dataclass
+class RuleProposal:
+    """A Semgrep spec rule plus the validation pair the patch-differential oracle runs.
+    vulnerable_example / fixed_example are complete Python modules (tiny Flask apps). For a sanitizer
+    rule, vulnerable = the unsanitized variant and fixed = the variant that calls the sanitizer."""
+    yaml: str  # one Semgrep rule (`rules: [...]`) with metadata.sentinel {role, cls[, kind, cwe]}
+    role: str
+    cls: str
+    rationale: str
+    vulnerable_example: str
+    fixed_example: str
+    model: str = ""
+
+
 class AgentTools(Protocol):
     def read_span(self, file: str, l1: int, l2: int) -> tuple[str, str]: ...
     def function_source(self, qname: str) -> tuple[str, int, int, str, str] | None: ...
@@ -111,3 +144,11 @@ class Verifier(Protocol):
     name: str
 
     def verify(self, case: VerificationCase, tools: AgentTools) -> Verdict: ...
+
+
+class RuleSynthesizer(Protocol):
+    """Writes Semgrep spec rules (KNighter / Autogrep style). Proposals are never trusted: each one must
+    pass the validation gate in learn/rules.py before it can affect a result."""
+    name: str
+
+    def propose(self, ctx: RuleContext, tools: AgentTools) -> list[RuleProposal]: ...
