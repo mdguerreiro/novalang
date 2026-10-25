@@ -924,6 +924,9 @@ class _FunctionWalker:
             if hk and hk.split(".")[-1] == e.attr and not hk.startswith(self.mod.name + "." + e.attr):
                 self.f.edges.add((self.ex.heap_node(hk, self.file), nid))
             d = self.ex._dotted(e)
+            ext_attr = self._self_attr_base(d) if d and d.startswith("self.") else None
+            if ext_attr:  # `self.request.body` in a RequestHandler subclass: an inherited library attribute
+                self.f.attrnames.add((nid, ext_attr))
             if d and b is None and d.split(".")[0] in self.mod.imports:  # `request.args` read from a library object
                 q = self.ex.resolve(self.mod, d)
                 if q.split(".")[0] not in self.ex._tops:  # project modules/classes are not library sources
@@ -998,6 +1001,20 @@ class _FunctionWalker:
         else:
             parts = []
         return [x for x in (self.expr(p, env) for p in parts) if x]
+
+    def _library_method(self, cls: str, name: str) -> str | None:
+        """A method the project class inherits from a library base (not defined anywhere in the project chain)."""
+        seen = set()
+        while cls in self.f.classes and cls not in seen:
+            seen.add(cls)
+            if self._assigns_self_attr(cls, name):
+                return None
+            bases = self.f.classes[cls]
+            ext = [b for b in bases if b not in self.f.classes and b not in ("object", "")]
+            if ext:
+                return f"{ext[0]}.{name}"
+            cls = next((b for b in bases if b in self.f.classes), None)
+        return None
 
     def _self_attr_base(self, dotted: str | None) -> str | None:
         """`self.a.m` where the method's class (and its project bases) never defines `a`: the attribute comes from
@@ -1138,7 +1155,11 @@ class _FunctionWalker:
         how = None
         rcls = self._receiver_class(func)
         bound = self.ex.method(rcls, func.attr) if rcls and isinstance(func, ast.Attribute) else None
-        if bound:
+        inherited = self._library_method(rcls, func.attr) if rcls and not bound and isinstance(func, ast.Attribute) else None
+        if inherited:  # `self.write(x)` in a tornado.web.RequestHandler subclass: the framework's method
+            receiver = self.expr(func.value, env)
+            qual, method, how = inherited, None, "cha-base"
+        elif bound:
             receiver = self.expr(func.value, env)
             qual, method, offset, how = bound, None, 1, ("self" if head == "self" else "local-type")
         elif isinstance(func, ast.Attribute) and isinstance(func.value, ast.Call) and \

@@ -165,6 +165,10 @@ SOURCE_SCHEMA = {"type": "object", "properties": {
     "confidence": {"type": "number"}, "rationale": {"type": "string"}},
     "required": ["is_source", "kind", "confidence", "rationale"], "additionalProperties": False}
 
+HTML_SCHEMA = {"type": "object", "properties": {
+    "html": {"type": "boolean"}, "confidence": {"type": "number"}, "rationale": {"type": "string"}},
+    "required": ["html", "confidence", "rationale"], "additionalProperties": False}
+
 
 def _text(resp) -> str:
     return next((b.text for b in resp.content if b.type == "text"), "")
@@ -267,6 +271,19 @@ class ClaudeSpecOracle:
         if d is None:
             return AuthzLabel(decorator, "none", 0.0, "oracle unavailable or declined", self.name)
         return AuthzLabel(decorator, d["kind"], float(d["confidence"]), d["rationale"], self.name)
+
+    def classify_html_return(self, mechanism: str, example: str) -> tuple[bool, float, str]:
+        d = self._ask(self._html_prompt(mechanism, example), HTML_SCHEMA)
+        if d is None:
+            return False, 0.0, "oracle unavailable or declined"
+        return bool(d["html"]), float(d["confidence"]), d["rationale"]
+
+    @staticmethod
+    def _html_prompt(mechanism: str, example: str) -> str:
+        return (f"Python web handlers registered through `{mechanism}`. Example handler:\n```python\n{example[:3000]}\n```\n"
+                "When such a handler returns a string, does the framework send it to the browser as an HTML response "
+                "body (so attacker text in it is reflected/stored XSS)? Say false if return values are serialised as "
+                "JSON or the content type is not HTML by default.")
 
     def classify_source(self, api: str, usage: str) -> SourceLabel:
         d = self._ask(self._source_prompt(api, usage), SOURCE_SCHEMA)

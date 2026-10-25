@@ -167,6 +167,13 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     # A user/account model is owned by the user it represents.
     out += [fact("owner_field", c, "<self>") for c in facts.classes if SELF_OWNED_RE.search(c.rsplit(".", 1)[-1])]
     out += [fact("route_dec", d) for _f, d in facts.decorated if ROUTE_DEC_RE.search(d)]
+    tops = {q.split(".")[0] for q in facts.functions}
+    out += [fact("lib_dec", d) for d in {d for _f, d in facts.decorated}
+            if d and d.split(".")[0] not in tops and not GENERIC_DEC_RE.search(d)]
+    # HTTP-verb methods of classes that extend a library class (tornado RequestHandler, MethodView, falcon resources)
+    out += [fact("http_method", q) for q, fn in facts.functions.items()
+            if fn.cls and q.rsplit(".", 1)[-1] in HTTP_METHOD_NAMES
+            and any(b not in facts.classes for b in facts.classes.get(fn.cls, []))]
     out += [fact("generic_reg", q) for q in {q for _k, q in facts.callnames}
             if q.startswith("*.") and q[2:] in GENERIC_METHODS or q in BUILTIN_CALLS]
     out += [fact("generic_api", q) for q in {q for _k, q in facts.callnames} | set(facts.libcalls.values())
@@ -191,6 +198,11 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
 
 SELF_OWNED_RE = re.compile(r"^(User|Account|Profile|Member|Customer)(Model)?$")
 ROUTE_DEC_RE = re.compile(r"\.(route|get|post|put|patch|delete|api_route|websocket)$|^functools\.wraps$")
+GENERIC_DEC_RE = re.compile(r"^(functools|typing|abc|contextlib|dataclasses|pytest|unittest|enum|asyncio)\.|"
+                            r"^(property|staticmethod|classmethod|cached_property|lru_cache|wraps|overload|override)$|"
+                            r"\.(setter|getter|deleter)$")
+HTTP_METHOD_NAMES = {"get", "post", "put", "patch", "delete", "head", "options", "on_get", "on_post", "on_put",
+                     "on_patch", "on_delete", "GET", "POST", "PUT", "DELETE", "do_GET", "do_POST", "do_PUT", "do_DELETE"}
 _BUILTINS = set(dir(__import__("builtins")))
 # Callbacks handed to these are not request handlers (and builtins are never registrars).
 GENERIC_METHODS = {"append", "extend", "insert", "add", "update", "setdefault", "get", "pop", "remove", "sort",
@@ -201,7 +213,7 @@ BUILTIN_CALLS = {"map", "filter", "sorted", "min", "max", "list", "tuple", "set"
 KEEP = {"cand", "alarm", "mitigated", "undecided", "confirmed", "test_only", "asm", "mit", "assume_at",
         "kill", "reach", "safe", "open", "sink_frontier", "src_frontier", "learned_sink", "learned_src", "reg_frontier",
         "authz_frontier", "privacy_frontier", "dec_frontier",
-        "srcapi_frontier"}
+        "srcapi_frontier", "html_frontier", "handler_of"}
 
 
 _DEFAULT_PROGRAM: Program | None = None

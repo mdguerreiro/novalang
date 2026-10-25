@@ -94,6 +94,13 @@ class MockSpecOracle:
             return RegistrarLabel(api, arg, True, "http", 0.92, "Registers the function as a request handler.", self.name)
         return RegistrarLabel(api, arg, False, "", 0.8, "Not a handler registration.", self.name)
 
+    def classify_html_return(self, mechanism: str, example: str) -> tuple[bool, float, str]:
+        if re.search(r"fastapi|starlette|django|falcon|tornado|aiohttp", mechanism) and "HTMLResponse" not in example:
+            return False, 0.85, "Return values are serialised (JSON) or written explicitly."
+        if re.search(r"flask|quart|bottle|cherrypy|pyramid", mechanism):
+            return True, 0.85, "A returned string becomes the HTML response body."
+        return False, 0.5, "Unknown framework."
+
     def classify_source(self, api: str, usage: str) -> SourceLabel:
         m = re.search(r"(^|\.)request\.(args|form|values|json|data|files|cookies|headers|query_string|url|path|referrer|get_json|get_data)", api)
         if m:

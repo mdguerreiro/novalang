@@ -375,8 +375,10 @@ class Scanner:
             decs = sorted({d for (d,) in a.model.get("authz_frontier")})
             models = sorted({m for (m,) in a.model.get("privacy_frontier")})
             srcapis = sorted({q for (q,) in a.model.get("srcapi_frontier")})
+            htmls = sorted({d for (d,) in a.model.get("html_frontier")}) if hasattr(self.oracle, "classify_html_return") else []
             todo = [("sink", q) for q in sorted(sinks)] + [("reg", r) for r in regs] + [("entry", fn) for fn in entries] \
-                + [("authz", d) for d in decs] + [("model", m) for m in models] + [("srcapi", q) for q in srcapis]
+                + [("authz", d) for d in decs] + [("model", m) for m in models] + [("srcapi", q) for q in srcapis] \
+                + [("html", d) for d in htmls]
             todo = [t for t in todo if t not in asked]
             if not todo:
                 break
@@ -389,7 +391,8 @@ class Scanner:
                          "reg": ("registrar", "not_registrar"),
                          "authz": ("authz_decorator", "not_authz_decorator"),
                          "model": ("private_model", "public_model"),
-                         "srcapi": ("source_api", "not_source_api")}[kind]
+                         "srcapi": ("source_api", "not_source_api"),
+                         "html": ("html_return", "not_html_return")}[kind]
                 key = subj[0] if kind == "reg" else subj
                 if self._asked_before(kind, key) or any(self._known(p, key, org, repo_id) for p in preds) or (
                         kind == "entry" and any(self._known(p, d, org, repo_id)
@@ -413,6 +416,7 @@ class Scanner:
                         else self._ask_authz(subj, facts, org) if kind == "authz"
                         else self._ask_model(subj, facts, org) if kind == "model"
                         else self._ask_source(subj, facts) if kind == "srcapi"
+                        else self._ask_html(subj, facts, a) if kind == "html"
                         else self._ask_entry(subj, facts, org, repo_id))
             # Questions are independent: a real model answers them concurrently (the mock stays sequential so
             # knowledge ids are deterministic in tests). Gating stays sequential.
@@ -497,6 +501,17 @@ class Scanner:
         if not label.registers and label.confidence >= 0.8:
             return [self.ks.propose("not_registrar", [api], scope, org, repo, origin, label.confidence, label.rationale)]
         return []
+
+    def _ask_html(self, mechanism: str, facts: Facts, a: Analysis) -> list[dict]:
+        handlers = sorted({f for f, d in a.model.get("handler_of") if d == mechanism})
+        example = self._source_of(facts, handlers[0]) if handlers else ""
+        html, conf, why = self.oracle.classify_html_return(mechanism, example)
+        origin = f"oracle:{self.oracle.name}"
+        if conf < 0.7:
+            return []
+        # A decorator/registrar of a library is global knowledge; a config key or `*.method` is org-scoped.
+        scope, o = ("org", self._org_of_facts) if mechanism.startswith(("*.", "config:")) else ("global", None)
+        return [self.ks.propose("html_return" if html else "not_html_return", [mechanism], scope, o, None, origin, conf, why)]
 
     def _ask_source(self, api: str, facts: Facts) -> list[dict]:
         node = next((n for n, q in sorted(facts.attrnames | facts.callnames) if q == api), None)

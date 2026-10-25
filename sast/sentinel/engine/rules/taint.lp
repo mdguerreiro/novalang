@@ -177,6 +177,7 @@ answered_entry(F)  :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I).
 % Route-shaped decorators (`app.get`, `router.post`, `bp.route`) are asked about even before a known sink is
 % reachable: an unknown framework plus an unknown sink is common, and there are few such decorators.
 dec_frontier(D) :- decorated(F,D), route_dec(D), param(F,_,_), not answered_dec_src(D), not test_fn(F).
+dec_frontier(D) :- decorated(F,D), lib_dec(D), param(F,_,P), not self_param(P), not answered_dec_src(D), not test_fn(F).
 answered_dec_src(D) :- framework_source(D,_).
 answered_dec_src(D) :- not_framework_source(D).
 
@@ -201,7 +202,21 @@ srcapi_frontier(Q) :- callname(N,Q), not call(N,_), not spec_call(N), rs(N), not
 % Seed for "unknown source + unknown sink": library values read inside a route-shaped handler are asked about
 % directly (bounded: request objects, app config, globals), so either side can be learned first.
 handler_has_src(F) :- traw(N,_), node(N,F).
-srcapi_frontier(Q) :- attrname(N,Q), node(N,F), decorated(F,D), route_dec(D), not answered_src(Q), not test_fn(F),
+handler_like(F) :- decorated(F,D), route_dec(D).
+handler_like(F) :- decorated(F,D), framework_source(D,_).
+handler_like(F) :- http_method(F).
+srcapi_frontier(Q) :- attrname(N,Q), node(N,F), handler_like(F), not answered_src(Q), not test_fn(F),
                       not handler_has_src(F).
-srcapi_frontier(Q) :- callname(N,Q), node(N,F), decorated(F,D), route_dec(D), not call(N,_), not lib_input(N),
+srcapi_frontier(Q) :- callname(N,Q), node(N,F), handler_like(F), not call(N,_), not lib_input(N),
                       not answered_src(Q), not generic_api(Q), not test_fn(F), not spec_call(N), not handler_has_src(F).
+
+% Frameworks that send a handler's returned string as the HTML response (Bottle, CherryPy, Pyramid views...):
+% one question per framework entry mechanism; the answer makes tainted handler returns XSS sinks.
+handler_of(F,D) :- decorated(F,D), framework_source(D,_).
+handler_of(F,Q) :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I).
+sink(R,"xss") :- ret(F,R), handler_of(F,D), html_return(D), not test_fn(F), not lib_result(R).
+lib_result(R) :- libcall(R,_).
+lib_result(R) :- callname(R,Q), not call(R,_), not modeled_api(Q).
+answered_html(D) :- html_return(D).
+answered_html(D) :- not_html_return(D).
+html_frontier(D) :- handler_of(F,D), ret(F,R), traw(R,_), not answered_html(D), not test_fn(F).
