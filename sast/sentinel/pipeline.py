@@ -35,6 +35,11 @@ def make_neural() -> tuple[SpecOracle, Verifier]:
     return MockSpecOracle(), MockVerifier()
 
 
+def make_reader():
+    from .agent.reader import ClaudeReader, MockReader
+    return ClaudeReader() if os.environ.get("SENTINEL_LLM") == "claude" else MockReader()
+
+
 def make_synth() -> RuleSynthesizer:
     if os.environ.get("SENTINEL_LLM") == "claude":
         from .agent.claude import ClaudeRuleSynthesizer
@@ -60,7 +65,9 @@ class Scanner:
         self._inputs: dict[str, tuple[Facts, list[SpecMatch]]] = {}
         self._rule_matches: dict[tuple[str, str, str], list[SpecMatch]] = {}  # (repo, rule item, yaml hash) -> matches
         self.last: dict[str, Analysis] = {}
-        self.frontier = os.environ.get("SENTINEL_FRONTIER", "1") != "0"  # off = the engine without frontier inference
+        self._base_cache: dict[str, Analysis] | None = None  # per-batch baseline analyses for gating (None = off)
+        self.frontier = os.environ.get("SENTINEL_FRONTIER", "1") != "0"
+        self.reader = make_reader() if os.environ.get("SENTINEL_READS", "0") == "1" else None  # hybrid tier (opt-in)  # off = the engine without frontier inference
 
     # ── inputs ───────────────────────────────────────────────────────────────────────────
     def inputs(self, repo_id: str, refresh: bool = False) -> tuple[Facts, list[SpecMatch]]:
@@ -205,6 +212,8 @@ class Scanner:
                 o["lane"] = "candidate"
 
         stage_marks.append(('tier2', time.time()))
+        reads = self._handler_reads(repo_id, facts, a1, outcome) if self.reader is not None else {"read": 0, "issues": 0}
+        stage_marks.append(('reads', time.time()))
         # Shadow evaluation: what would candidate/shadow knowledge change? (shown, never applied)
         # Shadow spec rules are matched the same way; candidate rules never run (they failed a gate, and
         # a rule Semgrep rejects must not reach a scan).
@@ -263,6 +272,7 @@ class Scanner:
         stage_marks.append(('shadow+persist', time.time()))
         stats = self._stats(outcome, a0, t1_calls, t1_hits, t2_calls, t2_cost, auto_by_knowledge, time.time() - t0)
         stats["timings"] = {name: round(t - stage_marks[i][1], 2) for i, (name, t) in enumerate(stage_marks[1:])}
+        stats.update(handler_reads=reads["read"], read_issues=reads["issues"])
         stats.update(frontier_questions=fr["questions"], frontier_cached=fr["cached"], frontier_facts=len(fr["facts"]),
                      found_by_frontier=sum(1 for o in outcome.values() if o["finding"].learned
                                            and o["finding"].status in ("confirmed", "undecided")))
@@ -278,6 +288,7 @@ class Scanner:
         """Ask the spec oracle about each distinct unknown API / unknown guard, once (cross-scan cache).
         With SENTINEL_ORACLE_BATCH=1 and an oracle that supports it, the questions go out as one
         Message Batch (half price, minutes to an hour): meant for scheduled scans, not interactive ones."""
+        self._base_cache = {}  # one baseline per repo for every answer gated in this batch
         questions: dict[tuple, None] = {}
         for f in undecided:
             for a in f.assumptions:
@@ -288,7 +299,7 @@ class Scanner:
         hits = 0
 
         def admit(item: dict) -> None:
-            item = self._gate_item(item["id"])
+            item = self._gate_frontier_item(item)  # non-suppressing facts: canary gate; suppressing: full gate
             if _gate_ok(item):
                 out.append(KnowledgeFact(item["id"], item["pred"], tuple(item["args"])))
 
@@ -306,8 +317,10 @@ class Scanner:
         if os.environ.get("SENTINEL_ORACLE_BATCH") == "1" and hasattr(self.oracle, "ask_many"):
             labels = self.oracle.ask_many(todo)
         else:
-            labels = {(k, s): (self.oracle.classify_api(s, ctx) if k == "unknown_api" else self.oracle.judge_guard(s, ctx))
-                      for k, s, ctx in todo}
+            ask = lambda q: (self.oracle.classify_api(q[1], q[2]) if q[0] == "unknown_api" else self.oracle.judge_guard(q[1], q[2]))
+            workers = FRONTIER_WORKERS if getattr(self.oracle, "concurrent", False) else 1
+            with ThreadPoolExecutor(max_workers=workers) as pool:  # independent questions, answered concurrently
+                labels = {(k, s): lab for (k, s, _c), lab in zip(todo, pool.map(ask, todo))}
         for kind, subject, _ctx in todo:
             self._mark_asked(kind, subject)
         for (kind, subject), label in labels.items():
@@ -331,6 +344,7 @@ class Scanner:
                         admit(self.ks.propose("safe_pred", [subject, c], scope, org, repo_id, origin, label.confidence, label.rationale))
                 elif label.confidence >= 0.8:
                     admit(self.ks.propose("not_safe_pred", [subject], scope, org, repo_id, origin, label.confidence, label.rationale))
+        self._base_cache = None
         return out, len(todo), hits
 
     def scan_diff(self, repo_id: str, base_root: Path) -> dict:
@@ -502,6 +516,57 @@ class Scanner:
             return [self.ks.propose("not_registrar", [api], scope, org, repo, origin, label.confidence, label.rationale)]
         return []
 
+    def _handler_reads(self, repo_id: str, facts: Facts, a: Analysis, outcome: dict) -> dict:
+        """Hybrid tier: read the handlers where the engine's model runs out, most uncertain first, within a budget."""
+        from .agent.reader import READ_BUDGET
+        from .engine.analyze import Step
+        explained = {o["finding"].source_fn for o in outcome.values() if o["lane"] == "confirmed"}
+        score: dict[str, int] = defaultdict(int)
+        for (fn, n) in a.model.get("read_signal"):
+            score[fn] += 1
+        picks = sorted((fn for fn in score if fn not in explained and fn in facts.functions), key=lambda f: (-score[f], f))
+        read = issues = 0
+        for fn in picks[:READ_BUDGET]:
+            callees = sorted({g for k, g in facts.calls if facts.nodes[k].fn == fn and g in facts.functions})[:6]
+            chunks = []
+            for q in [fn] + callees:
+                f = facts.functions[q]
+                chunks.append((f.file, f.line, self._source_of(facts, q)))
+            key = hashlib.sha256(json.dumps(chunks).encode()).hexdigest()[:24]
+            cached = self.store.one("SELECT issues FROM handler_reads WHERE key=? AND model=?", key, self.reader.name)
+            if cached:
+                found = json.loads(cached["issues"])
+            else:
+                found = [i.__dict__ for i in self.reader.read(chunks)]
+                self.store.x("INSERT OR REPLACE INTO handler_reads(key, model, fn, issues, read_at) VALUES (?,?,?,?,?)",
+                             key, self.reader.name, fn, json.dumps(found), time.time())
+                read += 1
+            shown = {(c[0], c[1] + i) for c in chunks for i in range(len(c[2].splitlines()))}
+            for x in found:
+                if x["cls"] not in CWE or (x["file"], x["line"]) not in shown:
+                    continue  # a cited line that was not in what the model saw is discarded
+                if any(o["finding"].source_fn == fn and o["finding"].cls == x["cls"] and o["lane"] in ("confirmed", "review")
+                       for o in outcome.values()):
+                    continue  # the engine already reports it
+                f0 = facts.functions[fn]
+                node = next((n for n, nd in facts.nodes.items() if nd.fn == fn), None)
+                if node is None:
+                    continue
+                g = Finding(source=node, sink=node, cls=x["cls"], status="undecided")
+                g.fingerprint = hashlib.sha1(f"read|{fn}|{x['cls']}".encode()).hexdigest()[:16]
+                g.source_fn = g.sink_fn = fn
+                g.file, g.line, g.source_kind, g.source_rule, g.sink_rule = x["file"], x["line"], "http", "handler-read", "handler-read"
+                lines = facts.files.get(x["file"], "").splitlines()
+                g.path = [Step(node, x["file"], x["line"], 1, x["line"], 1, fn, "sink",
+                               lines[x["line"] - 1].strip()[:80] if 0 < x["line"] <= len(lines) else "", note=x["reason"][:200])]
+                g.assumptions = [{"asm": ["read_only", fn], "label": "Reported by a handler read; no engine path"}]
+                outcome[g.fingerprint] = {"finding": g, "lane": "review", "decided_by": None, "verdicts": [
+                    {"kind": "reader", "actor": f"reader:{self.reader.name}", "verdict": "TRUE_POSITIVE",
+                     "reason_code": None, "evidence": x, "gate": {"accepted": False, "lane": "review", "checks": [
+                         {"gate": "citation", "ok": True, "detail": "cited line was in the read"}]}}]}
+                issues += 1
+        return {"read": read, "issues": issues}
+
     def _ask_html(self, mechanism: str, facts: Facts, a: Analysis) -> list[dict]:
         handlers = sorted({f for f, d in a.model.get("handler_of") if d == mechanism})
         example = self._source_of(facts, handlers[0]) if handlers else ""
@@ -621,7 +686,8 @@ class Scanner:
             for r, ms in self.rule_gate.repo_matches.pop(item["id"], {}).items():
                 self._rule_matches[(r, item["id"], yaml_hash)] = [] if hides_body(item, views[r].facts) else ms
             return report
-        analyses = {r: self.analyze_repo(r) for r in repos}
+        cache = self._base_cache if self._base_cache is not None else {}
+        analyses = {r: cache[r] if r in cache else cache.setdefault(r, self.analyze_repo(r)) for r in repos}
         return self.ks.gate(item, analyses, self.confirmed_fps(), lambda r, extra: self.analyze_repo(r, extra))
 
     def _gate_item(self, kid: str, approved_by: str | None = None) -> dict:

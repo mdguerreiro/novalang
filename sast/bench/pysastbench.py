@@ -44,8 +44,11 @@ def main() -> None:
     ap.add_argument("out", type=Path)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--mode", choices=["engine", "full"], default="full")
+    ap.add_argument("--cwe", default="", help="comma-separated CWE ids to run (default: all)")
     a = ap.parse_args()
     rows = list(csv.DictReader(open(a.metadata, encoding="utf-8-sig")))
+    if a.cwe:
+        rows = [r for r in rows if r["CWE Type"] in a.cwe.split(",")]
     if a.limit:
         per = {}
         rows = [r for r in rows if per.setdefault(r["CWE Type"], []).append(r) or len(per[r["CWE Type"]]) <= a.limit]

@@ -213,7 +213,7 @@ BUILTIN_CALLS = {"map", "filter", "sorted", "min", "max", "list", "tuple", "set"
 KEEP = {"cand", "alarm", "mitigated", "undecided", "confirmed", "test_only", "asm", "mit", "assume_at",
         "kill", "reach", "safe", "open", "sink_frontier", "src_frontier", "learned_sink", "learned_src", "reg_frontier",
         "authz_frontier", "privacy_frontier", "dec_frontier",
-        "srcapi_frontier", "html_frontier", "handler_of"}
+        "srcapi_frontier", "html_frontier", "handler_of", "read_signal"}
 
 
 _DEFAULT_PROGRAM: Program | None = None

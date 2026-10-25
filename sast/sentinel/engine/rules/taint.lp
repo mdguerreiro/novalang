@@ -220,3 +220,10 @@ lib_result(R) :- callname(R,Q), not call(R,_), not modeled_api(Q).
 answered_html(D) :- html_return(D).
 answered_html(D) :- not_html_return(D).
 html_frontier(D) :- handler_of(F,D), ret(F,R), traw(R,_), not answered_html(D), not test_fn(F).
+
+% Hybrid tier: where a handler's tainted data meets something the engine does not model (an unresolved call, a
+% template, shared state), that handler is worth an LLM read. read_signal(F,N) counts such points per handler.
+read_signal(F,N) :- handler_like(F), node(N,F), traw(N,_), libcall(N,_), not spec_call(N).
+read_signal(F,N) :- handler_like(F), node(N,F), traw(N,_), assume_at(N,_).
+read_signal(F,N) :- entry(F), node(N,F), traw(N,_), libcall(N,_), not spec_call(N).
+read_signal(F,N) :- handler_of(F,_), node(N,F), traw(N,_), libcall(N,_), not spec_call(N).

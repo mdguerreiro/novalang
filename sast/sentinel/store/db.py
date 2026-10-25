@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS events (
 CREATE TABLE IF NOT EXISTS frontier_asked (
   kind TEXT NOT NULL, subject TEXT NOT NULL, model TEXT NOT NULL, asked_at REAL NOT NULL,
   PRIMARY KEY (kind, subject, model));
+CREATE TABLE IF NOT EXISTS handler_reads (
+  key TEXT NOT NULL, model TEXT NOT NULL, fn TEXT, issues TEXT NOT NULL, read_at REAL NOT NULL, PRIMARY KEY (key, model));
 CREATE INDEX IF NOT EXISTS idx_findings_repo ON findings(repo_id, is_open);
 CREATE INDEX IF NOT EXISTS idx_verdicts_finding ON verdicts(finding_id);
 CREATE INDEX IF NOT EXISTS idx_links_k ON knowledge_links(knowledge_id);
