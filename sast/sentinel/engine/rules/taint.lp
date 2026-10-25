@@ -171,7 +171,7 @@ pending_reg(F)     :- fn_ref(K,_,F), callname(K,Q), not answered_reg(Q).
 % Asked even when no known sink is reachable yet: unknown framework + unknown sink is the common case, and
 % there are only a handful of registrar APIs per code base.
 reg_frontier(Q,I)  :- fn_ref(K,I,F), callname(K,Q), param(F,_,_), not has_caller(F), not answered_reg(Q), not test_fn(F),
-                      not generic_reg(Q).
+                      not generic_reg(Q), not test_node(K).
 answered_entry(F)  :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I).
 
 % Route-shaped decorators (`app.get`, `router.post`, `bp.route`) are asked about even before a known sink is

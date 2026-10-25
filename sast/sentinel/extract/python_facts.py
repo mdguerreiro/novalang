@@ -54,6 +54,7 @@ IDENTITY_PARAMS = {"current_user", "user_identity", "auth_user"}  # FastAPI-styl
 OWNER_FIELD_RE = re.compile(r"^(owner|user|author|created_by|account|tenant|customer|patient|member|uploader)(_id)?$")
 LOOKUP_RE = re.compile(r"^(?P<m>.+)\.(query\.(get|get_or_404|filter_by|filter|first_or_404)|objects\.(get|filter))$")
 CHA_MAX_TARGETS = 12
+HTTP_VERBS = ("get", "post", "put", "patch", "delete", "head", "options")
 CONFIG_SUFFIXES = {".yml", ".yaml", ".json", ".toml", ".ini", ".cfg"}
 CONFIG_REF_RE = re.compile(r"[\"']?([A-Za-z_][\w-]*)[\"']?\s*[:=]\s*[\"']?([A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*[.:][A-Za-z_]\w*)[\"']?\s*,?\s*$")
 FIXED_HOST_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/?#{}%@]+[/?#]")
@@ -281,6 +282,7 @@ class PythonExtractor:
                     ref = self.resolve(mod, d) if d else None
                     if ref in self.facts.functions:
                         refs.append((key, ref))
+                    refs += [(key, m) for m in self.view_refs(mod, a)]
                 if not refs:
                     continue
                 d = self._dotted(e.func)
@@ -402,6 +404,16 @@ class PythonExtractor:
                                                     and isinstance(t.ctx, ast.Store) and isinstance(t.value, ast.Name)
                                                     and t.value.id == "self"}
         return self._self_attrs.get(cls, set())
+
+    def view_refs(self, mod: _Module, a: ast.expr) -> list[str]:
+        """`ManageForum.as_view("manage")` (Flask MethodView, Django class-based views): the class's HTTP-verb
+        methods are what the framework calls."""
+        if isinstance(a, ast.Call) and isinstance(a.func, ast.Attribute) and a.func.attr == "as_view":
+            d = self._dotted(a.func.value)
+            cls = self.resolve(mod, d) if d else None
+            if cls in self.facts.classes:
+                return [m for v in HTTP_VERBS for m in [self.method(cls, v)] if m]
+        return []
 
     def methods_named(self, name: str) -> list[str]:
         if not hasattr(self, "_by_method"):
@@ -987,6 +999,8 @@ class _FunctionWalker:
             ref = self.ex.resolve(self.mod, d) if d and d.split(".")[0] not in env else None
             if ref in self.f.functions:
                 self.f.fn_refs.add((nid, key, ref))  # a function handed to a call: maybe a handler registration
+            for m in self.ex.view_refs(self.mod, a):
+                self.f.fn_refs.add((nid, key, m))
         if "()." in qual and qual not in self.f.functions:
             c, _, m = qual.rpartition("().")
             hit = self.ex.method(c, m) if c in self.f.classes else None
