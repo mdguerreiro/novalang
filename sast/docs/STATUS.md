@@ -61,6 +61,11 @@ Running plan/status, updated every loop iteration so work can resume from here.
   together, so the gate is stricter). If that could flip the decision (impact budget, human-confirmed finding), the
   answer gets its exact re-analysis. flaskbb 10 answers 11.7 s -> 1.6 s, Mycodo 3 answers 38 s -> 13 s.
   clingo holds the GIL while grounding (threads: 4 solves 38 s vs 16 s sequential), so parallel solving needs processes.
+- Large Django apps: once the frontier learns `django.conf.urls.url` registers views, every view parameter is a source.
+  On wagtail that makes one solve 17 s -> 820 s. Two demand limits (class/mode taint only for source/class pairs that
+  raw-reach a sink; record-derived values for IDOR only along paths to a comparison with the current user) give the
+  same results everywhere tested and bring it to 600 s. The rest is join work in clingo's grounder (the derived
+  relations are small: pc 44k, pa 24k, traw 7k): the Soufflé backend is the fix, not more rule surgery.
 - Soufflé backend: port the .lp rules behind the Program interface, compiled once; learned knowledge stays EDB facts
   (learned spec rules become rows, not rule text) so the compiled binary never changes; clingo kept as the reference
   for result equivalence on the demo corpora and held-out repos. Expected 10-100x per solve (unmeasured).

@@ -18,10 +18,18 @@ p2l(F,I,K) :- pr(A,F,I), arg_in(X,J,A), call(X,G), p2l(G,J,K).
 udep(N) :- user_ref(N).
 udep(B) :- udep(A), edge(A,B).
 udep(Y) :- udep(A), arg_in(Y,J,A), call(Y,G), p2r_raw(G,J).
-rdep(K,K) :- lookup(K,_), idor_cand(_,K,_).  % only for lookups that are IDOR candidates
-rdep(B,K) :- rdep(A,K), edge(A,B).
-rdep(Y,K) :- rdep(R,K), ret(G,R), call(Y,G).
-rdep(P,K) :- rdep(A,K), arg_in(X,J,A), call(X,G), param(G,J,P).
+% rdep is only read by owner_check: values of record K that reach an operand compared with the current user.
+% to_cmp (one relation, not per lookup) holds the nodes that can reach such an operand, so per-lookup propagation
+% stays on those paths instead of everything the record flows to.
+cmp_user(B) :- cmp2(A,B), udep(A).
+to_cmp(B) :- cmp_user(B).
+to_cmp(A) :- edge(A,B), to_cmp(B).
+to_cmp(R) :- ret(G,R), call(Y,G), to_cmp(Y).
+to_cmp(A) :- arg_in(X,J,A), call(X,G), param(G,J,P), to_cmp(P).
+rdep(K,K) :- lookup(K,_), idor_cand(_,K,_), to_cmp(K).  % only for lookups that are IDOR candidates
+rdep(B,K) :- rdep(A,K), edge(A,B), to_cmp(B).
+rdep(Y,K) :- rdep(R,K), ret(G,R), call(Y,G), to_cmp(Y).
+rdep(P,K) :- rdep(A,K), arg_in(X,J,A), call(X,G), param(G,J,P), to_cmp(P).
 udep(P)   :- udep(A), arg_in(X,J,A), call(X,G), param(G,J,P).
 
 cmp2(A,B) :- compare(A,B).
