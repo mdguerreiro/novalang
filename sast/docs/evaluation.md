@@ -217,7 +217,7 @@ on the two measured repositories) and its recall checked on the target files onl
 | CVE-2024-5547 (devika, path) | caught, $0.19 | clean, $0.00 | caught, $0.45 | clean, $0.43 |
 | CVE-2021-43775 (aim, path) | caught, $0.87 | clean, $0.45 | caught, $1.13 | clean, $1.13 |
 | CVE-2024-5187 (onnx, tar slip) | caught, $1.03 | 1 review item, $0.05 | caught, ~$8.42 | false alarm, ~$8.42 |
-| CVE-2020-11001 (wagtail, stored XSS) | missed, $1.71 (1 other confirmed, 10 IDOR candidates) | PENDING | caught, ~$10.35 | clean, ~$10.37 |
+| CVE-2020-11001 (wagtail, stored XSS) | missed, $1.71 (1 other confirmed, 10 IDOR candidates) | clean, $0.00 (30 answers reused, 0 calls) | caught, ~$10.35 | clean, ~$10.37 |
 | CVE-2021-41185 (Mycodo, path) | caught, $5.23 (29 reported) | not reached (2 h cap) | caught, ~$9.98 | other alarm, ~$9.98 |
 
 Reading so far:
@@ -230,6 +230,15 @@ Reading so far:
 - Mycodo is the expensive case: a first scan of a large app with no prior knowledge asked 331 frontier questions and
   took 103 minutes (engine time, see "Engine cost"). Those answers are global knowledge; the next repository using the
   same libraries asks only what is new. 29 findings reported (18 confirmed, 11 review), precision not yet audited.
+
+Totals over the five valid CVEs (live spend, Sentinel; LLM measured on the two small repos, estimated on the rest):
+
+| | Sentinel | LLM reads everything |
+|---|---|---|
+| CVEs caught on the vulnerable tree | 4 / 5 (wagtail stored XSS missed) | 5 / 5 (large repos: target files only, its best case) |
+| First scans, total | $8.96 | ~$30.33 |
+| Rescans of the fixed trees (4 measured) | $0.29 | ~$20.35 (same price every scan) |
+| Alarms on patched code | devika 1 (a real unfixed bug), aim 1 debatable + 1 CLI review, onnx 1 review, wagtail 0 | devika 9, aim 2, onnx 1 false alarm on the target file |
 
 Precision audit (findings read by hand, devika and aim, re-run live with a persisted store; $1.23 for all four scans):
 
