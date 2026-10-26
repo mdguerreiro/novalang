@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
@@ -224,7 +225,11 @@ def default_program() -> Program:
     """The rule base compiled once per process (instrumenting it is not free)."""
     global _DEFAULT_PROGRAM
     if _DEFAULT_PROGRAM is None:
-        _DEFAULT_PROGRAM = Program()
+        if os.environ.get("SENTINEL_ENGINE") == "souffle":
+            from .souffle import SouffleProgram
+            _DEFAULT_PROGRAM = SouffleProgram(outputs=KEEP)
+        else:
+            _DEFAULT_PROGRAM = Program()
     return _DEFAULT_PROGRAM
 
 
@@ -313,35 +318,38 @@ def _norm(label: str) -> str:
 
 
 def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: list[KnowledgeFact]) -> list[Finding]:
+    # Engines enumerate atoms in different orders (clingo, Soufflé): read every relation sorted, so findings,
+    # their mitigation/assumption lists and witness paths do not depend on the backend.
+    get = lambda pred: sorted(model.get(pred), key=repr)
     status: dict[tuple, str] = {}
     for pred, st in (("confirmed", "confirmed"), ("undecided", "undecided"), ("test_only", "test_only")):
-        for s, k, c in model.get(pred):
+        for s, k, c in get(pred):
             status[(s, k, c)] = st
     mits: dict[tuple, list] = defaultdict(list)
-    for s, k, c, w in model.get("mitigated"):
+    for s, k, c, w in get("mitigated"):
         status[(s, k, c)] = "mitigated"
         mits[(s, k, c)].append(w)
     asms: dict[tuple, list] = defaultdict(list)
-    for s, k, c, a in model.get("asm"):
+    for s, k, c, a in get("asm"):
         asms[(s, k, c)].append(a)
-    alarm_any = {(s, k, c) for s, k, c, m in model.get("alarm") if m == "any"}
-    for s, k, c in model.get("cand"):
+    alarm_any = {(s, k, c) for s, k, c, m in get("alarm") if m == "any"}
+    for s, k, c in get("cand"):
         status.setdefault((s, k, c), "mitigated")
 
     kills = defaultdict(set)
-    for n, c, w in model.get("kill"):
+    for n, c, w in get("kill"):
         kills[(n, c)].add(w)
     asm_nodes = defaultdict(list)
-    for n, a in model.get("assume_at"):
+    for n, a in get("assume_at"):
         asm_nodes[n].append(a)
     # Curated matches win the node when a learned rule matches the same span.
     src_rule = {m.node: m for m in sorted((m for m in matches if m.role == "source"), key=lambda m: m.knowledge is None)}
     sink_rule = {m.node: m for m in sorted((m for m in matches if m.role == "sink"), key=lambda m: m.knowledge is None)}
     rule_kid = {m.rule_id: m.knowledge for m in matches if m.knowledge}  # learned spec rule id -> knowledge item
     learned_sink, learned_src = defaultdict(set), defaultdict(set)
-    for n, q in model.get("learned_sink"):
+    for n, q in get("learned_sink"):
         learned_sink[n].add(q)
-    for n, x in model.get("learned_src"):
+    for n, x in get("learned_src"):
         learned_src[n].add(x)
     derivs = model.derivations()
 
@@ -434,7 +442,7 @@ def proof_tree(derivs: dict, atom: str, facts: Facts, depth: int = 0, seen: froz
     node = {"atom": atom}
     if depth > 7 or atom in seen or atom not in derivs:
         return node
-    rid, pos, neg = min(derivs[atom], key=lambda d: (len(d[1]), d[0]))
+    rid, pos, neg = min(derivs[atom], key=lambda d: (len(d[1]), d[0], d[1], d[2]))
     node["rule"] = rid
     node["children"] = [proof_tree(derivs, p, facts, depth + 1, seen | {atom}) for p in pos
                         if not p.startswith(("cls(", "mode(", "node("))]
