@@ -70,6 +70,8 @@ class Scanner:
         self._base_cache: dict[str, Analysis] | None = None  # per-batch baseline analyses for gating (None = off)
         self.frontier = os.environ.get("SENTINEL_FRONTIER", "1") != "0"
         self.reader = make_reader() if os.environ.get("SENTINEL_READS", "0") == "1" else None  # hybrid tier (opt-in)  # off = the engine without frontier inference
+        from .learn.packs import load_packs
+        self.packs = load_packs(self)  # curated knowledge packs (knowledge/packs, SENTINEL_PACKS): active global facts
 
     # ── inputs ───────────────────────────────────────────────────────────────────────────
     def inputs(self, repo_id: str, refresh: bool = False) -> tuple[Facts, list[SpecMatch]]:

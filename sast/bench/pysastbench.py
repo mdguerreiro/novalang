@@ -45,6 +45,10 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--mode", choices=["engine", "full"], default="full")
     ap.add_argument("--cwe", default="", help="comma-separated CWE ids to run (default: all)")
+    ap.add_argument("--part", choices=["all", "train", "test"], default="all",
+                    help="train = odd-numbered cases, test = even-numbered (for transfer experiments)")
+    ap.add_argument("--store", default=":memory:", help="SQLite store to use/keep (learned knowledge persists)")
+    ap.add_argument("--export-pack", type=Path, help="write the learned knowledge as a candidate pack afterwards")
     a = ap.parse_args()
     rows = list(csv.DictReader(open(a.metadata, encoding="utf-8-sig")))
     if a.cwe:
@@ -52,7 +56,10 @@ def main() -> None:
     if a.limit:
         per = {}
         rows = [r for r in rows if per.setdefault(r["CWE Type"], []).append(r) or len(per[r["CWE Type"]]) <= a.limit]
-    st = Store()
+    if a.part != "all":
+        odd = lambda r: int(r["TestCase"].rsplit("-", 1)[-1]) % 2 == 1
+        rows = [r for r in rows if odd(r) == (a.part == "train")]
+    st = Store(a.store)
     st.upsert_org("bench", "bench")
     sc = Scanner(st)
     work = Path(tempfile.mkdtemp(prefix="psb-"))
@@ -74,7 +81,7 @@ def main() -> None:
                 facts, matches = sc.inputs(repo, refresh=True)
                 found = [{"cls": f.cls, "source_fn": f.source_fn, "sink_fn": f.sink_fn,
                           "path": [{"fn": s.fn} for s in f.path]}
-                         for f in analyze(facts, matches, list(CURATED), sc.program).findings
+                         for f in analyze(facts, matches, sc.ks.engine_facts("bench", repo), sc.program).findings
                          if f.status in ("confirmed", "undecided")]
                 stats = {}
             else:
@@ -108,6 +115,9 @@ def main() -> None:
         d[("tp" if x["flagged"] else "fn") if x["variant"] == "vul" else ("fp" if x["flagged"] else "tn")] += 1
     summary["by_class"] = by
     a.out.write_text(json.dumps({"summary": summary, "results": res}, indent=1))
+    if a.export_pack:
+        from sentinel.learn.packs import export_pack
+        a.export_pack.write_text(export_pack(st, "learned-pysastbench"))
     print(json.dumps(summary, indent=1))
     shutil.rmtree(work, ignore_errors=True)
 
