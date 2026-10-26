@@ -199,6 +199,35 @@ Measured with no model calls (mock oracle), one process, 4 cores.
 - Solves are memoised on their exact input: an unchanged rescan in the same process runs no solve (flaskbb 25 s ->
   5 s, redash 60 s -> 7 s, the rest is parsing).
 
+## Real vulnerabilities in real repositories (CVE split)
+
+Protocol: each CVE's fix commit was located in the project's git history; the parent commit is the vulnerable
+tree, the fix commit the fixed tree. Both are scanned live in one store (vulnerable first), so the fixed scan shows
+what learning from the first scan saves. "Caught" = a finding of the CVE's class in a function the fix touched, in
+the confirmed or review lane; on the fixed tree that same check counts as a false alarm. Code was frozen before each
+run. Two candidate cases were dropped because the located commit was not the fix (bazarr: wrong date; streamlit:
+an unrelated 2022 CodeQL clean-up for a 2021 advisory).
+
+Baseline: an LLM that reads every Python file once per scan (same model, structured output). Measured in full on
+the two small repositories; on the large ones its cost is estimated from the token volume it would read (calibrated
+on the two measured repositories) and its recall checked on the target files only, which is its best case.
+
+| CVE (repo, class) | Sentinel vulnerable | Sentinel fixed | LLM vulnerable | LLM fixed |
+|---|---|---|---|---|
+| CVE-2024-5547 (devika, path) | caught, $0.19 | clean, $0.00 | caught, $0.45 | clean, $0.43 |
+| CVE-2021-43775 (aim, path) | caught, $0.87 | clean, $0.45 | caught, $1.13 | clean, $1.13 |
+| CVE-2024-5187 (onnx, tar slip) | caught, $1.03 | 1 review item, $0.05 | caught, ~$8.42 | false alarm, ~$8.42 |
+| CVE-2020-11001 (wagtail, stored XSS) | PENDING | | caught, ~$10.35 | clean, ~$10.37 |
+| CVE-2021-41185 (Mycodo, path) | PENDING | | caught, ~$9.98 | other alarm, ~$9.98 |
+
+Reading so far:
+- Both approaches catch the CVEs measured so far; Sentinel costs a fraction of reading everything at repository
+  scale, and the second scan of a project costs little (verdicts and answers are reused; onnx $1.03 -> $0.05).
+- onnx needed a capability the engine lacked (archive extraction, "tar slip", CVE-2007-4559 class): added as a
+  general source/sink pair, not a repository pattern. Its fixed tree keeps one review item: the fallback branch
+  passes `members=` through a project validator the engine cannot see into.
+- wagtail is stored XSS (database content rendered unescaped): the engine has no stored-data sources (known gap).
+
 ## Generalization: no framework knowledge at all
 
 `SENTINEL_SPECS=minimal` keeps only Python stdlib sinks and sanitizers (no Flask/FastAPI/Django/pandas/jinja2 specs).
