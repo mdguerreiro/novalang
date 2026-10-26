@@ -226,6 +226,11 @@ Reading so far:
 - onnx needed a capability the engine lacked (archive extraction, "tar slip", CVE-2007-4559 class): added as a
   general source/sink pair, not a repository pattern. Its fixed tree keeps one review item: the fallback branch
   passes `members=` through a project validator the engine cannot see into.
+- wagtail is stored XSS (database content rendered unescaped): the engine has no stored-data sources (known gap).
+- Mycodo is the expensive case: a first scan of a large app with no prior knowledge asked 331 frontier questions and
+  took 103 minutes (engine time, see "Engine cost"). Those answers are global knowledge; the next repository using the
+  same libraries asks only what is new. 29 findings reported (18 confirmed, 11 review), precision not yet audited.
+
 Precision audit (findings read by hand, devika and aim, re-run live with a persisted store; $1.23 for all four scans):
 
 | Tree | Sentinel reported (confirmed + review) | Real | LLM reported | Notes |
@@ -240,10 +245,6 @@ Precision audit (findings read by hand, devika and aim, re-run live with a persi
 - False positives removed: on patched code the engine derives the mitigation (sanitizer on the path) and closes the
   finding with no model call; the read-everything LLM keeps re-reporting patched flows and speculative ones
   (agent output saved to disk, PDF rendering) at 0.3-0.55 confidence, every scan, at full price.
-- wagtail is stored XSS (database content rendered unescaped): the engine has no stored-data sources (known gap).
-- Mycodo is the expensive case: a first scan of a large app with no prior knowledge asked 331 frontier questions and
-  took 103 minutes (engine time, see "Engine cost"). Those answers are global knowledge; the next repository using the
-  same libraries asks only what is new. 29 findings reported (18 confirmed, 11 review), precision not yet audited.
 
 ## Generalization: no framework knowledge at all
 
