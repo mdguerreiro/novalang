@@ -275,7 +275,7 @@ class Scanner:
                                        "cls": g.cls, "source_fn": g.source_fn, "file": g.file, "line": g.line})
 
         # Persist findings, verdicts and knowledge proposals.
-        seen_ids = []
+        seen_ids, pending = [], []
         for fp, o in outcome.items():
             fid = self._upsert_finding(repo_id, scan_id, o, shadow_by.get(fp))
             seen_ids.append(fid)
@@ -291,7 +291,7 @@ class Scanner:
                     for p in o.get("proposals", []):
                         item = self.ks.propose(p.pred, p.args, p.scope, org, repo_id, v["actor"],
                                                v["evidence"]["confidence"], p.rationale, fid, vid)
-                        self._gate_item(item["id"])
+                        pending.append(item["id"])
                     # Rule synthesis from accepted agent verdicts (machine origin: shadow until approved/corroborated).
                     f_: Finding = o["finding"]
                     view = _finding_view(f_)
@@ -304,8 +304,7 @@ class Scanner:
         if seen_ids:
             marks = ",".join("?" * len(seen_ids))
             self.store.x(f"UPDATE findings SET is_open=0 WHERE repo_id=? AND id NOT IN ({marks})", repo_id, *seen_ids)
-        for kid in t1_ids:
-            self._gate_item(kid)
+        self._gate_batch(pending + [k for k in t1_ids if k not in pending])
 
         self.rank(repo_id)
         self.last[repo_id] = a1
@@ -803,6 +802,16 @@ class Scanner:
         return None  # anything else (authz, privacy, sources, sinks): whole program
 
     _batch: dict | None = None
+
+    def _gate_batch(self, kids: list[str]) -> None:
+        """Gate several knowledge items with one shared baseline and one combined re-analysis per repository."""
+        self._base_cache = {}
+        try:
+            self._prepare_batch([i for i in (self.store.knowledge(k) for k in kids) if i])
+            for kid in kids:
+                self._gate_item(kid)
+        finally:
+            self._batch, self._base_cache = None, None
     LOCAL_PREDS = {"sanitizer_api", "propagator_api", "not_sanitizer", "safe_pred", "not_safe_pred", "safe_type",
                    "dead_fn", "internal_only"}  # the predicates _fact_nodes can localise
 
