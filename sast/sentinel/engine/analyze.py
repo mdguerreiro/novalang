@@ -511,7 +511,43 @@ class _Graph:
                 return self._steps(path, cls, kills, asm_nodes, s, k)
         return self._steps([(s, "source"), (k, "flow")], cls, kills, asm_nodes, s, k)
 
+    MAX_STATES = 2_000_000  # (node, call stack) states; beyond it no witness is shown (as when the search is exhausted)
+
+    def _reaches(self, k: int) -> set[int]:
+        """Nodes that can reach k at all (call/return matching ignored): the stack-aware search never needs others."""
+        cache = self.__dict__.setdefault("_reach_cache", {})
+        if k in cache:
+            return cache[k]
+        rev = self.__dict__.get("_rev")
+        if rev is None:
+            rev = defaultdict(set)
+            for a, bs in self.succ.items():
+                for b in bs:
+                    rev[b].add(a)
+            for a, uses in self.args.items():
+                for c, i in uses:
+                    g = self.callee.get(c)
+                    p = self.params.get((g, i)) if g else None
+                    if p is not None:
+                        rev[p].add(a)
+            for fn, rs in self.rets.items():
+                for c in self.callers.get(fn, ()):
+                    for r in rs:
+                        rev[c].add(r)
+            self._rev = rev
+        seen, todo = {k}, [k]
+        while todo:
+            for a in rev.get(todo.pop(), ()):
+                if a not in seen:
+                    seen.add(a)
+                    todo.append(a)
+        cache[k] = seen
+        return seen
+
     def _bfs(self, s, k, cls, kills, avoid):
+        ok = self._reaches(k)
+        if s not in ok:
+            return None
         start = (s, ())
         prev = {start: None}
         how = {start: "source"}
@@ -526,13 +562,15 @@ class _Graph:
                     cur = prev[cur]
                 return list(reversed(out))
             for b, st, kind in self._next(n, stack):
-                if avoid and (kills.get((b, cls)) or kills.get((b, "all"))):
+                if b not in ok or (avoid and (kills.get((b, cls)) or kills.get((b, "all")))):
                     continue
                 nxt = (b, st)
                 if nxt not in prev:
                     prev[nxt] = cur
                     how[nxt] = kind
                     q.append(nxt)
+            if len(prev) > self.MAX_STATES:
+                return None  # a path that ignores call/return matching could name functions the flow never visits
         return None
 
     def _steps(self, path, cls, kills, asm_nodes, s, k) -> list[Step]:
