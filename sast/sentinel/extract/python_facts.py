@@ -608,7 +608,7 @@ class PythonExtractor:
         if not hasattr(self, "_templates"):
             self._templates = {}
             for p in self.root.rglob("*"):
-                if p.suffix in (".html", ".htm", ".jinja", ".jinja2", ".j2") and p.is_file() and p.stat().st_size < 500_000:
+                if p.suffix in (".html", ".htm", ".jinja", ".jinja2", ".j2", ".tpl", ".mako", ".mak", ".xml") and p.is_file() and p.stat().st_size < 500_000:
                     try:
                         self._templates[p.relative_to(self.root).as_posix()] = p.read_text(errors="replace")
                     except OSError:
@@ -696,6 +696,7 @@ class _FunctionWalker:
         self.sql_cursor: dict[str, set[str]] = {}  # cursor var -> tables its last SELECT read (for fetch*())
         self.sql_read_nodes: dict[int, set[str]] = {}  # execute(SELECT ...) node -> tables (chained .fetchall())
         self.open_for_write: tuple[int, int] | None = None  # last open(path, "w") in this function: (call, path node)
+        self.dict_entries: dict[int, dict[str, int]] = {}  # id(dict literal) -> {constant key: value node}
 
     def walk(self) -> None:
         env: Env = {}
@@ -1102,7 +1103,18 @@ class _FunctionWalker:
         elif isinstance(e, (ast.List, ast.Tuple, ast.Set)):
             parts = e.elts
         elif isinstance(e, ast.Dict):
-            parts = [v for v in e.values if v is not None] + [k for k in e.keys if k is not None]
+            entries, out = {}, []
+            for k, v in zip(e.keys, e.values):
+                vn = self.expr(v, env)
+                if vn:
+                    out.append(vn)
+                    if isinstance(k, ast.Constant) and isinstance(k.value, str):
+                        entries[k.value] = vn
+                kn = self.expr(k, env) if k is not None else None
+                if kn:
+                    out.append(kn)
+            self.dict_entries[id(e)] = entries  # template contexts: which node was passed under which name
+            return out
         elif isinstance(e, (ast.Starred, ast.Await)):
             parts = [e.value]
         elif isinstance(e, ast.UnaryOp):
@@ -1188,33 +1200,128 @@ class _FunctionWalker:
                 if v:
                     self.f.edges.add((v, h))
 
-    def _template_sinks(self, e: ast.Call, qual: str, arg_nodes, kw_nodes) -> None:
-        """`render_template_string(TPL, x=v)` / `render_template("t.html", x=v)` where the template turns escaping off
-        for a variable (`{{ x|safe }}`, `{% autoescape false %}`): that variable's value is an XSS sink."""
-        name = qual.rsplit(".", 1)[-1]
-        if name not in ("render_template_string", "render_template", "render") or not kw_nodes:
-            return
-        tpl = self._template_text(e.args[0] if e.args else None, name)
-        if not tpl:
-            return
-        off = "autoescape false" in tpl.replace("  ", " ").lower()
-        for k, a in kw_nodes:
-            if a and k and (off or re.search(r"\{\{[^}]*\b" + re.escape(k) + r"\b[^}]*\|\s*safe", tpl)
-                            or re.search(r"\bfor\s+(\w+)\s+in\s+" + re.escape(k) + r"\b", tpl) and "|safe" in tpl):
-                self.f.extra_sinks.add((a, "xss"))
+    # ── templates: values written to HTML unescaped (sentinel/extract/templates.py has the engine rules) ──────
+    RENDER_FUNCS = {  # render call (resolved name suffix) -> (engine, template argument index, context argument index)
+        "render_template_string": ("jinja2", 0, None), "render_template": ("jinja2-file", 0, None),
+        "django.shortcuts.render": ("django-file", 1, 2), "django.template.loader.render_to_string": ("django-file", 0, 1),
+        "django.template.response.TemplateResponse": ("django-file", 1, 2),
+        "TemplateResponse": ("jinja2-file", 0, 1), "aiohttp_jinja2.render_template": ("jinja2-file", 0, 2),
+        "bottle.template": ("bottle", 0, None), "tornado.web.RequestHandler.render": ("tornado-file", 0, None),
+        "tornado.web.RequestHandler.render_string": ("tornado-file", 0, None),
+    }
+    TEMPLATE_CTORS = {"jinja2.Template": "jinja2-noescape", "jinja2.environment.Template": "jinja2-noescape",
+                      "django.template.Template": "django", "django.template.base.Template": "django",
+                      "tornado.template.Template": "tornado", "mako.template.Template": "mako",
+                      "bottle.SimpleTemplate": "bottle"}
 
-    def _template_text(self, arg: ast.expr | None, how: str) -> str:
-        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
-            if how == "render_template_string":
-                return arg.value
-            for rel in self.f.files and [p for p in self.ex.template_files() if p.endswith("/" + arg.value) or p == arg.value]:
-                return self.ex.template_files()[rel]
+    def _template_sinks(self, e: ast.Call, qual: str, arg_nodes, kw_nodes) -> None:
+        """A render call whose template writes a context variable unescaped (`{{ x|safe }}`, `{% autoescape off %}`,
+        `{% raw x %}`, `{{!x}}`, Mako `${x}`, `jinja2.Template` without autoescape): the value passed for that
+        variable is an XSS sink."""
+        from .templates import ENGINES, raw_roots
+        found = self._render_target(e, qual)
+        if not found:
+            return
+        engine, text, ctx_arg = found
+        if not text or engine not in ENGINES:
+            return
+        roots = raw_roots(text, ENGINES[engine])
+        if not roots:
+            return
+        bound = {k: a for k, a in kw_nodes if k and a}
+        for k in [k for k in e.keywords if k.arg is None]:  # **context
+            bound.update(self._dict_entries(k.value))
+        if ctx_arg is not None:
+            arg = e.args[ctx_arg] if len(e.args) > ctx_arg else next((k.value for k in e.keywords if k.arg in ("context", "ctx")), None)
+            if isinstance(arg, ast.Call) and arg.args:  # Context({...}) / RequestContext(request, {...})
+                arg = arg.args[-1]
+            bound.update(self._dict_entries(arg))
+        for name in roots:
+            if name in bound:
+                self.f.extra_sinks.add((bound[name], "xss"))
+
+    def _render_target(self, e: ast.Call, qual: str):
+        """(engine, template text, context argument index) of a render call, or None."""
+        func = e.func
+        for suffix, (engine, ti, ci) in self.RENDER_FUNCS.items():
+            if qual == suffix or qual.endswith("." + suffix) or (suffix.startswith(("render_template", "TemplateResponse"))
+                                                                  and qual.endswith(suffix)):
+                arg = e.args[ti] if len(e.args) > ti else next((k.value for k in e.keywords if k.arg in ("name", "template_name", "source")), None)
+                if self._const_value(arg) is None and len(e.args) > ti + 1 and self._const_value(e.args[ti + 1]) is not None:
+                    ti, ci = ti + 1, (ci + 1 if ci is not None else None)  # TemplateResponse(request, name, context)
+                    arg = e.args[ti]
+                if engine.endswith("-file"):
+                    name = self._const_value(arg)
+                    text = self._template_file(name) if name else ""
+                    engine = engine[:-5]
+                    if engine == "jinja2" and name and not name.endswith((".html", ".htm", ".xml", ".xhtml", ".jinja", ".j2", ".jinja2")):
+                        engine = "jinja2-noescape"  # Flask escapes .html/.htm/.xml/.xhtml templates only
+                else:
+                    text = self._const_value(arg) or ""
+                return engine, text, ci
+        # `<template>.render(...)` / `.generate(...)` on a template object built from source or loaded by name.
+        if isinstance(func, ast.Attribute) and func.attr in ("render", "generate", "render_unicode", "substitute"):
+            return self._template_object(func.value)
+        return None
+
+    def _template_object(self, obj: ast.expr, depth: int = 0):
+        if depth > 3:
+            return None
+        if isinstance(obj, ast.Name):
+            val = self._assigned(obj.id)
+            return self._template_object(val, depth + 1) if val is not None else None
+        if not isinstance(obj, ast.Call):
+            return None
+        d = self.ex._dotted(obj.func)
+        q = self.ex.resolve(self.mod, d) if d else ""
+        if q in self.TEMPLATE_CTORS:
+            src = obj.args[0] if obj.args else next((k.value for k in obj.keywords if k.arg in ("source", "text", "template_string")), None)
+            engine = self.TEMPLATE_CTORS[q]
+            if engine == "jinja2-noescape" and any(k.arg == "autoescape" and not _falsy(k.value) for k in obj.keywords):
+                engine = "jinja2"
+            return engine, self._const_value(src) or "", None
+        if isinstance(obj.func, ast.Attribute) and obj.func.attr in ("from_string", "get_template"):
+            env = obj.func.value
+            env_call = self._assigned(env.id) if isinstance(env, ast.Name) else env
+            engine = "jinja2-noescape"
+            if isinstance(env_call, ast.Call):
+                for k in env_call.keywords:
+                    if k.arg == "autoescape" and not _falsy(k.value):
+                        engine = "jinja2"
+            arg = obj.args[0] if obj.args else None
+            text = self._const_value(arg) or "" if obj.func.attr == "from_string" else self._template_file(self._const_value(arg) or "")
+            return engine, text, None
+        return None
+
+    def _assigned(self, name: str) -> ast.expr | None:
+        """The last value assigned to `name` in this function, else at module level."""
+        for scope in (self.node, self.mod.tree):
+            val = None
+            for st in ast.walk(scope) if scope is self.node else scope.body:
+                if isinstance(st, ast.Assign) and any(isinstance(t, ast.Name) and t.id == name for t in st.targets):
+                    val = st.value
+            if val is not None:
+                return val
+        return None
+
+    def _const_value(self, arg: ast.expr | None) -> str | None:
+        if isinstance(arg, ast.Name):
+            arg = self._assigned(arg.id)
+        if arg is None:
+            return None
+        return _const_text(arg)
+
+    def _dict_entries(self, arg: ast.expr | None) -> dict[str, int]:
+        if isinstance(arg, ast.Name):
+            arg = self._assigned(arg.id)
+        return self.dict_entries.get(id(arg), {}) if isinstance(arg, ast.Dict) else {}
+
+    def _template_file(self, name: str) -> str:
+        if not name:
             return ""
-        if isinstance(arg, ast.Name) and how == "render_template_string":
-            for st in self.mod.tree.body:
-                if isinstance(st, ast.Assign) and any(isinstance(t, ast.Name) and t.id == arg.id for t in st.targets) \
-                        and isinstance(st.value, ast.Constant) and isinstance(st.value.value, str):
-                    return st.value.value
+        for rel, text in self.ex.template_files().items():
+            if rel == name or rel.endswith("/" + name):
+                return text
         return ""
 
     def _is_normalizer(self, value: ast.expr) -> bool:
@@ -1440,6 +1547,11 @@ class _FunctionWalker:
             elif cands:
                 self.f.ambiguous.add((nid, method, len(cands)))
         if targets:
+            if how == "ctor" and qual not in self.f.classes:
+                # An object built from tainted arguments carries them (field-insensitive object summary): templates and
+                # serializers read `post.content` off objects whose type the analysis no longer knows.
+                for a in [a for _, a in arg_nodes if a] + [a for _, a in kw_nodes if a]:
+                    self.f.edges.add((a, nid))
             if offset and receiver:
                 self.f.arg_in.add((nid, 0, receiver))
             for i, a in arg_nodes:
@@ -1503,6 +1615,10 @@ def _leading_literal(e: ast.expr) -> str | None:
     if isinstance(e, ast.JoinedStr) and e.values and isinstance(e.values[0], ast.Constant):
         return str(e.values[0].value)
     return None
+
+
+def _falsy(v: ast.expr) -> bool:
+    return isinstance(v, ast.Constant) and not v.value
 
 
 def _const_text(e: ast.expr) -> str | None:

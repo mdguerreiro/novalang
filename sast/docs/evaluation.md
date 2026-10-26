@@ -280,6 +280,23 @@ same path value). A read is a source only if attacker data was written there: a 
 false positive. The stored-XSS cases there sit mostly in frameworks the engine has not learned yet (next: framework
 knowledge packs + learning across repositories).
 
+## Template engines (XSS)
+
+One adapter per engine, from its documented escaping rules (sentinel/extract/templates.py): Jinja2 (`|safe`,
+`{% autoescape false %}`, `jinja2.Template` / `Environment` without autoescape), Django (`|safe`, `{% autoescape off %}`),
+Tornado (`{% raw %}`, `{% autoescape None %}`), Bottle (`{{!x}}`), Mako (`${x}` unless `| h`). Render calls of Flask,
+Quart, Django, Starlette/FastAPI, aiohttp-jinja2, Tornado, Bottle, Jinja2 and Mako are recognised; templates come from
+inline strings, constants or template files; loop/set aliases are followed (`{% for c in comments %}{{ c.body|safe }}`
+-> `comments`). Only the value passed for a raw variable becomes a sink (tests/test_templates.py checks every engine,
+raw and escaped). Objects built from tainted arguments now carry them (templates read `post.content` off objects).
+
+Measured on the held-out half (engine only, learned pack, no model calls): recall 0.617 -> 0.650, precision 0.95, F1
+0.747 -> 0.772; full benchmark engine-only recall 0.483 -> 0.500. No change in findings on six real repositories. The
+held-out XSS misses are blocked upstream, not at the template: all nine have no source until the framework is learned
+(Django, Pyramid, Falcon, Quart, FastAPI, Tornado request APIs) and several return HTML through framework response
+objects the training half never met (Django `HttpResponse`, Falcon `resp.text`). Live, with the frontier, those are
+questions; engine-only they need the pack to have seen them.
+
 ## Learning frameworks from repositories (transfer, PySASTBench)
 
 Split by case number: the odd half is scanned live (frontier + verification) in one store, and what it learned is
