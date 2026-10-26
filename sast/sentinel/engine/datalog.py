@@ -52,8 +52,18 @@ class Model:
     def get(self, pred: str) -> list[tuple]:
         return self.atoms.get(pred, [])
 
+    def all_fires(self) -> list[tuple]:
+        """Every rule instance (rule id, head, premises, negated premises); a Soufflé model renders them on demand."""
+        lazy = getattr(self, "_lazy", None)
+        if lazy is not None:
+            return lazy.all_fires()
+        return [(r, str(h), tuple(map(str, p)), tuple(map(str, n))) for r, h, p, n in self.fires]
+
     def derivations(self) -> dict[str, list[tuple[int, list[str], list[str]]]]:
         """head atom (as string) -> [(rule id, positive premises, negated premises)]."""
+        lazy = getattr(self, "_lazy", None)
+        if lazy is not None:
+            return lazy
         out: dict[str, list[tuple[int, list[str], list[str]]]] = defaultdict(list)
         for rid, head, pos, neg in self.fires:
             out[str(head)].append((rid, [str(p) for p in pos], [str(n) for n in neg]))

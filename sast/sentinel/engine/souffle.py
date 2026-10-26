@@ -304,6 +304,74 @@ def _render(name: str, args, env: dict) -> str:
     return f"{name}({','.join(term(a) for a in args)})" if args else name
 
 
+def _head_key(t, env):
+    """A head argument (AST) under a binding -> raw value, comparable with a parsed atom's arguments."""
+    if t.ast_type == A.ASTType.Variable:
+        return env[t.name]
+    if t.ast_type == A.ASTType.SymbolicTerm:
+        return _from_sym(t.symbol)
+    if not t.arguments:
+        return ("c", t.name)
+    return ("f", t.name, tuple(_head_key(a, env) for a in t.arguments))
+
+
+class LazyDerivations:
+    """`Model.derivations()` for Soufflé results: head atom (as clingo prints it) -> [(rule, premises, negated)].
+    Large repositories derive millions of rule instances and a proof tree reads a few dozen, so rows stay undecoded
+    until an atom of that predicate is asked for, and only matching instances are rendered."""
+
+    def __init__(self, tpl: dict, raw: dict[int, list[str]], it: Interner):
+        self.tpl, self.raw, self.it = tpl, raw, it
+        self.by_pred: dict[str, list[int]] = defaultdict(list)
+        for r, (_vs, (hname, _ha), _p, _n) in tpl.items():
+            self.by_pred[hname].append(r)
+        self.index: dict[str, dict] = {}
+
+    def _pred_index(self, pred: str) -> dict:
+        idx = self.index.get(pred)
+        if idx is None:
+            idx = defaultdict(list)
+            for r in self.by_pred.get(pred, ()):
+                vs, (_h, hargs), _pos, _neg = self.tpl[r]
+                for ln in self.raw.get(r, ()):
+                    env = dict(zip(vs, _decode_line(ln, self.it, len(vs))))
+                    idx[tuple(_head_key(a, env) for a in hargs)].append((r, env))
+            self.index[pred] = idx
+        return idx
+
+    def _lookup(self, atom: str):
+        try:
+            sym = clingo.parse_term(atom)
+        except RuntimeError:
+            return None
+        return self._pred_index(sym.name).get(tuple(_from_sym(a) for a in sym.arguments))
+
+    def __contains__(self, atom: str) -> bool:
+        return bool(self._lookup(atom))
+
+    def __getitem__(self, atom: str):
+        hits = self._lookup(atom)
+        if not hits:
+            raise KeyError(atom)
+        out = []
+        for r, env in hits:
+            _vs, _h, pos, neg = self.tpl[r]
+            out.append((r, [_render(n, a, env) for n, a in pos], [_render(n, a, env) for n, a in neg]))
+        return out
+
+    def get(self, atom: str, default=None):
+        return self[atom] if atom in self else default
+
+    def all_fires(self) -> list[tuple]:
+        out = []
+        for r, (vs, (hname, hargs), pos, neg) in self.tpl.items():
+            for ln in self.raw.get(r, ()):
+                env = dict(zip(vs, _decode_line(ln, self.it, len(vs))))
+                out.append((r, _render(hname, hargs, env), tuple(_render(n, a, env) for n, a in pos),
+                            tuple(_render(n, a, env) for n, a in neg)))
+        return out
+
+
 # ── the program ──────────────────────────────────────────────────────────────────────────────
 
 class SouffleProgram(Program):
@@ -361,15 +429,10 @@ class SouffleProgram(Program):
                 if p.exists():
                     model.atoms[name] = [tuple(_py(v) for v in _decode_line(ln, it, self.arity[name]))
                                          for ln in p.read_text().splitlines() if ln]
-            for r, (vs, (hname, hargs), pos, neg) in self.fire_tpl.items():
+            raw = {}
+            for r in self.fire_tpl:
                 p = fout / f"fire_{r}.csv"
-                if not p.exists():
-                    continue
-                for ln in p.read_text().splitlines():
-                    if not ln:
-                        continue
-                    env = dict(zip(vs, _decode_line(ln, it, len(vs))))
-                    model.fires.append((r, _render(hname, hargs, env),
-                                        tuple(_render(n, a, env) for n, a in pos),
-                                        tuple(_render(n, a, env) for n, a in neg)))
+                if p.exists():
+                    raw[r] = [ln for ln in p.read_text().splitlines() if ln]
+            model._lazy = LazyDerivations(self.fire_tpl, raw, it)  # rendered only for atoms a proof tree visits
         return model
