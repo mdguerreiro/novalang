@@ -144,6 +144,12 @@ rules:
       - pattern-either:
           - pattern: markupsafe.Markup($X)
           - pattern: flask.make_response($X, ...)
+      # Wrapping a response object (a file, JSON, a redirect, a rendered template) writes no attacker HTML.
+      - pattern-not: flask.make_response(flask.send_file(...), ...)
+      - pattern-not: flask.make_response(flask.send_from_directory(...), ...)
+      - pattern-not: flask.make_response(flask.jsonify(...), ...)
+      - pattern-not: flask.make_response(flask.redirect(...), ...)
+      - pattern-not: flask.make_response(flask.render_template(...), ...)
       - focus-metavariable: $X
   - id: spec.sink.xss.route-returns-html
     languages: [python]
