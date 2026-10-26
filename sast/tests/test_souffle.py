@@ -11,11 +11,12 @@ pytestmark = pytest.mark.skipif(shutil.which("souffle") is None, reason="souffle
 
 
 @pytest.mark.parametrize("repo", ["acme-shop", "acme-billing"])
-def test_souffle_matches_clingo(demo_inputs, repo):
+def test_souffle_matches_clingo(demo_inputs, repo, monkeypatch):
     from sentinel.engine.souffle import SouffleProgram
     facts, matches = demo_inputs[repo]
     inputs = sorted(set(edb(facts, matches) + [k.text() for k in CURATED]))
     mc = Program()._solve(inputs, KEEP)
+    monkeypatch.setattr("sentinel.engine.souffle.SMALL", 0)  # force the Soufflé path even for small inputs
     ms = SouffleProgram(outputs=KEEP)._solve(inputs, KEEP)
     for rel in KEEP:
         assert set(mc.atoms.get(rel, [])) == set(ms.atoms.get(rel, [])), rel

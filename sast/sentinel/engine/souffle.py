@@ -33,6 +33,8 @@ from .datalog import PROV_HEADS, RULES_DIR, Model, Program
 
 CACHE = Path(os.environ.get("SENTINEL_SOUFFLE_CACHE", Path.home() / ".cache" / "sentinel" / "souffle"))
 JOBS = int(os.environ.get("SENTINEL_SOUFFLE_JOBS", "4"))
+# Below this many input facts (gate canaries, slices) clingo in-process beats a Soufflé process launch + file I/O.
+SMALL = int(os.environ.get("SENTINEL_SOUFFLE_MIN_FACTS", "20000"))
 ADT = ".type T = I {n: number} | S {id: number} | C {id: number} | F1 {f: number, a: T} " \
       "| F2 {f: number, a: T, b: T} | F3 {f: number, a: T, b: T, c: T}"
 
@@ -334,8 +336,8 @@ class SouffleProgram(Program):
             tmp.replace(self.binary)  # atomic: concurrent processes never run a half-written binary
 
     def _solve(self, facts: list[str], keep: set[str] | None) -> Model:
-        if keep is None or not set(keep) <= self.outputs:
-            return super()._solve(facts, keep)  # relations not compiled as outputs: clingo (debugging only)
+        if keep is None or not set(keep) <= self.outputs or len(facts) < SMALL:
+            return super()._solve(facts, keep)  # small inputs, or relations not compiled as outputs: clingo
         it = self.constants.copy()
         rows: dict[str, list[str]] = defaultdict(list)
         for text in facts:
