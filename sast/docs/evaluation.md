@@ -199,6 +199,22 @@ Measured with no model calls (mock oracle), one process, 4 cores.
 - Solves are memoised on their exact input: an unchanged rescan in the same process runs no solve (flaskbb 25 s ->
   5 s, redash 60 s -> 7 s, the rest is parsing).
 
+### Soufflé backend (default when installed)
+
+The same .lp rules, translated to Soufflé and compiled once; identical kept relations, provenance and findings on
+every repository compared (tests/test_souffle.py keeps checking it).
+
+| Repository | One solve, clingo | One solve, Soufflé | First scan (no model), clingo | First scan, Soufflé |
+|---|---|---|---|---|
+| flaskbb | 4.5 s | 1.6 s | | |
+| redash | 27.3 s | 2.1 s | 62.3 s | 14.8 s |
+| wagtail | 35.9 s | 4.3 s | 956.5 s | 38.3 s |
+| wagtail + Django view registration learned | 785.2 s | 5.0 s | | |
+| Mycodo | 82.3 s | 3.7 s | 1318.9 s | 32.1 s |
+
+Small solves (gate canaries, what-if slices, under 20k input facts) stay on clingo in-process: a process launch
+costs more than they do. What is left of a first scan is parsing and Semgrep (5-11 s), and the model's latency.
+
 ## Real vulnerabilities in real repositories (CVE split)
 
 Protocol: each CVE's fix commit was located in the project's git history; the parent commit is the vulnerable
@@ -254,6 +270,15 @@ Precision audit (findings read by hand, devika and aim, re-run live with a persi
 - False positives removed: on patched code the engine derives the mitigation (sanitizer on the path) and closes the
   finding with no model call; the read-everything LLM keeps re-reporting patched flows and speculative ones
   (agent output saved to disk, PDF rendering) at 0.3-0.55 confidence, every scan, at full price.
+
+## Stored data (second-order flows, RIPS-style)
+
+Writes and reads are matched by table (SQL `INSERT/UPDATE` vs `SELECT ... FROM`), ORM model (constructor /
+`objects.create` vs `query.*` / `objects.*`) and file path (an upload saved / a file written, then opened through the
+same path value). A read is a source only if attacker data was written there: a table filled with constants is not
+(tests/test_stored.py). PySASTBench, engine only: recall 0.450 -> 0.483 (+4 deserialization of uploaded files), no new
+false positive. The stored-XSS cases there sit mostly in frameworks the engine has not learned yet (next: framework
+knowledge packs + learning across repositories).
 
 ## Generalization: no framework knowledge at all
 

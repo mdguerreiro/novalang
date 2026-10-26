@@ -53,6 +53,12 @@ IDENTITY_RE = re.compile(r"(^|\.)(current_user|current_identity)(\.|\(|$)|"
                          r"^flask\.(g\.user|session)(\.|\[|$)")
 IDENTITY_PARAMS = {"current_user", "user_identity", "auth_user"}  # FastAPI-style `current_user: User = Depends(...)`
 OWNER_FIELD_RE = re.compile(r"^(owner|user|author|created_by|account|tenant|customer|patient|member|uploader)(_id)?$")
+SQL_WRITE_RE = re.compile(r"\b(?:INSERT\s+(?:OR\s+\w+\s+)?INTO|REPLACE\s+INTO|UPDATE)\s+[`\"\[]?(\w+)", re.I)
+SQL_READ_RE = re.compile(r"\b(?:FROM|JOIN)\s+[`\"\[]?(\w+)", re.I)
+SQL_EXEC = {"execute", "executemany", "executescript"}
+SQL_FETCH = {"fetchone", "fetchall", "fetchmany", "scalars", "scalar", "first", "all", "one", "mappings"}
+ORM_READ_RE = re.compile(r"^(?P<m>.+?)\.(query|objects)\.\w+")
+ORM_BASE_RE = re.compile(r"(^|\.)(Model|Base|Document|DeclarativeBase|SQLModel|EmbeddedDocument)$")
 LOOKUP_RE = re.compile(r"^(?P<m>.+)\.(query\.(get|get_or_404|filter_by|filter|first_or_404)|objects\.(get|filter))$")
 CHA_MAX_TARGETS = 12
 MUTATORS = {"append", "extend", "insert", "add", "update", "setdefault", "appendleft", "put", "push"}
@@ -129,6 +135,11 @@ class Facts:
     ambiguous: set[tuple[int, str, int]] = field(default_factory=set)  # call, method name, candidate count
     resolved: dict[int, str] = field(default_factory=dict)  # call node -> how it was resolved (cha | self | import | ctor)
     pred_sources: dict[str, str] = field(default_factory=dict)  # predicate -> source text (for the oracle)
+    # Stored data (second-order flows): what is written to / read from a table, a model or a file.
+    store_writes: set[tuple[int, str, int]] = field(default_factory=set)  # write call, key (db:t | orm:M), value written
+    store_reads: set[tuple[int, str]] = field(default_factory=set)  # read node, key
+    file_writes: set[tuple[int, int, int]] = field(default_factory=set)  # write call, path node, content node
+    file_reads: set[tuple[int, int]] = field(default_factory=set)  # open() call reading a file, path node
 
     def _flow_graph(self) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
         """Over-approximate interprocedural value flow between nodes (intra edges, argument -> parameter,
@@ -230,7 +241,11 @@ class Facts:
             compares={x for x in self.compares if x[0] in keep and x[1] in keep}, owner_fields=self.owner_fields,
             fn_refs={x for x in self.fn_refs if x[0] in keep and x[2] in kf},
             attrnames={x for x in self.attrnames if x[0] in keep}, config_sites=self.config_sites,
-            resolved={k: v for k, v in self.resolved.items() if k in keep}, pred_sources=self.pred_sources)
+            resolved={k: v for k, v in self.resolved.items() if k in keep}, pred_sources=self.pred_sources,
+            store_writes={x for x in self.store_writes if x[0] in keep and x[2] in keep},
+            store_reads={x for x in self.store_reads if x[0] in keep},
+            file_writes={x for x in self.file_writes if x[0] in keep and x[1] in keep and x[2] in keep},
+            file_reads={x for x in self.file_reads if x[0] in keep and x[1] in keep})
 
     def node_at(self, file: str, l1: int, c1: int, l2: int, c2: int) -> Node | None:
         """Exact span match first, then the smallest node that contains the span."""
@@ -678,6 +693,9 @@ class _FunctionWalker:
         self.types: dict[str, str] = {}  # local var -> project class (from `x = Class(...)`)
         self.aliases: dict[str, str] = {}  # local bound from shared state -> its heap cell
         self.normalized: set[str] = set()  # locals holding a normalised path (abspath/realpath/normpath/resolve)
+        self.sql_cursor: dict[str, set[str]] = {}  # cursor var -> tables its last SELECT read (for fetch*())
+        self.sql_read_nodes: dict[int, set[str]] = {}  # execute(SELECT ...) node -> tables (chained .fetchall())
+        self.open_for_write: tuple[int, int] | None = None  # last open(path, "w") in this function: (call, path node)
 
     def walk(self) -> None:
         env: Env = {}
@@ -1234,6 +1252,74 @@ class _FunctionWalker:
         elif prefix.startswith("/") and not prefix.startswith(("//", "/\\")) and len(prefix) > 1:
             self.f.typed.add((nid, "relative_path"))
 
+    def _is_model(self, cls: str | None) -> bool:
+        """A project class persisted by an ORM (its bases resolve to Model / Base / Document ...)."""
+        seen, todo = set(), [cls] if cls else []
+        while todo:
+            c = todo.pop()
+            if c in seen:
+                continue
+            seen.add(c)
+            for b in self.f.classes.get(c, []):
+                if ORM_BASE_RE.search(b):
+                    return True
+                if b in self.f.classes:
+                    todo.append(b)
+        return False
+
+    def _stored(self, e: ast.Call, func, dotted, qual: str, nid: int, receiver, arg_nodes, kw_nodes) -> None:
+        """Second-order flows (RIPS): record writes to and reads from tables, ORM models and files, keyed so the
+        engine can connect what an attacker stores with where it is read back."""
+        method = func.attr if isinstance(func, ast.Attribute) else None
+        values = [a for _, a in arg_nodes if a] + [a for _, a in kw_nodes if a]
+        if method in SQL_EXEC and e.args:
+            sql = _const_text(e.args[0]) or ""
+            writes = {t.lower() for t in SQL_WRITE_RE.findall(sql)}
+            for t in writes:
+                for a in values:
+                    self.f.store_writes.add((nid, f"db:{t}", a))
+            if not writes and re.search(r"\bSELECT\b", sql, re.I):
+                tables = {t.lower() for t in SQL_READ_RE.findall(sql)}
+                if tables:
+                    for t in tables:
+                        self.f.store_reads.add((nid, f"db:{t}"))  # `for row in cur.execute(...)`
+                    self.sql_read_nodes[nid] = tables
+                    if isinstance(func.value, ast.Name):
+                        self.sql_cursor[func.value.id] = tables
+        elif method in SQL_FETCH:
+            tables = set()
+            if isinstance(func.value, ast.Name):
+                tables = self.sql_cursor.get(func.value.id, set())
+            elif receiver is not None:
+                tables = self.sql_read_nodes.get(receiver, set())
+            for t in tables:
+                self.f.store_reads.add((nid, f"db:{t}"))
+        # ORM: Model(...) / Model.objects.create(...) write the model; Model.query.* / Model.objects.* read it.
+        target = self.ex.resolve(self.mod, dotted) if dotted else None
+        cls = target if target in self.f.classes else None
+        if cls is None and target and target.endswith((".objects.create", ".objects.get_or_create", ".objects.update_or_create")):
+            c = target.split(".objects.")[0]
+            cls = c if c in self.f.classes else None
+        if cls and self._is_model(cls):
+            for a in values:
+                self.f.store_writes.add((nid, f"orm:{cls}", a))
+        m = ORM_READ_RE.match(target or "")
+        if m and m.group("m") in self.f.classes and not (target or "").endswith((".create", ".get_or_create", ".update_or_create")):
+            self.f.store_reads.add((nid, f"orm:{m.group('m')}"))
+        # Files: `upload.save(path)`, `open(path, "w")` + `.write(x)` write; `open(path)` reads.
+        if qual == "open" and arg_nodes and arg_nodes[0][1]:
+            mode = _const_text(e.args[1]) if len(e.args) > 1 else next(
+                (_const_text(k.value) for k in e.keywords if k.arg == "mode"), None)
+            if mode and any(ch in mode for ch in "wax"):
+                self.open_for_write = (nid, arg_nodes[0][1])
+            else:
+                self.f.file_reads.add((nid, arg_nodes[0][1]))
+        elif method == "save" and arg_nodes and arg_nodes[0][1] and receiver is not None and qual not in self.f.functions:
+            self.f.file_writes.add((nid, arg_nodes[0][1], receiver))
+        elif method in ("write", "writelines") and self.open_for_write and values:
+            for a in values:
+                self.f.file_writes.add((nid, self.open_for_write[1], a))
+
     def _lookup_model(self, e: ast.Call, dotted: str | None) -> str | None:
         """`Doc.query.get(x)`, `Doc.objects.get(pk=x)`, `session.get(Doc, x)`, `get_object_or_404(Doc, pk=x)`."""
         if not dotted:
@@ -1306,6 +1392,7 @@ class _FunctionWalker:
 
         nid = self.ex.new_node(self.fn.qname, self.file, e, "call", label=ast.unparse(e)[:80], callee=qual)
         self.f.callnames.add((nid, qual))
+        self._stored(e, func, dotted, qual, nid, receiver, arg_nodes, kw_nodes)
         if isinstance(func, ast.Attribute) and func.attr == "format" and isinstance(func.value, ast.Constant):
             self._mark_url_prefix(nid, func.value.value if isinstance(func.value.value, str) else None)
         self._template_sinks(e, qual, arg_nodes, kw_nodes)
@@ -1415,6 +1502,18 @@ def _leading_literal(e: ast.expr) -> str | None:
         return e.value
     if isinstance(e, ast.JoinedStr) and e.values and isinstance(e.values[0], ast.Constant):
         return str(e.values[0].value)
+    return None
+
+
+def _const_text(e: ast.expr) -> str | None:
+    """The constant text of a string expression (literal parts of f-strings and concatenations, `?` for the rest)."""
+    if isinstance(e, ast.Constant) and isinstance(e.value, str):
+        return e.value
+    if isinstance(e, ast.JoinedStr):
+        return "".join(str(v.value) if isinstance(v, ast.Constant) else "?" for v in e.values)
+    if isinstance(e, ast.BinOp) and isinstance(e.op, (ast.Add, ast.Mod)):
+        left, right = _const_text(e.left), _const_text(e.right) if isinstance(e.op, ast.Add) else None
+        return (left or "?") + (right or "?") if left or right else None
     return None
 
 

@@ -76,7 +76,7 @@ Five real CVEs, vulnerable and fixed trees, scanned live (details: docs/evaluati
   raw-reach a sink; record-derived values for IDOR only along paths to a comparison with the current user) give the
   same results everywhere tested and bring it to 600 s. The rest is join work in clingo's grounder (the derived
   relations are small: pc 44k, pa 24k, traw 7k): the Soufflé backend is the fix, not more rule surgery.
-- Soufflé backend: port the .lp rules behind the Program interface, compiled once; learned knowledge stays EDB facts
+- DONE (default when installed): Soufflé backend: port the .lp rules behind the Program interface, compiled once; learned knowledge stays EDB facts
   (learned spec rules become rows, not rule text) so the compiled binary never changes; clingo kept as the reference
   for result equivalence on the demo corpora and held-out repos. Expected 10-100x per solve (unmeasured).
 - Persistent solve cache (keyed by input hash) across processes; incremental/per-module solving for PR scans.

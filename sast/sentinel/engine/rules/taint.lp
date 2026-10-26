@@ -234,3 +234,17 @@ read_signal(F,N) :- handler_like(F), node(N,F), traw(N,_), libcall(N,_), not spe
 read_signal(F,N) :- handler_like(F), node(N,F), traw(N,_), assume_at(N,_).
 read_signal(F,N) :- entry(F), node(N,F), traw(N,_), libcall(N,_), not spec_call(N).
 read_signal(F,N) :- handler_of(F,_), node(N,F), traw(N,_), libcall(N,_), not spec_call(N).
+
+% ── stored data: second-order flows (RIPS, Dahse & Holz 2014) ─────────────────────────────
+% What an attacker writes to a table or ORM model is attacker data again wherever it is read back. Only tables that
+% actually receive such data count: reading a table is not a source in itself (that would flag every query).
+stored(Key) :- store_w(W,Key,X), traw(X,S), src(S,Kd), not weak_kind(Kd).
+stored_at(R,Key) :- store_r(R,Key), stored(Key).
+% Files: the value naming the path of a file written with attacker content (an upload saved, a request body
+% written) is followed forward; a file opened through it is read back attacker content.
+fw_origin(O) :- file_w(W,P,X), edge(O,P), traw(X,S), src(S,Kd), not weak_kind(Kd).
+fpath(O,O) :- fw_origin(O).
+fpath(B,O) :- fpath(A,O), edge(A,B).
+fpath(P,O) :- fpath(A,O), arg_in(X,J,A), call(X,G), param(G,J,P).
+stored_at(R,"file") :- file_r(R,Q), fpath(Q,_).
+src(R,"stored") :- stored_at(R,_).

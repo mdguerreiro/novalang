@@ -159,6 +159,10 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out += [fact("sink", n, c) for n, c in facts.extra_sinks]
     out += [fact("self_param", p) for q, i, p in facts.params if i == 0 and facts.functions[q].cls
             and facts.functions[q].params[:1] in (["self"], ["cls"])]
+    out += [fact("store_w", w, key, x) for w, key, x in facts.store_writes]
+    out += [fact("store_r", r, key) for r, key in facts.store_reads]
+    out += [fact("file_w", w, p, x) for w, p, x in facts.file_writes]
+    out += [fact("file_r", r, q) for r, q in facts.file_reads]
     out += [fact("lookup", k, m) for k, m in facts.lookups]
     out += [fact("lookup_dep", k, n) for k, n in facts.lookup_deps]
     out += [fact("user_ref", n) for n in facts.user_refs]
@@ -217,7 +221,7 @@ BUILTIN_CALLS = {"map", "filter", "sorted", "min", "max", "list", "tuple", "set"
 KEEP = {"cand", "alarm", "mitigated", "undecided", "confirmed", "test_only", "asm", "mit", "assume_at",
         "kill", "reach", "safe", "open", "sink_frontier", "src_frontier", "learned_sink", "learned_src", "reg_frontier",
         "authz_frontier", "privacy_frontier", "dec_frontier",
-        "srcapi_frontier", "html_frontier", "handler_of", "read_signal"}
+        "srcapi_frontier", "html_frontier", "handler_of", "read_signal", "stored_at"}
 
 
 _DEFAULT_PROGRAM: Program | None = None
@@ -359,6 +363,9 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
         learned_sink[n].add(q)
     for n, x in get("learned_src"):
         learned_src[n].add(x)
+    stored = defaultdict(set)
+    for r, key in get("stored_at"):
+        stored[r].add(key)
     derivs = model.derivations()
 
     findings = []
@@ -382,6 +389,8 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
                                             and y.args[0] == x]})
         if not sm and learned_src.get(s):
             f.source_kind, f.source_rule = "http", "learned-source"
+        if not sm and stored.get(s):  # read back from a table / model / file that holds attacker data
+            f.source_kind, f.source_rule = "stored", "stored:" + sorted(stored[s])[0]
         if k not in sink_rule and learned_sink.get(k):
             f.sink_rule = "learned:" + sorted(learned_sink[k])[0]
         uniq = []
