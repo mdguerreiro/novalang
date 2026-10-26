@@ -50,6 +50,9 @@ def make_synth() -> RuleSynthesizer:
 TIER2_WORKERS = int(os.environ.get("SENTINEL_TIER2_WORKERS", "6"))
 TIER2_BUDGET = int(os.environ.get("SENTINEL_TIER2_BUDGET", "40"))  # root causes verified per scan
 FRONTIER_WORKERS = int(os.environ.get("SENTINEL_FRONTIER_WORKERS", "8"))
+FRONTIER_BUDGET = int(os.environ.get("SENTINEL_FRONTIER_BUDGET", "60"))  # model calls per scan for frontier questions
+ENTRY_BATCH = 25  # entry-point questions per model call
+ENTRY_CALLS = int(os.environ.get("SENTINEL_FRONTIER_ENTRY_CALLS", "20"))  # model calls per scan for entry-point batches
 VERIFY_LEARNED = float(os.environ.get("SENTINEL_VERIFY_LEARNED", "0.9"))  # oracle confidence that skips verification
 
 
@@ -321,7 +324,7 @@ class Scanner:
         stats["solves"] = {k: round(SOLVE_STATS[k] - solve0[k], 2) for k in ("solves", "hits", "seconds")}
         stats["timings"] = {name: round(t - stage_marks[i][1], 2) for i, (name, t) in enumerate(stage_marks[1:])}
         stats.update(handler_reads=reads["read"], read_issues=reads["issues"])
-        stats.update(knn_answers=fr.get("knn", 0))
+        stats.update(knn_answers=fr.get("knn", 0), frontier_deferred=fr.get("deferred", 0))
         stats.update(frontier_questions=fr["questions"], frontier_cached=fr["cached"], frontier_facts=len(fr["facts"]),
                      found_by_frontier=sum(1 for o in outcome.values() if o["finding"].learned
                                            and o["finding"].status in ("confirmed", "undecided")))
@@ -430,6 +433,7 @@ class Scanner:
         items (gated, scoped, cached), so the next repository using the same library asks nothing."""
         stats = {"questions": 0, "cached": 0, "facts": [], "rounds": 0}
         self._org_of_facts = org
+        spent = entry_calls = entry_qs = 0  # model calls charged to the budgets (a batch of entry questions is one call)
         asked: set[tuple] = set()
         for _ in range(rounds):
             a = self.analyze_repo(repo_id)
@@ -480,6 +484,41 @@ class Scanner:
                 stats["questions"] += 1
                 fresh.append((kind, subj))
 
+            # Budget: a scan makes at most FRONTIER_BUDGET model calls for library-level frontier questions and
+            # ENTRY_CALLS for entry points (asked ENTRY_BATCH at a time, one call per batch). Library-level questions (sinks, sources, registrars, HTML,
+            # authz, models) come first: their answers are global and reused by every repository. Entry points come
+            # last, decorated and public functions first. What does not fit waits for a later scan (not marked asked).
+            rank = {"sink": 0, "srcapi": 1, "reg": 2, "html": 3, "authz": 4, "model": 5, "entry": 6}
+            decorated_fns = {f for f, _d in facts.decorated}
+
+            def score(q):
+                kind, subj = q
+                if kind != "entry":
+                    return (rank[kind], False, False)
+                return (rank[kind], subj not in decorated_fns, subj.rsplit(".", 1)[-1].startswith("_"))
+            fresh.sort(key=score)
+            # Entry points have their own (small) call budget: batched, they are cheap per question, and in libraries
+            # they are the only way public API parameters become sources.
+            keep = []
+            for q in fresh:
+                if q[0] == "entry":
+                    cost = 1 if entry_qs % ENTRY_BATCH == 0 else 0
+                    fits = entry_calls + cost <= ENTRY_CALLS
+                else:
+                    cost, fits = 1, spent + 1 <= FRONTIER_BUDGET
+                if not fits:
+                    asked.discard(q)
+                    stats["deferred"] = stats.get("deferred", 0) + 1
+                    stats["questions"] -= 1
+                    continue
+                if q[0] == "entry":
+                    entry_calls += cost
+                    entry_qs += 1
+                else:
+                    spent += 1
+                keep.append(q)
+            fresh = keep
+
             # Cheap pre-oracle first: questions whose closest labelled APIs agree are answered without a model call.
             still = []
             for kind, subj in fresh:
@@ -507,8 +546,17 @@ class Scanner:
             # Questions are independent: a real model answers them concurrently (the mock stays sequential so
             # knowledge ids are deterministic in tests). Gating stays sequential.
             workers = FRONTIER_WORKERS if getattr(self.oracle, "concurrent", False) else 1
+            entries_q = [q for q in fresh if q[0] == "entry"]
+            others = [q for q in fresh if q[0] != "entry"]
             with ThreadPoolExecutor(max_workers=workers) as pool:
-                answers = list(pool.map(ask, fresh))
+                answers = list(pool.map(ask, others))
+            if entries_q:  # entry points: many per model call
+                if hasattr(self.oracle, "classify_entries"):
+                    labels = self.oracle.classify_entries([self._entry_question(fn, facts) for _k, fn in entries_q])
+                    answers += [self._entry_facts(fn, lab, facts, org, repo_id) for (_k, fn), lab in zip(entries_q, labels)]
+                else:
+                    answers += [self._ask_entry(fn, facts, org, repo_id) for _k, fn in entries_q]
+            fresh = others + entries_q
             for kind, subj in fresh:  # inconclusive answers are remembered too: not re-asked on every scan
                 self._mark_asked(kind, subj[0] if kind == "reg" else subj)
             for items in answers:
@@ -728,10 +776,15 @@ class Scanner:
         pred = "authz_decorator" if label.authorizes else "not_authz_decorator"
         return [self.ks.propose(pred, [dec], scope, o, None, origin, label.confidence, label.rationale)]
 
-    def _ask_entry(self, fn: str, facts: Facts, org: str, repo_id: str) -> list[dict]:
-        decorators = sorted(d for f, d in facts.decorated if f == fn)
+    def _entry_question(self, fn: str, facts: Facts) -> tuple[str, list[str], list[str], str]:
         f = facts.functions.get(fn)
-        label = self.oracle.classify_entry(fn, decorators, f.params if f else [], self._source_of(facts, fn))
+        return fn, sorted(d for g, d in facts.decorated if g == fn), f.params if f else [], self._source_of(facts, fn)
+
+    def _ask_entry(self, fn: str, facts: Facts, org: str, repo_id: str) -> list[dict]:
+        return self._entry_facts(fn, self.oracle.classify_entry(*self._entry_question(fn, facts)), facts, org, repo_id)
+
+    def _entry_facts(self, fn: str, label, facts: Facts, org: str, repo_id: str) -> list[dict]:
+        decorators = sorted(d for f, d in facts.decorated if f == fn)
         origin = f"oracle:{label.model}"
         out = []
         if label.kind == "framework" and label.decorator and label.confidence >= 0.7:

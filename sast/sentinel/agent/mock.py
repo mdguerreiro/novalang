@@ -81,6 +81,9 @@ class MockSpecOracle:
             return SinkLabel(api, [{"arg": a, "cls": c} for a, c in sinks], conf, why, self.name)
         return SinkLabel(api, [], 0.4, "Unknown API.", self.name)
 
+    def classify_entries(self, items: list[tuple[str, list[str], list[str], str]]) -> list[EntryLabel]:
+        return [self.classify_entry(*it) for it in items]
+
     def classify_entry(self, fn: str, decorators: list[str], params: list[str], source: str) -> EntryLabel:
         for d in decorators:
             if re.search(r"(fastapi|starlette|aiohttp|sanic|bottle|falcon).*\.(get|post|put|patch|delete|route|api_route)$", d):

@@ -176,3 +176,17 @@ def test_frontier_uses_preoracle_before_the_model():
     sc.oracle.classify_sink = lambda api, args, usage: asked.append(api) or inner(api, args, usage)
     stats = sc.scan("acme-reports")
     assert stats["knn_answers"] >= 1 and "pandas.read_sql" not in asked
+
+
+def test_frontier_budget_caps_model_calls_and_batches_entry_points(monkeypatch):
+    """A scan never spends more than FRONTIER_BUDGET model calls on frontier questions; entry points go in batches."""
+    import sentinel.pipeline as pl
+    from sentinel.eval import fresh_scanner
+    monkeypatch.setattr(pl, "FRONTIER_BUDGET", 2)
+    monkeypatch.setattr(pl, "ENTRY_CALLS", 1)
+    sc = fresh_scanner(repos=["acme-etl"])
+    batches = []
+    inner = sc.oracle.classify_entries
+    monkeypatch.setattr(sc.oracle, "classify_entries", lambda items: batches.append(len(items)) or inner(items), raising=False)
+    s = sc.scan("acme-etl")
+    assert s["frontier_questions"] - sum(batches) <= 2 and len(batches) <= 1  # each budget holds

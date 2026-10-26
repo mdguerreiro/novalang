@@ -174,6 +174,12 @@ class CountingOracle:
     def __getattr__(self, attr):
         return getattr(self.inner, attr)
 
+    def classify_entries(self, items):
+        from .agent.claude import ClaudeSpecOracle
+        for it in items:
+            self.calls.append(("entry", it[0], len(ClaudeSpecOracle._entry_prompt(*it))))
+        return self.inner.classify_entries(items)
+
     def classify_sink(self, api, args, usage):
         from .agent.claude import ClaudeSpecOracle
         self.calls.append(("sink", api, len(ClaudeSpecOracle._sink_prompt(api, args, usage))))
