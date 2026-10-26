@@ -91,9 +91,11 @@ class Tools(AgentTools):
     def _slice(self, focus: list[str]) -> tuple[tuple, list[KnowledgeFact]] | None:
         by_fp = {f.fingerprint: f for f in self.analysis.findings}
         found = [by_fp[fp] for fp in focus if fp in by_fp]
-        if not found or len(found) < len(set(focus)) or any(f.cls == "idor" for f in found):
-            return None  # IDOR decisions depend on code after the lookup (owner checks): whole program
-        fns, heap = self.facts.chop([(f.source, f.sink) for f in found])
+        if not found or len(found) < len(set(focus)):
+            return None
+        # IDOR decisions also depend on code that does not carry the key (owner checks, scoped queries, decorators
+        # in callees): those findings keep every function the handler calls.
+        fns, heap = self.facts.chop([(f.source, f.sink) for f in found], all_callees=any(f.cls == "idor" for f in found))
         if len(fns) > self.SLICE_MAX * max(len(self.facts.functions), 1):
             return None
         # Facts derived from code outside the slice: the focus sources (registrations, decorators elsewhere)
