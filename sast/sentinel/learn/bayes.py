@@ -18,7 +18,7 @@ import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-SOURCE_PRIOR = {"http": 0.95, "cookie": 0.92, "route": 0.92, "header": 0.85, "cli": 0.35, "": 0.8}
+SOURCE_PRIOR = {"http": 0.95, "cookie": 0.92, "route": 0.92, "header": 0.85, "cli": 0.35, "archive": 0.5, "": 0.8}
 ASM_PRIOR = {"unknown_api": 0.55, "unknown_guard": 0.45, "maybe_sanitizer": 0.5, "unreachable": 0.25, "weak_source": 0.4}
 LEAK_TRUE, LEAK_FALSE = 0.97, 0.03  # P(F | all hypotheses hold), P(F | some hypothesis fails)
 

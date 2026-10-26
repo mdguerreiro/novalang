@@ -59,6 +59,7 @@ CURATED: list[KnowledgeFact] = [
     KnowledgeFact("K-cur-bool", "safe_type", ("bool", "all")),
     KnowledgeFact("K-cur-any-conv", "safe_type", ("any", "all")),
     KnowledgeFact("K-cur-cli-weak", "weak_kind", ("cli",)),
+    KnowledgeFact("K-cur-archive-weak", "weak_kind", ("archive",)),
     KnowledgeFact("K-cur-fixed-host", "safe_type", ("fixed_host", "ssrf")),
     KnowledgeFact("K-cur-fixed-host-r", "safe_type", ("fixed_host", "redirect")),
     KnowledgeFact("K-cur-rel-path", "safe_type", ("relative_path", "redirect")),

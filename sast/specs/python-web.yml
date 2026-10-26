@@ -48,6 +48,18 @@ rules:
     pattern-either:
       - pattern: flask.request.headers.$M(...)
       - pattern: flask.request.headers[...]
+  - id: spec.source.archive.opened
+    languages: [python]
+    severity: INFO
+    message: source
+    # Member names inside an archive are chosen by whoever built it ("tar slip", CVE-2007-4559): weak until the
+    # verifier establishes the archive can come from outside (download, upload, user path).
+    metadata: {sentinel: {role: source, kind: archive}}
+    pattern-either:
+      - pattern: tarfile.open(...)
+      - pattern: tarfile.TarFile(...)
+      - pattern: tarfile.TarFile.open(...)
+      - pattern: zipfile.ZipFile(...)
   - id: spec.source.cli.argv
     languages: [python]
     severity: INFO
@@ -102,6 +114,19 @@ rules:
           - pattern: os.remove($P)
           - pattern: shutil.rmtree($P, ...)
       - focus-metavariable: $P
+  - id: spec.sink.path.archive-extract
+    languages: [python]
+    severity: INFO
+    message: sink
+    # Extracting every member writes wherever the member names point. A member filter (filter="data") is the fix.
+    metadata: {sentinel: {role: sink, cls: path, cwe: CWE-22}}
+    patterns:
+      - pattern-either:
+          - pattern: $A.extractall(...)
+          - pattern: $A.extract(...)
+      - pattern-not: $A.extractall(..., filter=$F, ...)
+      - pattern-not: $A.extract(..., filter=$F, ...)
+      - focus-metavariable: $A
   - id: spec.sink.ssti.render-template-string
     languages: [python]
     severity: INFO

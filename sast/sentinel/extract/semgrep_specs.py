@@ -61,7 +61,8 @@ def run_semgrep_raw(config_paths: list[Path], cwd: Path, targets: list[str]) -> 
     cmd = [semgrep_bin(), "--json", "--metrics=off", "--disable-version-check", "--quiet", "--no-git-ignore"]
     for c in config_paths:
         cmd += ["--config", str(c)]
-    cmd += targets  # explicit targets: Semgrep's default ignores (e.g. tests/) do not apply
+    # Semgrep rejects a symbolic link given as a target (the whole run fails); the file it points to is scanned anyway.
+    cmd += [t for t in targets if not (Path(cwd) / t).is_symlink()]  # explicit targets: default ignores do not apply
     env = dict(os.environ, SEMGREP_ENABLE_VERSION_CHECK="0", SEMGREP_SEND_METRICS="off")
     proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, env=env, timeout=600)
     try:
