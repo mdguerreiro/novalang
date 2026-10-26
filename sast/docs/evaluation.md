@@ -217,7 +217,7 @@ on the two measured repositories) and its recall checked on the target files onl
 | CVE-2024-5547 (devika, path) | caught, $0.19 | clean, $0.00 | caught, $0.45 | clean, $0.43 |
 | CVE-2021-43775 (aim, path) | caught, $0.87 | clean, $0.45 | caught, $1.13 | clean, $1.13 |
 | CVE-2024-5187 (onnx, tar slip) | caught, $1.03 | 1 review item, $0.05 | caught, ~$8.42 | false alarm, ~$8.42 |
-| CVE-2020-11001 (wagtail, stored XSS) | PENDING | | caught, ~$10.35 | clean, ~$10.37 |
+| CVE-2020-11001 (wagtail, stored XSS) | missed, $1.71 (1 other confirmed, 10 IDOR candidates) | PENDING | caught, ~$10.35 | clean, ~$10.37 |
 | CVE-2021-41185 (Mycodo, path) | caught, $5.23 (29 reported) | not reached (2 h cap) | caught, ~$9.98 | other alarm, ~$9.98 |
 
 Reading so far:
