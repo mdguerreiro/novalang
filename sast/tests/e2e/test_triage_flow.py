@@ -18,7 +18,9 @@ playwright = pytest.importorskip("playwright.sync_api")
 
 SAST = Path(__file__).resolve().parents[2]
 CHROME = os.environ.get("SENTINEL_CHROME", "/opt/pw-browsers/chromium-1194/chrome-linux/chrome")
-SHOTS = SAST / "docs" / "screenshots"
+# Docs screenshots are refreshed only on request (SENTINEL_SCREENSHOTS=1); a normal run writes to a temp dir.
+SHOTS = SAST / "docs" / "screenshots" if os.environ.get("SENTINEL_SCREENSHOTS") == "1" else \
+    Path(os.environ.get("TMPDIR", "/tmp")) / "sentinel-e2e-shots"
 
 
 def _free_port() -> int:
