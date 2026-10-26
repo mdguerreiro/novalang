@@ -2,6 +2,16 @@
 
 Running plan/status, updated every loop iteration so work can resume from here.
 
+## Where it stands (real CVEs, live model)
+Five real CVEs, vulnerable and fixed trees, scanned live (details: docs/evaluation.md, "Real vulnerabilities").
+- Catches 4/5 (devika, aim, onnx tar slip, Mycodo); misses wagtail (stored XSS, no stored-data sources).
+- First scans $8.96 in total vs ~$30 for an LLM reading every file; rescans of the fixed trees $0.29 vs ~$20.
+- Removes false positives: patched flows are closed by the engine with no model call (devika: 3 closed at $0;
+  the read-everything LLM still reports 9 alarms on the patched tree). Finds true positives beyond the CVE
+  (devika's fix left `browser_snapshot` open; Sentinel keeps it confirmed).
+- Weak spots: Mycodo's first scan ($5.23, 103 min; 331 frontier questions with no prior knowledge), engine time on
+  large Django apps (clingo grounding; Soufflé backend in the backlog), stored XSS.
+
 ## Phases
 1. [x] Literature review — 5 parallel research tracks -> docs/lit/*.md, synthesized into docs/literature.md
 2. [x] Architecture — docs/architecture.md
