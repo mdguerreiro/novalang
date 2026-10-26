@@ -89,7 +89,10 @@ traw(B,S) :- traw(A,S), edge(A,B).
 traw(K,S) :- traw(A,S), arg_in(K,J,A), call(K,G), p2r_raw(G,J).
 traw(K,S) :- call(K,G), ret(G,R), traw(R,S).
 
-t(S,S,C,M) :- src(S,_), cls_live(C), mode(M), not killed(S,C), not blocked(S,M).
+% Demand: class/mode taint only for (source, class) pairs whose raw taint reaches a sink of that class. Every
+% parameter of every registered view is a source; most never reach a sink, and tracking them all is sources x nodes.
+t_need(S,C) :- cand(S,_,C).
+t(S,S,C,M) :- src(S,_), t_need(S,C), mode(M), not killed(S,C), not blocked(S,M).
 t(B,S,C,M) :- t(A,S,C,M), edge(A,B), not killed(B,C), not blocked(B,M).
 t(K,S,C,M) :- t(A,S,C,M), arg_in(K,J,A), call(K,G), p2r(G,J,C,M), not killed(K,C), not blocked(K,M).
 t(K,S,C,M) :- call(K,G), ret(G,R), t(R,S,C,M), not killed(K,C), not blocked(K,M).
