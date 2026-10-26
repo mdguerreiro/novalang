@@ -280,6 +280,26 @@ same path value). A read is a source only if attacker data was written there: a 
 false positive. The stored-XSS cases there sit mostly in frameworks the engine has not learned yet (next: framework
 knowledge packs + learning across repositories).
 
+## Learning frameworks from repositories (transfer, PySASTBench)
+
+Split by case number: the odd half is scanned live (frontier + verification) in one store, and what it learned is
+exported as a candidate knowledge pack (`knowledge/candidates/pysastbench-train-half.yml`, 87 facts: 11 framework
+entry points such as `cherrypy.expose`, FastAPI/Sanic routes, Pyramid `view_config`; 11 source APIs such as Bottle
+`request.forms.get` and Tornado `request.body`; 13 sink APIs such as `sanic.response.html`, Tornado `write`, Pyramid
+`HTTPFound`; 45 negative answers that save future questions). The even half, never seen during learning, is then
+scanned by the engine alone, with no model calls, with and without that pack.
+
+| Even half (120 files), engine only, no model calls | Precision | Recall | F1 |
+|---|---|---|---|
+| No learned knowledge | 0.938 | 0.500 | 0.652 |
+| With the pack learned from the odd half | 0.949 | 0.617 | 0.747 |
+
+Learning on the odd half cost $8.07 live (856 calls; that run itself scored P 0.979, R 0.767). SQL injection on
+unseen files went from 1 to 6 found, code injection from 4 to 6. XSS stayed at 0/10: the unseen files use APIs the
+odd half never asked about (Django `HttpResponse` with an f-string, Quart handlers returning HTML), which the next
+repositories that use them will teach. A reviewer would drop a few candidates (`tarfile.is_tarfile` as a path
+sink); packs are reviewed before they ship, and every pack fact still passes the canary gate on load.
+
 ## Generalization: no framework knowledge at all
 
 `SENTINEL_SPECS=minimal` keeps only Python stdlib sinks and sanitizers (no Flask/FastAPI/Django/pandas/jinja2 specs).

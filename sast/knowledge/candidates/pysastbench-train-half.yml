@@ -1,0 +1,924 @@
+pack: learned-pysastbench
+version: 1
+owner: ''
+description: 'Candidate pack exported from learned knowledge: review each fact, drop the `learned` block, merge.'
+facts:
+- pred: framework_source
+  args:
+  - cherrypy.expose
+  - http
+  note: cherrypy.expose registers the method as an HTTP endpoint. Its only parameter is self, so no attacker-controlled parameters
+    flow in, and it just returns static HTML.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.8
+    repos: 0
+    id: K-086
+- pred: framework_source
+  args:
+  - django.views.decorators.csrf.csrf_exempt
+  - http
+  note: Django view (csrf_exempt, takes request, returns JsonResponse); request.GET 'q' flows into f-string SQL executed via
+    cursor.execute.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-118
+- pred: framework_source
+  args:
+  - django.views.decorators.http.require_http_methods
+  - http
+  note: Django view decorated with require_http_methods; it receives the request and the URL parameter product_id from the
+    HTTP request.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-119
+- pred: framework_source
+  args:
+  - fastapi.FastAPI().delete
+  - http
+  note: A FastAPI DELETE route decorator registers this function, so employee_id is taken from the request path. db is injected
+    through Depends and is not attacker-controlled. The query is parameterized.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-131
+- pred: framework_source
+  args:
+  - fastapi.FastAPI().get
+  - http
+  note: FastAPI GET route handler; request and note_id come from the HTTP request. The rendered content comes from the stored
+    notes rather than these parameters, but the function is still an HTTP entry point.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.9
+    repos: 0
+    id: K-082
+- pred: framework_source
+  args:
+  - fastapi.FastAPI().post
+  - http
+  note: FastAPI POST route; title and content come from form data in the HTTP request.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-081
+- pred: framework_source
+  args:
+  - flask.Flask().errorhandler
+  - http
+  note: Flask errorhandler registers the function as a framework callback invoked during HTTP request handling. Its exception
+    argument can carry request-derived content, and that content is passed into render_template.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.75
+    repos: 0
+    id: K-039
+- pred: framework_source
+  args:
+  - flask.Flask().route
+  - http
+  note: The function is registered as a Flask route. It reads untrusted JSON from request.get_json() and passes it to config_manager.save_config.
+    It takes no parameters, so the attacker-controlled input comes from the request body rather than from arguments.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.93
+    repos: 0
+    id: K-008
+- pred: framework_source
+  args:
+  - pyramid.view.view_config
+  - http
+  note: Pyramid's view_config decorator registers the function as an HTTP view, and the request parameter carries attacker-controlled
+    HTTP input.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.93
+    repos: 0
+    id: K-107
+- pred: framework_source
+  args:
+  - sanic.Sanic().middleware
+  - http
+  note: Sanic middleware is registered by the framework and invoked for every HTTP request; the request parameter is attacker-controlled.
+    The function body itself only sets static headers.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.8
+    repos: 0
+    id: K-116
+- pred: framework_source
+  args:
+  - sanic.Sanic().route
+  - http
+  note: The function is registered as an HTTP route via the Sanic route decorator, so the request parameter is attacker-controlled.
+    The token from the query string is reflected into the HTML.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-093
+- pred: html_return
+  args:
+  - flask.Flask().errorhandler
+  note: 'Flask builds a Response from a returned string with the default mimetype text/html, and this applies to errorhandler
+    return values too. So attacker-controlled text in such a string is rendered as HTML. In this example, Jinja2 autoescaping
+    in render_template reduces the XSS risk for .html templates. '
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.9
+    repos: 0
+    id: K-040
+- pred: html_return
+  args:
+  - flask.Flask().route
+  note: Flask turns a plain string return value into a response with Content-Type text/html by default, so attacker-controlled
+    text in it can be rendered as HTML (XSS). Dicts are serialised as JSON, which is what this example returns, but the question
+    asks about strings.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-009
+- pred: html_return
+  args:
+  - sanic.Sanic().route
+  note: This handler does not return a bare string. It wraps the markup in sanic.response.html(), which sends the body with
+    Content-Type text/html. Unescaped user preferences in that body therefore give stored XSS. Plain strings returned by Sanic
+    handlers are not automatically HTML; Sanic expects HTTPRespon
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-097
+- pred: not_html_return
+  args:
+  - fastapi.FastAPI().get
+  note: FastAPI's default response class is JSONResponse. A plain returned string is JSON-encoded and sent with Content-Type
+    application/json, not text/html. HTML is only served when the handler explicitly returns HTMLResponse or a TemplateResponse,
+    or sets response_class=HTMLResponse. The example's Templat
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.9
+    repos: 0
+    id: K-084
+- pred: not_html_return
+  args:
+  - fastapi.FastAPI().post
+  note: FastAPI's default response class is JSONResponse, so a returned string is JSON-encoded and sent as application/json,
+    not text/html. HTML is only sent when the handler explicitly uses HTMLResponse, TemplateResponse, or sets response_class=HTMLResponse.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.93
+    repos: 0
+    id: K-083
+- pred: not_html_return
+  args:
+  - pyramid.view.view_config
+  note: Pyramid does not turn a bare returned string into an HTML response. With no renderer configured, returning a str raises
+    an error because views must return a Response object. With renderer='string', the response is text/plain, and with renderer='json',
+    it is JSON. Template renderers (.pt/.jinja2/.mak
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.8
+    repos: 0
+    id: K-113
+- pred: not_html_return
+  args:
+  - sanic.Sanic().middleware
+  note: Sanic middleware return values must be HTTPResponse objects; a plain str returned from a response middleware is not
+    sent as an HTML body. Sanic only uses a non-None return to replace the response if it is an HTTPResponse, otherwise it
+    is ignored or raises an error. Any HTML output must be built expl
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.8
+    repos: 0
+    id: K-117
+- pred: not_sink_api
+  args:
+  - bleach.clean
+  note: bleach.clean is an HTML sanitizer; tainted text passed as arg 0 is sanitized, not a sink. It is effectively a sanitizer
+    for XSS. Only the configuration arguments (tags, attributes, protocols) could weaken it, and those are not attacker data
+    here.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.8
+    repos: 0
+    id: K-085
+- pred: not_sink_api
+  args:
+  - datetime.datetime.strptime
+  note: strptime parses a date string against a format; it raises ValueError on bad input and does not execute code, access
+    files, run queries, or perform network requests. None of its arguments is a sink for the listed classes.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-127
+- pred: not_sink_api
+  args:
+  - django.contrib.auth.hashers.check_password
+  note: check_password hashes the plaintext password and compares it with the stored hash. The password argument goes through
+    a hash function and is never interpreted as a query, command, path, or code, so no argument is a sink for these injection
+    classes.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.93
+    repos: 0
+    id: K-120
+- pred: not_sink_api
+  args:
+  - django.contrib.auth.hashers.make_password
+  note: make_password hashes the input; the password is not interpreted as code, a query, a path, or any other sink-class
+    input. Hashing user passwords is the intended use.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-121
+- pred: not_sink_api
+  args:
+  - hashlib.sha256
+  note: hashlib.sha256 only computes a hash of its input bytes. That cannot lead to injection, file access, network requests
+    or code execution, so none of its arguments is a sink for the listed classes.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-122
+- pred: not_sink_api
+  args:
+  - http.server.BaseHTTPRequestHandler.rfile.read
+  note: rfile.read(n) reads request body bytes; the length argument only controls read size (potential DoS), not any of the
+    listed injection classes. It is a source, not a sink.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-141
+- pred: not_sink_api
+  args:
+  - os.path.splitext
+  note: os.path.splitext is pure string manipulation and performs no filesystem access, so it is not a sink. Its output may
+    flow into a sink later, which makes it a propagator only.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.93
+    repos: 0
+    id: K-044
+- pred: not_sink_api
+  args:
+  - pickle.dumps
+  note: pickle.dumps serializes an object; it does not deserialize anything, so attacker-controlled input passed to it cannot
+    trigger code execution. The deserialization risk lies in pickle.loads, not in dumps.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.9
+    repos: 0
+    id: K-146
+- pred: not_sink_api
+  args:
+  - pyramid.security.authenticated_userid
+  note: authenticated_userid(request) only reads the authentication policy to return the user id. It does not execute queries,
+    commands, file access, rendering or redirects, so the request argument is not an injection sink.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-108
+- pred: not_sink_api
+  args:
+  - pyramid.security.forget
+  note: forget(request) only builds headers that clear the authentication cookie through the configured security policy. The
+    request object does not reach any injection-class sink, so no argument is a sink.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.93
+    repos: 0
+    id: K-109
+- pred: not_sink_api
+  args:
+  - pyramid.security.remember
+  note: pyramid.security.remember(request, userid) returns authentication headers built through the configured security policy.
+    The userid is typically signed into an auth ticket cookie. This is an authentication concern, not injection into SQL,
+    a shell command, a filesystem path, HTML or another listed sin
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-110
+- pred: not_sink_api
+  args:
+  - re.match
+  note: re.match with a constant pattern is only a validation check here. The tainted string in argument 1 is merely matched
+    against that pattern, which is not an injection sink for any listed class. A tainted pattern could at most cause ReDoS,
+    which is not one of these classes.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-123
+- pred: not_sink_api
+  args:
+  - re.sub
+  note: re.sub with a constant pattern only transforms the string; here it acts more like a weak sanitizer than a sink. The
+    input string (arg 2) cannot cause injection. A tainted pattern could at most cause ReDoS, which falls outside the listed
+    classes.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.93
+    repos: 0
+    id: K-130
+- pred: not_sink_api
+  args:
+  - sanic.response.json
+  note: sanic.response.json serializes data into an application/json response. JSON encoding escapes the content, and the
+    content type keeps browsers from rendering it as HTML, so it is not an XSS sink or a sink for any of the other listed
+    classes.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-133
+- pred: not_sink_api
+  args:
+  - werkzeug.security.check_password_hash
+  note: check_password_hash only parses the stored hash string and compares it with the password using hashlib/hmac. Neither
+    argument leads to injection, file access, code execution or any other listed vulnerability class.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.93
+    repos: 0
+    id: K-128
+- pred: not_sink_api
+  args:
+  - werkzeug.security.generate_password_hash
+  note: generate_password_hash hashes the password; it performs no query, command, file, or template operation, so attacker-controlled
+    input is safe here.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-129
+- pred: not_source_api
+  args:
+  - bottle.abort
+  note: bottle.abort is a function that raises an HTTP error response with a constant status and message; it does not return
+    attacker-controlled data.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-132
+- pred: not_source_api
+  args:
+  - bottle.redirect
+  note: bottle.redirect is a response helper that raises an HTTPResponse redirect; here called with a constant '/profile'.
+    Not a source of attacker input.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-103
+- pred: not_source_api
+  args:
+  - bottle.response.delete_cookie
+  note: response.delete_cookie is an output operation on the server's response that sets an expiring cookie with a constant
+    name; it does not read attacker-controlled input.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-102
+- pred: not_source_api
+  args:
+  - cryptography.fernet.Fernet.generate_key
+  note: Fernet.generate_key() produces a cryptographically random key locally; not attacker-controlled.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.98
+    repos: 0
+    id: K-143
+- pred: not_source_api
+  args:
+  - datetime.datetime.now
+  note: datetime.now() returns the server's system time, which comes from no external input and is not attacker-controlled.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-067
+- pred: not_source_api
+  args:
+  - datetime.datetime.now().isoformat
+  note: datetime.now().isoformat() is a server-generated timestamp and is not attacker-controlled.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.98
+    repos: 0
+    id: K-092
+- pred: not_source_api
+  args:
+  - datetime.datetime.now().strftime
+  note: The value is the current server timestamp, formatted with a constant format string. An external attacker cannot control
+    it.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-069
+- pred: not_source_api
+  args:
+  - flask.abort
+  note: flask.abort is a function that raises an HTTP exception; it does not return attacker-controlled data. The call uses
+    a constant status code and a constant message.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-036
+- pred: not_source_api
+  args:
+  - flask.render_template
+  note: render_template produces server-rendered HTML from a server-side template file. That output is not a source of attacker
+    input; any taint would come from the arguments passed in, not from the function's result.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.88
+    repos: 0
+    id: K-041
+- pred: not_source_api
+  args:
+  - hashlib.md5().hexdigest
+  note: An MD5 hexdigest is a fixed-format hex string, a derived hash, so it is not itself an attacker-controlled input source.
+    Even if source_path is tainted, the output contains only hex characters and cannot carry a path traversal payload.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-011
+- pred: not_source_api
+  args:
+  - hashlib.sha256().hexdigest
+  note: A SHA-256 hex digest is a fixed-format hash output (64 hex characters). Even if source_path is attacker-derived, the
+    digest itself is not a taint source; it only propagates or sanitizes taint and cannot carry injection payloads.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-015
+- pred: not_source_api
+  args:
+  - http.server.BaseHTTPRequestHandler.end_headers
+  note: end_headers() writes the response headers and returns None, so it carries no attacker-controlled data.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-006
+- pred: not_source_api
+  args:
+  - http.server.BaseHTTPRequestHandler.send_response
+  note: send_response is an output method writing a status line to the client; it returns None and the argument is a constant
+    404. Not attacker-controlled input.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-001
+- pred: not_source_api
+  args:
+  - http.server.BaseHTTPRequestHandler.wfile.write
+  note: wfile.write writes the response to the client output stream; it is a sink, not a source of attacker input. The data
+    written is a constant here.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-005
+- pred: not_source_api
+  args:
+  - sanic.response.html
+  note: sanic.response.html builds an HTTP response object. It is an output/sink-side constructor, not a source of attacker-controlled
+    input, and here it wraps a literal HTML string.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.93
+    repos: 0
+    id: K-091
+- pred: not_source_api
+  args:
+  - sanic.response.redirect
+  note: sanic.response.redirect builds an outgoing HTTP response, so it is a sink-like output and not a source of attacker
+    input. The URL here is built from a server-side session token.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.88
+    repos: 0
+    id: K-094
+- pred: not_source_api
+  args:
+  - socket.AF_INET
+  note: socket.AF_INET is a constant address family enum value, not attacker-controlled.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.99
+    repos: 0
+    id: K-151
+- pred: not_source_api
+  args:
+  - socket.SOCK_STREAM
+  note: socket.SOCK_STREAM is a library constant specifying the socket type; it is not attacker-controlled.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.98
+    repos: 0
+    id: K-152
+- pred: not_source_api
+  args:
+  - sqlite3.connect
+  note: sqlite3.connect('hotel.db') returns a database connection object opened with a constant filename; it is not attacker-controlled
+    input.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-125
+- pred: not_source_api
+  args:
+  - str().encode
+  note: str(e).encode() encodes an exception message as bytes for output; it is a transformation, not an origin of attacker
+    input. Any taint would come from the exception's contents, not from this call.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.8
+    repos: 0
+    id: K-002
+- pred: not_source_api
+  args:
+  - tempfile.TemporaryDirectory
+  note: tempfile.TemporaryDirectory() returns a system-generated random temp directory path; it is not controlled by an external
+    attacker.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-144
+- pred: not_source_api
+  args:
+  - tornado.web.RequestHandler.set_header
+  note: set_header is a response-writing method (a potential sink, not a source); here it's called with constant values and
+    returns None, so nothing attacker-controlled flows from it.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-136
+- pred: not_source_api
+  args:
+  - tornado.web.RequestHandler.set_status
+  note: set_status sets the HTTP response status code (here the constant 400); it is an output/response method, not a source
+    of attacker-controlled input.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-090
+- pred: not_source_api
+  args:
+  - tornado.web.RequestHandler.write
+  note: RequestHandler.write is an output sink that writes the response body. It is not a source of attacker-controlled input,
+    and its return value is None.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.9
+    repos: 0
+    id: K-087
+- pred: not_source_api
+  args:
+  - uuid.uuid4
+  note: uuid.uuid4() generates a random identifier server-side; it is not influenced by attacker input.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-037
+- pred: propagator_api
+  args:
+  - '*.read'
+  note: A stream read() returns the stream's contents, so taint passes through it from the request body to the parsed data.
+  learned:
+    origin: agent:claude-verifier:claude-opus-5-5
+    confidence: 1.0
+    repos: 1
+    id: K-139
+- pred: propagator_api
+  args:
+  - '*.recv'
+  note: socket recv returns the peer's bytes unchanged, so tainted data passes through it.
+  learned:
+    origin: agent:claude-verifier:claude-opus-5-5
+    confidence: 1.0
+    repos: 1
+    id: K-157
+- pred: propagator_api
+  args:
+  - http.server.BaseHTTPRequestHandler.rfile.read
+  note: rfile.read returns the raw HTTP request body, so it passes tainted data through unchanged.
+  learned:
+    origin: agent:claude-verifier:claude-opus-5-5
+    confidence: 1.0
+    repos: 1
+    id: K-142
+- pred: propagator_api
+  args:
+  - urllib.parse.urlparse
+  note: urlparse splits a URL string into components (scheme, netloc, path, query, etc.) without validation or escaping; tainted
+    input yields tainted components.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.9
+    repos: 0
+    id: K-076
+- pred: sink_api
+  args:
+  - bottle.template
+  - 0
+  - ssti
+  note: bottle.template's first argument is the template source or name; if attacker data reaches it, that is SSTI (or path
+    traversal via the template name). Keyword arguments such as username are template variables. SimpleTemplate's {{ }} auto-escapes,
+    so they are not a sink unless rendered with ! or the t
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.8
+    repos: 0
+    id: K-106
+- pred: sink_api
+  args:
+  - flask.render_template_string
+  - 0
+  - ssti
+  note: The template source (arg 0) is the SSTI sink. Here it is a literal string, and the tainted values (comments, post,
+    posts) are passed as context variables, which Jinja autoescapes, so they are not sinks.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-101
+- pred: sink_api
+  args:
+  - os.makedirs
+  - name
+  - path
+  note: os.makedirs creates directories at the given path (positional 0 or keyword 'name'), so an attacker-controlled path
+    lets them create directories anywhere via path traversal. The other arguments (mode, exist_ok) are not sinks.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-046
+- pred: sink_api
+  args:
+  - os.makedirs
+  - 0
+  - path
+  note: os.makedirs creates directories at the given path (positional 0 or keyword 'name'), so an attacker-controlled path
+    lets them create directories anywhere via path traversal. The other arguments (mode, exist_ok) are not sinks.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-045
+- pred: sink_api
+  args:
+  - pyramid.httpexceptions.HTTPFound
+  - location
+  - redirect
+  note: HTTPFound issues a 302 redirect to the location argument (first positional or keyword), so attacker-controlled location
+    is an open redirect. The headers argument is not one of the listed sink classes.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-111
+- pred: sink_api
+  args:
+  - pyramid.httpexceptions.HTTPFound
+  - 0
+  - redirect
+  note: HTTPFound issues a 302 redirect to the location argument (first positional or keyword), so attacker-controlled location
+    is an open redirect. The headers argument is not one of the listed sink classes.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-112
+- pred: sink_api
+  args:
+  - sanic.response.html
+  - body
+  - xss
+  note: sanic.response.html returns its body argument unescaped with a text/html content type, so attacker-controlled content
+    in arg 0 (keyword body) leads to XSS.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-096
+- pred: sink_api
+  args:
+  - sanic.response.html
+  - 0
+  - xss
+  note: sanic.response.html returns its body argument unescaped with a text/html content type, so attacker-controlled content
+    in arg 0 (keyword body) leads to XSS.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-095
+- pred: sink_api
+  args:
+  - sanic.response.redirect
+  - to
+  - redirect
+  note: sanic.response.redirect(to, ...) sets the Location header from its first argument, so it is an open-redirect sink.
+    At this call site the path is fixed to /dashboard and only the query value is tainted, which limits exploitability, but
+    the argument is still a sink.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.8
+    repos: 0
+    id: K-099
+- pred: sink_api
+  args:
+  - sanic.response.redirect
+  - 0
+  - redirect
+  note: sanic.response.redirect(to, ...) sets the Location header from its first argument, so it is an open-redirect sink.
+    At this call site the path is fixed to /dashboard and only the query value is tainted, which limits exploitability, but
+    the argument is still a sink.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.8
+    repos: 0
+    id: K-098
+- pred: sink_api
+  args:
+  - tarfile.is_tarfile
+  - name
+  - path
+  note: tarfile.is_tarfile opens the file at the given path, and that path is attacker-controlled. This lets an attacker probe
+    for and read arbitrary file paths, so argument 0 (keyword `name`) is a path sink. The function only checks whether the
+    file is a tar archive and does not extract it, so the impact i
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.7
+    repos: 0
+    id: K-048
+- pred: sink_api
+  args:
+  - tarfile.is_tarfile
+  - 0
+  - path
+  note: tarfile.is_tarfile opens the file at the given path, and that path is attacker-controlled. This lets an attacker probe
+    for and read arbitrary file paths, so argument 0 (keyword `name`) is a path sink. The function only checks whether the
+    file is a tar archive and does not extract it, so the impact i
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.7
+    repos: 0
+    id: K-047
+- pred: sink_api
+  args:
+  - tornado.web.RequestHandler.write
+  - 0
+  - xss
+  note: RequestHandler.write sends its chunk argument directly into the HTTP response body without escaping. When attacker
+    data reaches it as a string, this is reflected XSS.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.9
+    repos: 0
+    id: K-137
+- pred: source_api
+  args:
+  - bottle.request.forms.get
+  - http
+  note: bottle's request.forms.get returns form field values from the HTTP request body, which the client fully controls.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-105
+- pred: source_api
+  args:
+  - bottle.request.get_cookie
+  - cookie
+  note: bottle.request.get_cookie returns a value taken from the client's Cookie header, so the client controls it. It is
+    signed, but the secret is weak and could be forged.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.9
+    repos: 0
+    id: K-104
+- pred: source_api
+  args:
+  - bottle.request.json
+  - http
+  note: bottle.request.json is the parsed JSON body of the incoming HTTP request, which the client fully controls.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-124
+- pred: source_api
+  args:
+  - bottle.request.query.get
+  - http
+  note: bottle.request.query.get returns a URL query-string parameter, which is supplied directly by the HTTP client and therefore
+    attacker-controlled.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-126
+- pred: source_api
+  args:
+  - flask.request.files
+  - http
+  note: flask.request.files contains user-uploaded files from the HTTP multipart request body, fully attacker-controlled.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-010
+- pred: source_api
+  args:
+  - flask.request.form
+  - http
+  note: flask.request.form holds the HTTP request body's form fields, which the client fully controls, so request.form['id']
+    is attacker-controlled input.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-134
+- pred: source_api
+  args:
+  - http.server.BaseHTTPRequestHandler.path.split
+  - http
+  note: self.path is the raw request URL path from the HTTP client; splitting it yields attacker-controlled segments used
+    as a file path (path traversal risk).
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.95
+    repos: 0
+    id: K-003
+- pred: source_api
+  args:
+  - input().upper
+  - cli
+  note: input() reads user-supplied text from stdin in an interactive CLI; .upper() keeps it user-controlled, and the value
+    flows into a DNS lookup.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.85
+    repos: 0
+    id: K-078
+- pred: source_api
+  args:
+  - tornado.web.RequestHandler.get_body_argument
+  - http
+  note: Tornado's get_body_argument returns a value from the HTTP request body (form data), which the client controls directly.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-135
+- pred: source_api
+  args:
+  - tornado.web.RequestHandler.request.body
+  - http
+  note: tornado's self.request.body holds the raw HTTP request body exactly as the client sent it, so an external attacker
+    fully controls its contents.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.97
+    repos: 0
+    id: K-089
+- pred: source_api
+  args:
+  - tornado.web.RequestHandler.request.path
+  - http
+  note: tornado's request.path is the URL path of the incoming HTTP request, which the client controls.
+  learned:
+    origin: oracle:claude-oracle:claude-opus-5-5
+    confidence: 0.9
+    repos: 0
+    id: K-088
