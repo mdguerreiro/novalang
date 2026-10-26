@@ -194,6 +194,12 @@ class Scanner:
             key = self._evidence_key(f, facts)
             prev = self.store.one("SELECT v.* FROM verdicts v JOIN findings x ON x.id = v.finding_id WHERE x.repo_id=? "
                                   "AND x.fingerprint=? AND v.kind='agent' ORDER BY v.id DESC LIMIT 1", repo_id, fp)
+            if not (prev and prev["evidence"].get("evidence_key") == key):
+                # The same code verified in another repository of the org (fork, branch, copy, earlier snapshot):
+                # the evidence key covers the finding and the content of every file on its path.
+                prev = self.store.one("SELECT v.* FROM verdicts v JOIN findings x ON x.id = v.finding_id "
+                                      "JOIN repos r ON r.id = x.repo_id WHERE r.org_id=? AND v.kind='agent' "
+                                      "AND json_extract(v.evidence, '$.evidence_key')=? ORDER BY v.id DESC LIMIT 1", org, key)
             if prev and prev["evidence"].get("evidence_key") == key:
                 t2_hits += 1
                 if prev["gate"].get("accepted"):

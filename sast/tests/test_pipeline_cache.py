@@ -52,3 +52,17 @@ def test_oracle_class_lists_collapse_to_all():
     sc.scan("acme-shop")
     rows = sc.store.q("SELECT args FROM knowledge WHERE pred='sanitizer_api' AND json_extract(args, '$[0]')='slugify.slugify'")
     assert [r["args"] for r in rows] == [["slugify.slugify", "all"]]
+
+
+def test_same_code_in_another_repo_reuses_agent_verdicts(tmp_path):
+    """A fork / branch / snapshot of a repository already verified in the org costs no new agent runs."""
+    import shutil
+    from sentinel.eval import DEMO
+    sc = fresh_scanner(repos=["acme-billing"])
+    first = sc.scan("acme-billing")
+    assert first["tier2_calls"] > 0
+    copy = tmp_path / "acme-billing-fork"
+    shutil.copytree(DEMO / "acme-billing", copy)
+    sc.store.upsert_repo("acme-billing-fork", "acme", "acme-billing-fork", str(copy))
+    second = sc.scan("acme-billing-fork")
+    assert second["tier2_calls"] == 0 and second["tier2_cache_hits"] > 0
