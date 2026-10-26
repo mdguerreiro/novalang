@@ -226,6 +226,20 @@ Reading so far:
 - onnx needed a capability the engine lacked (archive extraction, "tar slip", CVE-2007-4559 class): added as a
   general source/sink pair, not a repository pattern. Its fixed tree keeps one review item: the fallback branch
   passes `members=` through a project validator the engine cannot see into.
+Precision audit (findings read by hand, devika and aim, re-run live with a persisted store; $1.23 for all four scans):
+
+| Tree | Sentinel reported (confirmed + review) | Real | LLM reported | Notes |
+|---|---|---|---|---|
+| devika vulnerable | 5 | 4 | 11 | Sentinel's 5th was an XSS label on the same send_file flow (spec fixed since) |
+| devika fixed | 2 | 1 | 9 | engine closed the 3 patched flows itself (basename sanitizer, $0); the LLM still reports 2 of them |
+| aim vulnerable | 6 (3 confirmed, 3 review) | 2 + 1 debatable | 5 | review items: `aim up` CLI flows; debatable: RestrictedPython-sandboxed query eval (the LLM reports it too) |
+| aim fixed | 2 | 0 + 1 debatable | 2 | CVE flow closed in both |
+
+- New true positive beyond the CVE: devika's fix left `browser_snapshot` (`send_file(request.args["snapshot_path"])`)
+  unchanged; Sentinel keeps reporting it on the "fixed" tree, confirmed. The LLM reports it too.
+- False positives removed: on patched code the engine derives the mitigation (sanitizer on the path) and closes the
+  finding with no model call; the read-everything LLM keeps re-reporting patched flows and speculative ones
+  (agent output saved to disk, PDF rendering) at 0.3-0.55 confidence, every scan, at full price.
 - wagtail is stored XSS (database content rendered unescaped): the engine has no stored-data sources (known gap).
 - Mycodo is the expensive case: a first scan of a large app with no prior knowledge asked 331 frontier questions and
   took 103 minutes (engine time, see "Engine cost"). Those answers are global knowledge; the next repository using the
