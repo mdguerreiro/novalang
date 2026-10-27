@@ -2,7 +2,16 @@
 
 Running plan/status, updated every loop iteration so work can resume from here.
 
-## Where it stands (real CVEs, live model)
+## Where it stands
+
+Real-CVE diagnosis (2026-10-27, docs/evaluation.md "Why real CVEs are missed"): most real CVEs are in libraries and
+tools whose attacker input is not a web request. Fixed generally (library input near execution sinks, remote replies,
+closures, template/argument-injection/pickle-loader sinks, curated web-framework pack, class-based views). Engine only,
+no model calls: dev split 1 -> 8 caught (4 with the fix clean); held-out split never read 0 -> 1 of 12 (fix clean).
+Cost: about twice the weak-source findings on large libraries. Next: the live run on the held-out split (frontier
+learns routing per repository), precision breakdown on the largest trees, and a held-out set with deserialization /
+SQL / command injection.
+ (real CVEs, live model)
 Five real CVEs, vulnerable and fixed trees, scanned live (details: docs/evaluation.md, "Real vulnerabilities").
 - Catches 4/5 (devika, aim, onnx tar slip, Mycodo); misses wagtail (stored XSS, no stored-data sources).
 - First scans $8.96 in total vs ~$30 for an LLM reading every file; rescans of the fixed trees $0.29 vs ~$20.

@@ -271,6 +271,114 @@ Precision audit (findings read by hand, devika and aim, re-run live with a persi
   finding with no model call; the read-everything LLM keeps re-reporting patched flows and speculative ones
   (agent output saved to disk, PDF rendering) at 0.3-0.55 confidence, every scan, at full price.
 
+## Why real CVEs are missed, and what fixed it (dev split, then a held-out split)
+
+The live pass on the pre-registered real-world split (16 CVEs from PySASTBench `RealworldDataset.csv`, seed 20261026)
+was stopped after 7 CVEs ($16.89 of a $25 cap, including an aborted first attempt and runs lost to container
+restarts and an airflow out-of-memory crash, fixed in 90a9ea8): 1 of 7 caught, and that one (thefuck) is flagged on
+the fixed tree too. Rather than finish it, every miss was diagnosed with the engine alone (no model calls, $0).
+
+Where the chain breaks (dev split, 16 CVEs, target functions read by hand):
+
+| Cause | CVEs | Examples |
+|---|---|---|
+| Attacker input is not a web request | 11 | library API arguments (mlflow, haystack, django `Storage.save`, salt module functions, cookiecutter `clone`), a remote server's reply (llama_index `eval` of an SSE stream), downloaded metadata (yt-dlp), a database value (airflow XCom), a config file (parlai) |
+| Dangerous API not modelled as a sink | 5 | templates compiled from strings (mlflow `CardTab`, haystack `PromptBuilder`), `mark_safe` (DRF), argument injection through a `subprocess` list (cookiecutter), `Markup(f'<a href=..>')` (airflow) |
+| Data flow lost | 1 | a nested function reading its enclosing function's variable (llama_index) |
+| Benchmark data | 3 | target function absent from the vulnerable tree (autogpt, mlflow 37058); target moved in a monorepo split (llama_index) |
+| Scorer too loose | - | `stream_complete.gen` matched 26 functions: hits now need the module- or class-qualified name |
+
+Semgrep "detects" 11 of the 16 because it flags any `pickle.load`, `eval`, `shell=True` or `mark_safe` regardless of
+data flow; how many other alerts it raises per repository is not in the dataset, so its numbers are not comparable
+with a flow-based count.
+
+Fixes (each general, tested, committed separately):
+- Library input (c914f9d .. 6d543e2): in a distributable package (`setup.py` / `pyproject.toml` / `setup.cfg`), the
+  public parameters of functions within three calls of a sink that executes what it is given (code, template,
+  deserialization, shell command) — and the constructor of a class with such a method — are a weak source, modelled
+  as one synthetic node (airflow has 12k such parameters). Never for applications, never for other classes, never
+  where a reported request flow already reaches the sink, never into a program's argument list.
+- Remote replies (4558b34): the reply of a request call (requests, httpx, aiohttp, urllib, urllib3, SSE) is a weak
+  source; the client or session object is not (tagging `requests.Session()` took mlflow from 43 to 297 findings).
+- Sinks: templates compiled from strings (Jinja2, Django, Mako; sandboxed environments excluded), `mark_safe` /
+  `SafeString` / `flask.Markup`, `subprocess` argument injection (CWE-88), `dill` / `cloudpickle` / `joblib` /
+  `pandas.read_pickle` / `shelve` / `jsonpickle` / `pickle.Unpickler`, `torch.load` without `weights_only`,
+  `numpy.load(allow_pickle=True)`, `yaml.unsafe_load`.
+- Closures (6d543e2): a nested function reads its enclosing function's variables.
+- Web frameworks (038f983): a curated pack (`knowledge/packs/python-web-frameworks.yml`, from framework
+  documentation: Django URLconf, Flask/FastAPI/Starlette/aiohttp registration) and class-based views (HTTP-verb
+  methods of Django / DRF / Flask / flask-restx / Tornado / Starlette view classes) as request handlers.
+
+### Held-out split
+
+Built before any of these changes and never read during development: the next CVEs in the same seeded order
+(`rw3/build.py`; part a from release tags, part b from the fix commit found in the project's history — a commit naming
+the CVE/GHSA id, else the latest commit changing a target function with a security keyword; one bogus pick dropped
+after a regex bug). 12 CVEs: path traversal 5, XSS 5, code injection 2 (no deserialization, SQL or command injection
+— the dataset rows left after split 1 had no buildable version for those). Two held-out mlflow CVEs are template
+injection in the same Recipe-card area as a dev CVE. Engine only, no model calls; "caught" = a finding of the CVE's
+class (template injection counts for code injection, CWE-1336 < CWE-94) in a target function; flagged fixed tree =
+false alarm.
+
+| Held-out CVE | class | frozen engine (90a9ea8) | new engine (6d543e2) | + web pack (038f983), in progress |
+|---|---|---|---|---|
+| CVE-2021-25283 | code | missed (52) | missed (107) | missed (107) |
+| CVE-2021-25963 | xss | missed (0) | missed (2) | - |
+| CVE-2021-45452 | path | missed (44) | missed (54) | missed (134) |
+| CVE-2023-41040 | path | missed (0) | missed (1) | - |
+| CVE-2023-42819 | path | missed (12) | missed (21) | caught, fix flagged (36) |
+| CVE-2023-50265 | path | missed, fix flagged (270) | missed, fix flagged (321) | - |
+| CVE-2024-27132 | xss | missed (43) | missed (73) | - |
+| CVE-2024-27133 | xss | missed (43) | missed (73) | - |
+| CVE-2024-31462 | path | missed (0) | missed (25) | missed (25) |
+| CVE-2024-39877 | code | missed (650) | caught, fix clean (1316) | caught, fix clean (1323) |
+| CVE-2024-41656 | xss | missed (30) | missed (37) | missed (116) |
+| CVE-2024-41675 | xss | missed (0) | missed (0) | missed (16) |
+| **total** | | **0 caught, 0 with fix clean; 1 fixed trees flagged; 1144 findings** | **1 caught, 1 with fix clean; 1 fixed trees flagged; 2030 findings** | **2 caught, 1 with fix clean; 1 fixed trees flagged; 1757 findings** |
+
+Dev split (the 16 CVEs the fixes were designed from; development evidence, not proof):
+
+| Dev CVE | class | frozen engine (90a9ea8) | new engine (6d543e2) |
+|---|---|---|---|
+| CVE-2019-1010259 | sqli | missed (37) | missed (101) |
+| CVE-2021-34363 | path | caught, fix flagged (4) | caught, fix flagged (5) |
+| CVE-2021-39207 | deser | missed (98) | caught, fix clean (205) |
+| CVE-2022-24065 | cmdi | missed (8) | missed (8) |
+| CVE-2022-28347 | sqli | missed (44) | missed (54) |
+| CVE-2023-37274 | code | missed (0) | missed (6) |
+| CVE-2023-40581 | cmdi | missed (29) | caught, fix clean (34) |
+| CVE-2023-50943 | deser | missed (481) | caught, fix flagged (974) |
+| CVE-2023-6709 | code | missed (43) | caught, fix clean (75) |
+| CVE-2024-21520 | xss | missed (0) | missed (1) |
+| CVE-2024-37058 | deser | missed (36) | missed (66) |
+| CVE-2024-37060 | deser | missed (13) | caught, fix flagged (40) |
+| CVE-2024-39330 | path | missed (40) | missed (49) |
+| CVE-2024-39863 | xss | missed (650) | missed (1316) |
+| CVE-2024-4181 | code | missed (0) | caught, fix flagged (24) |
+| CVE-2024-41950 | code | missed (0) | caught, fix clean (9) |
+| **total** | | **1 caught, 0 with fix clean; 1 fixed trees flagged; 1483 findings** | **8 caught, 4 with fix clean; 4 fixed trees flagged; 2967 findings** |
+
+Precision: "fix flagged" is a finding of the CVE's class still in a target function after the fix: the fix is a
+check or restructuring the engine does not see as closing the flow (not verified case by case, and held-out code is
+not read). The cost shows in the counts: the new sources roughly double what is reported on large libraries
+(airflow 650 -> 1316; dev total 1483 -> 2967, held-out 1144 -> 2030). Broken down on one dev tree (mlflow, 43 -> 82):
+library input 19 (16 deserialization, 2 command, 1 template), remote replies 18. These are weak-source findings
+(review lane, never `confirmed` on their own): the verifier and the triage model exist to rank and remove them, and
+their cost is what the live pipeline has to absorb. Engine-only counts here are an upper bound on what a user sees.
+
+What this does and does not show:
+- The causes were real and general. Fixing them moved the dev split from 1 to 8 caught (4 with the fix clean), and on
+  code it had never seen the engine went from 0 to 1 of 12 (airflow `DAG.get_doc_md` template injection, fixed tree
+  clean), with no model calls.
+- Most of the held-out misses are path traversal and XSS in web applications (Django, Flask, Gradio). Engine-only, the
+  engine knows Flask's request object and nothing else about routing; the curated web pack adds documented routing
+  (Django URLconf, Flask/FastAPI registration, class-based views). Its held-out run is in progress (so far +1 caught,
+  jumpserver, with the fix still flagged). In the product the frontier learns the rest per repository; that is the
+  live run still to do on this split.
+- The held-out split has no deserialization, SQL or command-injection CVEs (no buildable rows left), so it cannot
+  confirm the library-input and deserialization gains from the dev split.
+- 12 CVEs is small; one caught case is a signal, not a rate.
+
 ## Stored data (second-order flows, RIPS-style)
 
 Writes and reads are matched by table (SQL `INSERT/UPDATE` vs `SELECT ... FROM`), ORM model (constructor /
