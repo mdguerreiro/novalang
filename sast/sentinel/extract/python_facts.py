@@ -338,6 +338,7 @@ class PythonExtractor:
         self._by_name: dict[str, _Module] = {}
         self._heap: dict[str, int] = {}
         self._fn_ast: dict[str, tuple] = {}
+        self._closures: dict[str, list] = {}  # nested function -> enclosing environments it can read (closure)
         self.pred_summary: dict[str, tuple[int, str]] = {}  # predicate function -> (param index, guard predicate)
 
     # ── public API ──────────────────────────────────────────────────────────
@@ -701,9 +702,14 @@ class _FunctionWalker:
         self.dict_entries: dict[int, dict[str, int]] = {}  # id(dict literal) -> {constant key: value node}
 
     def walk(self) -> None:
-        env: Env = {}
         args = self.node.args
         all_args = args.posonlyargs + args.args
+        # A nested function reads its enclosing function's variables (closure): seed them, minus its own parameters.
+        # Enclosing functions are walked first; the definition-point and final environments are both visible.
+        outer = self.ex._closures.get(self.fn.qname)
+        own = {a.arg for a in all_args + args.kwonlyargs} | {a.arg for a in (args.vararg, args.kwarg) if a}
+        env: Env = {k: v for k, v in _merge(*outer).items() if k not in own} if outer else {}
+        self._nested: list[str] = []
         route_conv = _route_converters(self.fn.route)
         for i, a in enumerate(all_args):
             pid = self.ex.new_node(self.fn.qname, self.file, a, "param", label=a.arg)
@@ -720,7 +726,9 @@ class _FunctionWalker:
                 ann = self.ex._dotted(a.annotation) or ""
                 if ann in ("int", "float", "bool", "uuid.UUID", "UUID"):
                     self.f.typed.add((pid, ann.split(".")[-1].lower()))
-        self.block(self.node.body, env)
+        final = self.block(self.node.body, env)
+        for q in self._nested:
+            self.ex._closures[q].append(final)
 
     # ── statements ──────────────────────────────────────────────────────────
     def block(self, stmts: list[ast.stmt], env: Env) -> Env:
@@ -795,6 +803,11 @@ class _FunctionWalker:
             if s.finalbody:
                 merged = self.block(s.finalbody, merged)
             return merged
+        if isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            q = f"{self.fn.qname}.{s.name}"
+            self.ex._closures.setdefault(q, []).append(env)
+            self._nested.append(q)
+            return env
         if isinstance(s, ast.Assert):
             g = self.guard_info(s.test)
             if g:

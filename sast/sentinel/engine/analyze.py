@@ -18,7 +18,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ..extract.python_facts import Facts, is_test_path
+from ..extract.python_facts import Facts, Node, is_test_path
 from ..extract.semgrep_specs import SpecMatch
 from .datalog import Model, Program, fact
 
@@ -164,16 +164,13 @@ def api_sources(facts: Facts, matches: list[SpecMatch]) -> list[tuple[str, int, 
     for k, g in facts.calls:
         if k in facts.nodes:
             callers.setdefault(g, set()).add(facts.nodes[k].fn)
-    methods: dict[str, set[str]] = {}
-    for q, fn in facts.functions.items():
-        if fn.cls:
-            methods.setdefault(fn.cls, set()).add(q)
     near, frontier = set(sink_fns), set(sink_fns)
     for _ in range(API_DEPTH):
-        # Data enters an object through any of its methods (the constructor, a setter) and reaches the sink through
-        # another: a method near a sink brings its class's other methods with it.
-        frontier |= {m for f in frontier if facts.functions.get(f) and facts.functions[f].cls
-                     for m in methods.get(facts.functions[f].cls, ())}
+        # Data enters an object through its constructor and reaches the sink through another method
+        # (`Card(template).to_html()`): a method near a sink brings its class's constructor with it.
+        frontier |= {f"{facts.functions[f].cls}.__init__" for f in frontier
+                     if facts.functions.get(f) and facts.functions[f].cls
+                     and f"{facts.functions[f].cls}.__init__" in facts.functions}
         frontier = {c for f in frontier for c in callers.get(f, ())} | frontier
         frontier -= near
         near |= frontier
@@ -185,10 +182,24 @@ def api_sources(facts: Facts, matches: list[SpecMatch]) -> list[tuple[str, int, 
     return out
 
 
+API_NODE = 2_000_000_000  # one synthetic source standing for "whoever calls the library", with an edge to every
+# public parameter near an execution sink: taint is tracked once, not once per parameter (airflow: 12k parameters).
+
+
+def ensure_api_node(facts: Facts, matches: list[SpecMatch]) -> None:
+    if API_NODE in facts.nodes:
+        return
+    params = api_sources(facts, matches)
+    if params:
+        facts.nodes[API_NODE] = Node(API_NODE, "<library API>", "", 0, 0, 0, 0, kind="api", label="library API")
+        facts.edges.update((API_NODE, p) for _f, _i, p in params)
+
+
 def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out = [fact("cls", c) for c in CLASSES]
     out += [fact("kind_cls", "api", c) for c in EXEC_CLASSES]
-    out += [fact("src", p, "api") for _f, _i, p in api_sources(facts, matches)]
+    if API_NODE in facts.nodes:
+        out.append(fact("src", API_NODE, "api"))
     for n in facts.nodes.values():
         out.append(fact("node", n.id, n.fn))
         if is_test_path(n.file):
@@ -300,6 +311,7 @@ def analyze(facts: Facts, matches: list[SpecMatch], knowledge: list[KnowledgeFac
             program: Program | None = None) -> Analysis:
     kn = list(CURATED) + list(knowledge or [])
     program = program or default_program()
+    ensure_api_node(facts, matches)
     model = program.solve(edb(facts, matches) + [k.text() for k in kn], keep=KEEP)
     return Analysis(facts, matches, model, build_findings(facts, matches, model, kn), kn)
 
@@ -421,8 +433,6 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
 
     findings = []
     graph = _Graph(facts)
-    route = {pid for _f, _n, _c, pid in facts.route_params}
-    api = {p for _f, _i, p in api_sources(facts, matches)} - route
     for (s, k, c), st in sorted(status.items()):
         sn, kn_ = facts.nodes[s], facts.nodes[k]
         f = Finding(source=s, sink=k, cls=c, status=st)
@@ -440,7 +450,7 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
             f.learned.append({"kind": "source", "subject": x,
                               "knowledge": [y.kid for y in kn if y.pred in ("framework_source", "entry_source", "registrar", "source_api")
                                             and y.args[0] == x]})
-        if not sm and s in api:
+        if s == API_NODE:
             f.source_kind, f.source_rule = "api", "library-api"
         if not sm and learned_src.get(s):
             f.source_kind, f.source_rule = "http", "learned-source"
@@ -463,6 +473,10 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
         f.assumptions = [{"asm": _jsonable(a), "label": _asm_label(a)} for a in seen]
         avoid = st in ("confirmed", "undecided")
         f.path = graph.witness(s, k, c, kills, asm_nodes, avoid_kills=avoid)
+        if s == API_NODE:  # report the public function the input enters through
+            f.path = [st for st in (f.path or []) if st.node != API_NODE]
+            if f.path:
+                f.source_fn, f.file, f.line = f.path[0].fn, f.path[0].file, f.path[0].line
         f.proof = proof_tree(derivs, _status_atom(f), facts)
         findings.append(f)
     # API input is the fallback attack surface: where a reported request (or other non-API) flow already reaches a
@@ -471,15 +485,6 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
     reached = {(f.sink, f.cls) for f in findings if f.source_kind != "api" and f.status in ("confirmed", "undecided")}
     findings = [f for f in findings if f.source_kind != "api"
                 or ((f.sink, f.cls) not in reached and f.sink_rule != "spec.sink.cmdi.subprocess-argv")]
-    # "Library input reaches this sink" is one issue per sink, whichever public function it enters through: keep the
-    # shortest path (the entry closest to the sink).
-    best: dict[tuple[int, str], Finding] = {}
-    for f in findings:
-        if f.source_kind == "api":
-            k_ = (f.sink, f.cls)
-            if k_ not in best or (len(f.path), f.source_fn) < (len(best[k_].path), best[k_].source_fn):
-                best[k_] = f
-    findings = [f for f in findings if f.source_kind != "api" or best.get((f.sink, f.cls)) is f]
     return dedupe(findings)
 
 

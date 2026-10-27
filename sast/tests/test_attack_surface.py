@@ -52,3 +52,32 @@ def test_application_helpers_are_not_library_api(tmp_path):
     matches = match_specs(app, facts)
     assert not api_sources(facts, matches)
     assert not [f for f in analyze(facts, matches).findings if f.source_kind == "api"]
+
+
+def test_closure_reads_the_enclosing_functions_variables(tmp_path):
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    (pkg / "m.py").write_text(
+        "import requests\n\n\n"
+        "def stream(url):\n"
+        "    response = requests.post(url)\n\n"
+        "    def gen():\n"
+        "        for line in response.iter_lines():\n"
+        "            eval(line)\n\n"
+        "    return gen()\n\n\n"
+        "def shadow(url):\n"
+        "    response = requests.post(url)\n\n"
+        "    def gen(response):\n"
+        "        eval(response)\n\n"
+        "    return gen('1+1')\n")
+    facts = extract(tmp_path)
+    fs = [(f.source_fn, f.sink_fn) for f in analyze(facts, match_specs(tmp_path, facts)).findings if f.cls == "code"]
+    assert fs == [("pkg.m.stream", "pkg.m.stream.gen")]  # the shadowing parameter is not the outer variable
+
+
+def test_one_library_input_finding_per_sink_named_by_its_entry():
+    _f, _m, fs = _run()
+    api = [f for f in fs if f.source_kind == "api"]
+    assert len({(f.sink, f.cls) for f in api}) == len(api)
+    assert all(f.source_fn.startswith("mylib.") for f in api)  # the public function, not the synthetic node
