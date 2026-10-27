@@ -98,3 +98,31 @@ def test_remote_reply_counts_only_where_it_is_executed(tmp_path):
     fs = {f.cls for f in analyze(facts, match_specs(tmp_path, facts)).findings
           if f.source_kind == "network" and f.status in ("confirmed", "undecided")}
     assert fs == {"code"}
+
+
+def test_inline_containment_check_mitigates_archive_member_paths(tmp_path):
+    """thefuck CVE-2021-34363's fix: `if not os.path.abspath(f).startswith(os.getcwd()): continue`."""
+    pkg = tmp_path / "app"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    (pkg / "m.py").write_text(
+        "import os, tarfile\nfrom pathlib import Path\n\n\n"
+        "def loop_continue(p):\n"
+        "    with tarfile.TarFile(p) as archive:\n"
+        "        for file in archive.getnames():\n"
+        "            if not os.path.abspath(file).startswith(os.getcwd()):\n"
+        "                continue\n"
+        "            os.remove(file)\n\n\n"
+        "def inline_resolve(p):\n"
+        "    with tarfile.TarFile(p) as archive:\n"
+        "        for file in archive.getnames():\n"
+        "            if not Path(file).resolve().is_relative_to(Path.cwd()):\n"
+        "                raise ValueError(file)\n"
+        "            os.remove(file)\n\n\n"
+        "def unguarded(p):\n"
+        "    with tarfile.TarFile(p) as archive:\n"
+        "        for file in archive.getnames():\n"
+        "            os.remove(file)\n")
+    facts = extract(tmp_path)
+    st = {f.sink_fn.rsplit(".", 1)[-1]: f.status for f in analyze(facts, match_specs(tmp_path, facts)).findings if f.cls == "path"}
+    assert st == {"loop_continue": "mitigated", "inline_resolve": "mitigated", "unguarded": "undecided"}

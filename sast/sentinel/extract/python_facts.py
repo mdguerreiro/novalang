@@ -913,6 +913,12 @@ class _FunctionWalker:
             if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and \
                     func.attr in ("startswith", "is_relative_to") and func.value.id in self.normalized:
                 return [(func.value.id, "path_contained")]
+            # The same check with the normaliser inline: `abspath(x).startswith(cwd)`, `Path(x).resolve().is_relative_to(b)`.
+            if isinstance(func, ast.Attribute) and func.attr in ("startswith", "is_relative_to") and \
+                    isinstance(func.value, ast.Call) and self._is_normalizer(func.value):
+                names = [a.id for c in ast.walk(func.value) if isinstance(c, ast.Call) for a in c.args if isinstance(a, ast.Name)]
+                if names:
+                    return [(names[-1], "path_contained")]
             if isinstance(func, ast.Attribute) and isinstance(func.value, ast.Name) and func.attr in (
                     "isdigit", "isalnum", "isnumeric", "isdecimal", "isalpha", "isidentifier"):
                 pred = {"isnumeric": "isdigit", "isdecimal": "isdigit"}.get(func.attr, func.attr)
