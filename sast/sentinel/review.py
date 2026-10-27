@@ -20,7 +20,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass, field
 
-from .engine.analyze import CLASSES, CWE, Analysis, Finding, Step, _public
+from .engine.analyze import CLASSES, CWE, VIEW_BASE_RE, Analysis, Finding, Step, _public
 from .extract.python_facts import Facts, is_test_path
 
 REVIEW_BUDGET = int(os.environ.get("SENTINEL_REVIEW_BUDGET", "30"))  # reads per scan, highest-ranked first
@@ -34,6 +34,12 @@ SENSITIVE_RE = re.compile(r"(redirect|url|open|path|join|sql|execute|raw|extra|s
                           r"urlopen|fetch|socket|send_file|send_from_directory|extract|unzip|tarfile|zipfile|request|"
                           r"rmtree|remove|unlink|rename|copy|write|chmod|shell|cursor|query|deserial|import_module|getattr)",
                           re.I)
+
+# Text of another language built by string formatting: SQL, HTML or a shell command assembled in Python is where
+# injection happens even when no modelled sink is called (an ORM's SQL compiler, a template tag's HTML).
+INTERP_RE = re.compile(r"""["'][^"'\n]*(\b(SELECT|INSERT INTO|UPDATE|DELETE FROM|WHERE|EXPLAIN|ORDER BY|JOIN|UNION)\b|"""
+                       r"""<\s*(a|script|img|iframe|div|span|li|input|form|br|p|style|svg)\b|\b(sh|bash|cmd) /?-?c\b)""")
+FORMAT_RE = re.compile(r"""%\s*[(\w]|\.format\(|\bf["']|["']\s*\+|\+\s*["']|\.join\(""")
 
 
 @dataclass
@@ -60,6 +66,16 @@ def rank(facts: Facts, a: Analysis | None, select: str = "engine") -> list[Pick]
         if n in facts.nodes:
             guards[facts.nodes[n].fn] += 1
     reach = {t[0] for t in a.model.get("reach")} if a is not None else set()
+    views = {c for c, bases in facts.classes.items()
+             if VIEW_BASE_RE.search(c.rsplit(".", 1)[-1]) or any(VIEW_BASE_RE.search(b.rsplit(".", 1)[-1]) for b in bases)}
+
+    def in_view(q: str, fn) -> bool:  # a method of a view class, or a function nested in one
+        while fn is not None:
+            if fn.cls in views:
+                return True
+            q = q.rpartition(".")[0]
+            fn = facts.functions.get(q)
+        return False
     touched, explained = set(), set()
     if a is not None:
         for f in a.findings:
@@ -89,11 +105,16 @@ def rank(facts: Facts, a: Analysis | None, select: str = "engine") -> list[Pick]
             s += 3 * min(len(sink_cls[q]), 2); why.append("sink " + "/".join(sorted(sink_cls[q])))
         if guards.get(q):
             s += 1; why.append("guards input")
+        src = "\n".join(facts.files.get(fn.file, "").splitlines()[fn.line - 1: fn.end_line])
+        if INTERP_RE.search(src) and FORMAT_RE.search(src):
+            s += 3; why.append("builds SQL/HTML/shell text")
         if s == 0:
             continue  # nothing security-relevant happens here
         surface = 0.0
         if q in reach:
             surface = 4; why.append("reachable from an entry point")
+        elif in_view(q, fn):
+            surface = 3; why.append("in a view class")
         elif getattr(facts, "package", False) and _public(q, fn):
             surface = 2; why.append("public library API")
         if q in touched:

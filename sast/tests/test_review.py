@@ -109,3 +109,31 @@ def test_scanner_runs_the_review_tier_when_enabled(tmp_path, monkeypatch):
     assert any(r["lane"] == "review" and "guided-review" in str(r["data"]) for r in rows)
     second = sc.scan("app", refresh=False)
     assert second["review_reads"] == 0  # unchanged code is not read again
+
+
+def test_ranking_sees_text_built_sql_and_view_methods_behind_unknown_decorators(tmp_path):
+    files = {
+        "pkg/__init__.py": "",
+        "pkg/ops.py": (
+            "class Ops:\n"
+            "    def explain_prefix(self, fmt, **options):\n"
+            "        extra = ', '.join('%s %s' % (k, v) for k, v in options.items())\n"
+            "        return 'EXPLAIN (%s) ' % extra\n"),
+        "pkg/views.py": (
+            "from fab import BaseView, expose\n\n"
+            "class ProviderView(BaseView):\n"
+            "    @expose('/providers')\n"
+            "    def index(self):\n"
+            "        def clean(desc):\n"
+            "            return '<a href=\"%s\">x</a>' % desc\n"
+            "        return clean(self.desc)\n"),
+        "pyproject.toml": "[project]\nname='pkg'\n",
+    }
+    for rel, body in files.items():
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).write_text(body)
+    facts = extract(tmp_path)
+    a = analyze(facts, match_specs(tmp_path, facts))
+    picks = {p.fn: p.why for p in rv.rank(facts, a)}
+    assert "builds SQL/HTML/shell text" in picks["pkg.ops.Ops.explain_prefix"]
+    assert "in a view class" in picks["pkg.views.ProviderView.index.clean"]
