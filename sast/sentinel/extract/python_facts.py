@@ -145,6 +145,9 @@ class Facts:
     file_writes: set[tuple[int, int, int]] = field(default_factory=set)  # write call, path node, content node
     file_reads: set[tuple[int, int]] = field(default_factory=set)  # open() call reading a file, path node
     package: bool = False  # the repository ships a distributable package (setup.py / pyproject.toml / setup.cfg)
+    # Functions whose decorator call declares they handle HTML escaping themselves (Django `is_safe=True`,
+    # `needs_autoescape=True`).
+    declared_safe: set[str] = field(default_factory=set)
 
     def _flow_graph(self) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
         """Over-approximate interprocedural value flow between nodes (intra edges, argument -> parameter,
@@ -250,7 +253,8 @@ class Facts:
             store_writes={x for x in self.store_writes if x[0] in keep and x[2] in keep},
             store_reads={x for x in self.store_reads if x[0] in keep},
             file_writes={x for x in self.file_writes if x[0] in keep and x[1] in keep and x[2] in keep},
-            file_reads={x for x in self.file_reads if x[0] in keep and x[1] in keep})
+            file_reads={x for x in self.file_reads if x[0] in keep and x[1] in keep}, package=self.package,
+            declared_safe={q for q in self.declared_safe if q in kf})
 
     def node_at(self, file: str, l1: int, c1: int, l2: int, c2: int) -> Node | None:
         """Exact span match first, then the smallest node that contains the span."""
@@ -457,6 +461,10 @@ class PythonExtractor:
                     target = dec.func if isinstance(dec, ast.Call) else dec
                     dname = self.resolve(mod, self._dotted(target) or "")
                     fn.decorators.append(dname)
+                    if isinstance(dec, ast.Call) and any(k.arg in ("is_safe", "needs_autoescape") and
+                                                         isinstance(k.value, ast.Constant) and k.value.value is True
+                                                         for k in dec.keywords):
+                        self.facts.declared_safe.add(q)
                     if dname:
                         self.facts.decorated.add((q, dname))
                     if dname.split(".")[-1] in ("route", "get", "post", "put", "delete", "patch"):

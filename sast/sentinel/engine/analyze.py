@@ -263,7 +263,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
             if fn.cls and q.rsplit(".", 1)[-1] in HTTP_METHOD_NAMES
             and any(b not in facts.classes for b in facts.classes.get(fn.cls, []))]
     out += [fact("view_method", q) for q in view_methods(facts)]
-    out += [fact("template_filter", q) for q, d in facts.decorated if TEMPLATE_FILTER_RE.fullmatch(d)]
+    out += [fact("template_filter", q) for q in template_filters(facts)]
     out += [fact("generic_reg", q) for q in {q for _k, q in facts.callnames}
             if q.startswith("*.") and q[2:] in GENERIC_METHODS or q in BUILTIN_CALLS]
     out += [fact("generic_api", q) for q in {q for _k, q in facts.callnames} | set(facts.libcalls.values())
@@ -322,6 +322,12 @@ def view_methods(facts: Facts) -> set[str]:
 # Django template filters and tags: their arguments are whatever the template passes in (kind "template": weak,
 # counted only where the result is marked safe for HTML).
 TEMPLATE_FILTER_RE = re.compile(r"django\.template\.(base\.|library\.)?Library\(\)\.(filter|simple_tag)")
+
+
+def template_filters(facts: Facts) -> set[str]:
+    """Registered filters/tags, minus those whose registration says they handle escaping (`is_safe=True`,
+    `needs_autoescape=True`): their unescaped branches are the template author's choice (`|safe`, autoescape off)."""
+    return {q for q, d in facts.decorated if TEMPLATE_FILTER_RE.fullmatch(d)} - facts.declared_safe
 HTTP_METHOD_NAMES = {"get", "post", "put", "patch", "delete", "head", "options", "on_get", "on_post", "on_put",
                      "on_patch", "on_delete", "GET", "POST", "PUT", "DELETE", "do_GET", "do_POST", "do_PUT", "do_DELETE"}
 _BUILTINS = set(dir(__import__("builtins")))
@@ -484,7 +490,7 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
 
     findings = []
     graph = _Graph(facts)
-    tfilters = {q for q, d in facts.decorated if TEMPLATE_FILTER_RE.fullmatch(d)}
+    tfilters = template_filters(facts)
     for (s, k, c), st in sorted(status.items()):
         sn, kn_ = facts.nodes[s], facts.nodes[k]
         f = Finding(source=s, sink=k, cls=c, status=st)

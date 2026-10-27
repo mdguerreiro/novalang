@@ -85,12 +85,19 @@ def test_django_template_filters_are_weak_xss_sources(tmp_path):
             "@register.simple_tag\n"
             "def fmt(user):\n"
             "    return mark_safe(format_html('<i>{}</i>', user))\n\n"
+            "@register.filter(is_safe=True)\n"
+            "def declared(value):\n"
+            "    return mark_safe(value)\n\n"
+            "@register.filter(needs_autoescape=True)\n"
+            "def auto(value, autoescape=True):\n"
+            "    return mark_safe(escape(value) if autoescape else value)\n\n"
             "@register.filter\n"
             "def run(value):\n"
             "    subprocess.call(value, shell=True)\n"),
     })
     facts = extract(root)
     fs = [f for f in analyze(facts, match_specs(root, facts), []).findings if f.status in ("confirmed", "undecided")]
-    # Only XSS counts (a filter's value running a command is the template author's own data), and it stays weak.
+    # Only XSS counts (a filter's value running a command is the template author's own data), it stays weak, and filters
+    # registered as handling escaping themselves (is_safe / needs_autoescape) are not sources.
     assert {(f.sink_fn, f.cls, f.source_kind) for f in fs} == {("app.templatetags.tags.bad", "xss", "template")}
     assert all(any("weak_source" in str(a["asm"]) for a in f.assumptions) for f in fs), [f.assumptions for f in fs]
