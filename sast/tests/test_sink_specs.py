@@ -64,3 +64,18 @@ def test_new_sinks_match_and_safe_forms_do_not(tmp_path):
     assert any(i.startswith("deser.") for i in ids(24)) and any(i.startswith("deser.") for i in ids(25))
     assert not ids(26) and not ids(28) and not ids(30)
     assert any(i.startswith("deser.") for i in ids(27)) and any(i.startswith("deser.") for i in ids(29))
+
+
+def test_network_source_is_the_reply_not_the_session(tmp_path):
+    (tmp_path / "n.py").write_text(textwrap.dedent('''
+        import requests, urllib.request, sseclient
+        s = requests.Session()
+        r = requests.get("u")
+        x = s.post("u")
+        y = urllib.request.urlopen("u")
+        c = sseclient.SSEClient(r)
+        e = requests.exceptions.HTTPError("x")
+    '''))
+    rc, out, err = run_semgrep_raw([SPECS], tmp_path, ["n.py"])
+    lines = sorted(r["start"]["line"] for r in out["results"] if r["check_id"].endswith("network.http-client"))
+    assert lines == [4, 5, 6, 7]

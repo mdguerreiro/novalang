@@ -69,15 +69,24 @@ rules:
     severity: INFO
     message: source
     metadata: {sentinel: {role: source, kind: network}}
+    # The reply of a request call, not the client or session object (a session is configuration, not outside data).
     pattern-either:
-      - pattern: requests.$M(...)
-      - pattern: requests.Session().$M(...)
-      - pattern: httpx.$M(...)
-      - pattern: httpx.Client(...).$M(...)
-      - pattern: httpx.AsyncClient(...).$M(...)
+      - patterns:
+          - pattern-either:
+              - pattern: requests.$M(...)
+              - pattern: requests.Session().$M(...)
+              - pattern: httpx.$M(...)
+              - pattern: httpx.Client(...).$M(...)
+              - pattern: httpx.AsyncClient(...).$M(...)
+              - pattern: aiohttp.ClientSession(...).$M(...)
+              - patterns:
+                  - pattern-inside: |
+                      $S = requests.Session(...)
+                      ...
+                  - pattern: $S.$M(...)
+          - metavariable-regex: {metavariable: $M, regex: ^(get|post|put|patch|delete|head|options|request|stream)$}
       - pattern: urllib.request.urlopen(...)
       - pattern: urllib3.PoolManager(...).request(...)
-      - pattern: aiohttp.ClientSession(...).$M(...)
       - pattern: sseclient.SSEClient(...)
   - id: spec.source.cli.argv
     languages: [python]
