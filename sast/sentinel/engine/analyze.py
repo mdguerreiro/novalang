@@ -244,6 +244,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out += [fact("http_method", q) for q, fn in facts.functions.items()
             if fn.cls and q.rsplit(".", 1)[-1] in HTTP_METHOD_NAMES
             and any(b not in facts.classes for b in facts.classes.get(fn.cls, []))]
+    out += [fact("view_method", q) for q in view_methods(facts)]
     out += [fact("generic_reg", q) for q in {q for _k, q in facts.callnames}
             if q.startswith("*.") and q[2:] in GENERIC_METHODS or q in BUILTIN_CALLS]
     out += [fact("generic_api", q) for q in {q for _k, q in facts.callnames} | set(facts.libcalls.values())
@@ -271,6 +272,33 @@ ROUTE_DEC_RE = re.compile(r"\.(route|get|post|put|patch|delete|api_route|websock
 GENERIC_DEC_RE = re.compile(r"^(functools|typing|abc|contextlib|dataclasses|pytest|unittest|enum|asyncio)\.|"
                             r"^(property|staticmethod|classmethod|cached_property|lru_cache|wraps|overload|override)$|"
                             r"\.(setter|getter|deleter)$")
+# Library base classes whose HTTP-verb methods handle requests: Django View / TemplateView / FormView, DRF APIView /
+# ViewSet / GenericAPIView, Flask MethodView, flask-restx / flask-restful Resource, Tornado RequestHandler, Starlette
+# HTTPEndpoint, aiohttp web.View. Matched on the class name, through any chain of project subclasses.
+VIEW_BASE_RE = re.compile(r"(View|ViewSet|APIView|Resource|MethodView|RequestHandler|HTTPEndpoint|Endpoint)$")
+
+
+def view_methods(facts: Facts) -> set[str]:
+    memo: dict[str, bool] = {}
+
+    def is_view(c: str, seen=frozenset()) -> bool:
+        if c in memo:
+            return memo[c]
+        ok = False
+        for b in facts.classes.get(c, []):
+            if b in facts.classes:
+                ok = b not in seen and is_view(b, seen | {c})
+            else:
+                ok = bool(VIEW_BASE_RE.search(b.rsplit(".", 1)[-1]))
+            if ok:
+                break
+        memo[c] = ok
+        return ok
+
+    return {q for q, fn in facts.functions.items()
+            if fn.cls and q.rsplit(".", 1)[-1] in HTTP_METHOD_NAMES and not is_test_path(fn.file) and is_view(fn.cls)}
+
+
 HTTP_METHOD_NAMES = {"get", "post", "put", "patch", "delete", "head", "options", "on_get", "on_post", "on_put",
                      "on_patch", "on_delete", "GET", "POST", "PUT", "DELETE", "do_GET", "do_POST", "do_PUT", "do_DELETE"}
 _BUILTINS = set(dir(__import__("builtins")))

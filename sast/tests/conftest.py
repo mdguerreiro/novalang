@@ -5,12 +5,17 @@ runs once. Small inline snippets are written to tmp dirs for focused extractor/e
 """
 from __future__ import annotations
 
+import os
 import sys
 import textwrap
 from collections import deque
 from pathlib import Path
 
 import pytest
+
+# Scanners start with no shipped knowledge packs: the suite measures what the engine and the frontier do on their own;
+# tests that exercise packs pass their directories explicitly.
+os.environ.setdefault("SENTINEL_PACKS", "")
 
 SAST_ROOT = Path(__file__).resolve().parents[1]
 if str(SAST_ROOT) not in sys.path:

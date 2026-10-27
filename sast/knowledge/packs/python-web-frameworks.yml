@@ -1,0 +1,40 @@
+pack: python-web-frameworks
+version: 1
+owner: appsec-research
+description: >
+  How Python web frameworks hand requests to project code, from each framework's documentation: decorators that make
+  a function a request handler, and calls that register a view function (the argument index is the view).
+  Class-based views (Django View, DRF APIView/ViewSet, Flask MethodView, flask-restx Resource, Tornado
+  RequestHandler, Starlette HTTPEndpoint) are recognised by the engine itself (view_method).
+facts:
+  # Django URLconf: path(route, view), re_path(route, view), url(regex, view)
+  - {pred: registrar, args: [django.urls.path, 1], note: "Django URLconf: the view receives the request"}
+  - {pred: registrar, args: [django.urls.re_path, 1], note: "Django URLconf (regex routes)"}
+  - {pred: registrar, args: [django.conf.urls.url, 1], note: "Django < 4 URLconf"}
+  # Flask
+  - {pred: framework_source, args: [flask.Flask().route, http], note: "Flask route decorator"}
+  - {pred: framework_source, args: [flask.Blueprint().route, http], note: "Flask blueprint route decorator"}
+  - {pred: framework_source, args: [flask.Flask().get, http], note: "Flask 2 shortcut decorators"}
+  - {pred: framework_source, args: [flask.Flask().post, http], note: "Flask 2 shortcut decorators"}
+  - {pred: framework_source, args: [flask.Flask().put, http], note: "Flask 2 shortcut decorators"}
+  - {pred: framework_source, args: [flask.Flask().delete, http], note: "Flask 2 shortcut decorators"}
+  - {pred: framework_source, args: [flask.Blueprint().get, http], note: "Flask 2 shortcut decorators"}
+  - {pred: framework_source, args: [flask.Blueprint().post, http], note: "Flask 2 shortcut decorators"}
+  - {pred: registrar, args: [flask.Flask().add_url_rule, 2], note: "add_url_rule(rule, endpoint, view_func)"}
+  - {pred: registrar, args: [flask.Blueprint().add_url_rule, 2], note: "add_url_rule(rule, endpoint, view_func)"}
+  # FastAPI / Starlette
+  - {pred: framework_source, args: [fastapi.FastAPI().get, http], note: "FastAPI path operation"}
+  - {pred: framework_source, args: [fastapi.FastAPI().post, http], note: "FastAPI path operation"}
+  - {pred: framework_source, args: [fastapi.FastAPI().put, http], note: "FastAPI path operation"}
+  - {pred: framework_source, args: [fastapi.FastAPI().delete, http], note: "FastAPI path operation"}
+  - {pred: framework_source, args: [fastapi.FastAPI().patch, http], note: "FastAPI path operation"}
+  - {pred: framework_source, args: [fastapi.APIRouter().get, http], note: "FastAPI router path operation"}
+  - {pred: framework_source, args: [fastapi.APIRouter().post, http], note: "FastAPI router path operation"}
+  - {pred: framework_source, args: [fastapi.APIRouter().put, http], note: "FastAPI router path operation"}
+  - {pred: framework_source, args: [fastapi.APIRouter().delete, http], note: "FastAPI router path operation"}
+  - {pred: registrar, args: [fastapi.FastAPI().add_api_route, 1], note: "add_api_route(path, endpoint)"}
+  - {pred: registrar, args: [fastapi.APIRouter().add_api_route, 1], note: "add_api_route(path, endpoint)"}
+  - {pred: registrar, args: [starlette.routing.Route, 1], note: "Route(path, endpoint)"}
+  # aiohttp
+  - {pred: registrar, args: [aiohttp.web.get, 1], note: "aiohttp route table entries: web.get(path, handler)"}
+  - {pred: registrar, args: [aiohttp.web.post, 1], note: "aiohttp route table entries: web.post(path, handler)"}

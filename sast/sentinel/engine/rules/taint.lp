@@ -178,6 +178,9 @@ src_frontier(F,I)  :- param(F,I,P), p2s_raw(F,I,_), not reach(F), not has_caller
 % Handlers registered by passing the function to a framework call (`app.router.add_route("GET", "/", view)`):
 % one question about the registrar covers every handler it registers.
 src(P,"http")      :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I), param(F,_,P), not typed(P,_), not self_param(P).
+% Class-based views: the HTTP-verb methods of a class deriving from a framework view base receive the request.
+src(P,"http")      :- view_method(F), param(F,_,P), not typed(P,_), not self_param(P).
+reach(F)           :- view_method(F).
 learned_src(P,Q)   :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I), param(F,_,P).
 answered_reg(Q)    :- registrar(Q,_).
 answered_reg(Q)    :- not_registrar(Q).
