@@ -43,6 +43,10 @@ NEUTRAL = {
     "flask.abort", "flask.url_for", "flask.jsonify", "flask.Flask", "logging.getLogger",
     "time.time", "uuid.uuid4", "re.compile", "sqlite3.connect", "enumerate", "zip", "min", "max",
 }
+# Lookups by key: only the container (and a default value, for KEY_LOOKUPS) reaches the result.
+KEY_LOOKUPS = {"get", "pop", "setdefault"}
+QUERY_LOOKUPS = {"filter", "filter_by", "exclude", "where", "get_or_404", "first_or_404", "one_or_404",
+                 "get_object_or_404", "get_list_or_404"}
 NEUTRAL_METHODS = {
     "cursor", "fetchall", "fetchone", "close", "commit", "isdigit", "isalnum", "isnumeric",
     "isdecimal", "isalpha", "startswith", "endswith", "count", "index", "find",
@@ -1573,7 +1577,10 @@ class _FunctionWalker:
                 # serializers read `post.content` off objects whose type the analysis no longer knows.
                 for a in [a for _, a in arg_nodes if a] + [a for _, a in kw_nodes if a]:
                     self.f.edges.add((a, nid))
-            if offset and receiver:
+            # Bound by method name only (receiver type unknown): the receiver is some object of an unrelated class at
+            # least as often as the right one; passing it into every candidate's `self` taints whole unrelated objects
+            # (a Snowflake reply flowing through an Azure hook's `self` into a Google hook). Arguments still bind.
+            if offset and receiver and self.f.resolved.get(nid) != "cha-name":
                 self.f.arg_in.add((nid, 0, receiver))
             for i, a in arg_nodes:
                 if a:
@@ -1594,11 +1601,19 @@ class _FunctionWalker:
             if a and k:
                 self.f.lib_args.add((nid, k, a))
         incoming = [a for _, a in arg_nodes if a] + [a for _, a in kw_nodes if a]
+        # A lookup returns what is stored under the key, not the key: `d.get(k)`, `q.filter_by(id=k)`,
+        # `get_object_or_404(M, pk=k)`. Records written with attacker data are the stored-data rules' job.
+        flows = incoming
+        if receiver and method in KEY_LOOKUPS:
+            flows = [a for i, a in arg_nodes if a and i >= 1]
+        elif (receiver and method in QUERY_LOOKUPS) or (dotted or "").rsplit(".", 1)[-1] in QUERY_LOOKUPS:
+            flows = []
         if receiver:
             incoming.append(receiver)
+            flows = flows + [receiver] if flows is not incoming else flows
         is_neutral = qual in NEUTRAL or (method in NEUTRAL_METHODS)
         if not is_neutral:
-            for a in incoming:
+            for a in flows:
                 self.f.edges.add((a, nid))
         # A project class without __init__ just stores its arguments: a propagator, not an unknown API.
         known = is_neutral or qual in PROPAGATORS or method in PROPAGATOR_METHODS or qual in self.f.classes
