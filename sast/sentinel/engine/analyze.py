@@ -584,7 +584,9 @@ class _Graph:
         self.args = defaultdict(list)  # arg node -> [(call, index)]
         for k, i, a in facts.arg_in:
             self.args[a].append((k, i))
-        self.callee = dict(facts.calls)
+        self.callee = defaultdict(list)  # a call bound to several candidates (by method name) keeps them all
+        for k_, g_ in facts.calls:
+            self.callee[k_].append(g_)
         self.params = {(fn, i): p for fn, i, p in facts.params}
         self.rets = defaultdict(list)
         for fn, r in facts.rets:
@@ -597,10 +599,10 @@ class _Graph:
         for b in self.succ[n]:
             yield b, stack, "flow"
         for k, i in self.args[n]:
-            g = self.callee.get(k)
-            p = self.params.get((g, i)) if g else None
-            if p is not None and len(stack) < 6:
-                yield p, stack + (k,), "param"
+            for g in self.callee.get(k, ()):
+                p = self.params.get((g, i))
+                if p is not None and len(stack) < 6:
+                    yield p, stack + (k,), "param"
         node = self.f.nodes[n]
         if n in self.rets.get(node.fn, []):
             if stack:
@@ -631,10 +633,10 @@ class _Graph:
                     rev[b].add(a)
             for a, uses in self.args.items():
                 for c, i in uses:
-                    g = self.callee.get(c)
-                    p = self.params.get((g, i)) if g else None
-                    if p is not None:
-                        rev[p].add(a)
+                    for g in self.callee.get(c, ()):
+                        p = self.params.get((g, i))
+                        if p is not None:
+                            rev[p].add(a)
             for fn, rs in self.rets.items():
                 for c in self.callers.get(fn, ()):
                     for r in rs:
