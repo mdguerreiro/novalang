@@ -115,8 +115,15 @@ ta(K,S,C,Asm) :- t(X,S,C,any), arg_in(K,J,X), call(K,G), p2a_r(G,J,C,Asm), t(K,S
 ta(K,S,C,Asm) :- call(K,G), ret(G,R), ta(R,S,C,Asm), t(K,S,C,any).
 
 % ── findings ────────────────────────────────────────────────────────────────────────────
-cand(S,K,C) :- traw(K,S), sink(K,C).
-cand(S,K,C) :- traw(A,S), arg_in(X,J,A), call(X,G), p2s_raw(G,J,K), sink(K,C).
+cand(S,K,C) :- traw(K,S), sink(K,C), src_cls(S,C).
+cand(S,K,C) :- traw(A,S), arg_in(X,J,A), call(X,G), p2s_raw(G,J,K), sink(K,C), src_cls(S,C).
+
+% A source kind with `kind_cls` facts only counts for those classes: a library's API parameters are attacker input for
+% sinks that execute what they are given (code, templates, deserialization, commands), not for every file path or
+% string a library handles.
+limited_kind(Kd) :- kind_cls(Kd,_).
+src_cls(S,C) :- src(S,Kd), cls(C), not limited_kind(Kd).
+src_cls(S,C) :- src(S,Kd), kind_cls(Kd,C).
 
 alarm(S,K,C,M) :- t(K,S,C,M), sink(K,C).
 alarm(S,K,C,M) :- t(A,S,C,M), arg_in(X,J,A), call(X,G), p2s(G,J,K,C,M).

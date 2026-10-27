@@ -62,6 +62,23 @@ rules:
       - pattern: tarfile.TarFile(...)
       - pattern: tarfile.TarFile.open(...)
       - pattern: zipfile.ZipFile(...)
+  # A remote server's reply is outside data: attacker-controlled when the server, the URL or the network path is
+  # (user-configured endpoints, plugin hosts, model servers). Weak until a reachable attacker is established.
+  - id: spec.source.network.http-client
+    languages: [python]
+    severity: INFO
+    message: source
+    metadata: {sentinel: {role: source, kind: network}}
+    pattern-either:
+      - pattern: requests.$M(...)
+      - pattern: requests.Session().$M(...)
+      - pattern: httpx.$M(...)
+      - pattern: httpx.Client(...).$M(...)
+      - pattern: httpx.AsyncClient(...).$M(...)
+      - pattern: urllib.request.urlopen(...)
+      - pattern: urllib3.PoolManager(...).request(...)
+      - pattern: aiohttp.ClientSession(...).$M(...)
+      - pattern: sseclient.SSEClient(...)
   - id: spec.source.cli.argv
     languages: [python]
     severity: INFO
@@ -104,6 +121,21 @@ rules:
           - pattern: subprocess.$F($X, ..., shell=True, ...)
       - metavariable-regex: {metavariable: $F, regex: ^(run|call|check_call|check_output|Popen)$}
       - focus-metavariable: $X
+  # Without a shell, an attacker-controlled list element is still an argument the program parses: `-oProxyCommand=..`,
+  # `--upload-pack=..`, `hg --config=alias...` (argument injection, CWE-88). Only list literals: the element is visible.
+  - id: spec.sink.cmdi.subprocess-argv
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: cmdi, cwe: CWE-88}}
+    patterns:
+      - pattern-either:
+          - pattern: subprocess.$F([..., $A, ...], ...)
+          - pattern: os.execv($P, [..., $A, ...])
+          - pattern: os.execvp($P, [..., $A, ...])
+      - pattern-not: subprocess.$F($X, ..., shell=True, ...)
+      - metavariable-regex: {metavariable: $F, regex: ^(run|call|check_call|check_output|Popen)$}
+      - focus-metavariable: $A
   - id: spec.sink.path.file-access
     languages: [python]
     severity: INFO
@@ -137,6 +169,27 @@ rules:
     patterns:
       - pattern: flask.render_template_string($T, ...)
       - focus-metavariable: $T
+  # A template compiled from a string runs whatever expressions the string holds (Jinja2 `{{ cycler.__init__... }}`,
+  # Mako `<% %>` blocks): the template text itself must not be attacker-controlled. Sandboxed environments are not sinks.
+  - id: spec.sink.ssti.template-from-string
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: ssti, cwe: CWE-1336}}
+    patterns:
+      - pattern-either:
+          - pattern: jinja2.Template($T, ...)
+          - pattern: jinja2.Environment(...).from_string($T, ...)
+          - pattern: jinja2.environment.Environment(...).from_string($T, ...)
+          - patterns:
+              - pattern-inside: |
+                  $E = jinja2.Environment(...)
+                  ...
+              - pattern: $E.from_string($T, ...)
+          - pattern: django.template.Template($T, ...)
+          - pattern: django.template.engines[$N].from_string($T, ...)
+          - pattern: mako.template.Template($T, ...)
+      - focus-metavariable: $T
   - id: spec.sink.xss.markup
     languages: [python]
     severity: INFO
@@ -145,6 +198,9 @@ rules:
     patterns:
       - pattern-either:
           - pattern: markupsafe.Markup($X)
+          - pattern: flask.Markup($X)
+          - pattern: django.utils.safestring.mark_safe($X)
+          - pattern: django.utils.safestring.SafeString($X)
           - pattern: flask.make_response($X, ...)
       # Wrapping a response object (a file, JSON, a redirect, a rendered template) writes no attacker HTML.
       - pattern-not: flask.make_response(flask.send_file(...), ...)
@@ -191,6 +247,31 @@ rules:
       - pattern-either:
           - pattern: pickle.loads($X, ...)
           - pattern: pickle.load($X, ...)
+          - pattern: pickle.Unpickler($X, ...)
+          - pattern: cPickle.loads($X, ...)
+          - pattern: cPickle.load($X, ...)
+          - pattern: dill.loads($X, ...)
+          - pattern: dill.load($X, ...)
+          - pattern: cloudpickle.loads($X, ...)
+          - pattern: cloudpickle.load($X, ...)
+          - pattern: joblib.load($X, ...)
+          - pattern: pandas.read_pickle($X, ...)
+          - pattern: shelve.open($X, ...)
+          - pattern: jsonpickle.decode($X, ...)
+      - focus-metavariable: $X
+  # Loaders that unpickle unless told not to: torch.load (weights_only=False was the default before 2.6),
+  # numpy.load(allow_pickle=True).
+  - id: spec.sink.deser.pickle-backed
+    languages: [python]
+    severity: INFO
+    message: sink
+    metadata: {sentinel: {role: sink, cls: deser, cwe: CWE-502}}
+    patterns:
+      - pattern-either:
+          - patterns:
+              - pattern: torch.load($X, ...)
+              - pattern-not: torch.load($X, ..., weights_only=True, ...)
+          - pattern: numpy.load($X, ..., allow_pickle=True, ...)
       - focus-metavariable: $X
   - id: spec.sink.deser.yaml-unsafe
     languages: [python]
@@ -198,8 +279,13 @@ rules:
     message: sink
     metadata: {sentinel: {role: sink, cls: deser, cwe: CWE-502}}
     patterns:
-      - pattern: yaml.load($X, ...)
+      - pattern-either:
+          - pattern: yaml.load($X, ...)
+          - pattern: yaml.load_all($X, ...)
+          - pattern: yaml.unsafe_load($X, ...)
+          - pattern: yaml.unsafe_load_all($X, ...)
       - pattern-not: yaml.load($X, Loader=yaml.SafeLoader)
+      - pattern-not: yaml.load_all($X, Loader=yaml.SafeLoader)
       - pattern-not: yaml.load($X, Loader=yaml.CSafeLoader)
       - focus-metavariable: $X
   - id: spec.sink.code.eval

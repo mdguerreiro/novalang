@@ -63,6 +63,9 @@ CURATED: list[KnowledgeFact] = [
     KnowledgeFact("K-cur-any-conv", "safe_type", ("any", "all")),
     KnowledgeFact("K-cur-cli-weak", "weak_kind", ("cli",)),
     KnowledgeFact("K-cur-archive-weak", "weak_kind", ("archive",)),
+    # Outside data that is attacker-controlled only in some deployments: a library's API input, a remote server's reply.
+    KnowledgeFact("K-cur-api-weak", "weak_kind", ("api",)),
+    KnowledgeFact("K-cur-network-weak", "weak_kind", ("network",)),
     KnowledgeFact("K-cur-fixed-host", "safe_type", ("fixed_host", "ssrf")),
     KnowledgeFact("K-cur-fixed-host-r", "safe_type", ("fixed_host", "redirect")),
     KnowledgeFact("K-cur-rel-path", "safe_type", ("relative_path", "redirect")),
@@ -136,8 +139,56 @@ class Analysis:
         return {f.key: f for f in self.findings}
 
 
+# Sinks that execute what they are given. A library's public API parameters reach them only by the caller's choice,
+# but whoever calls the library with outside data (a model file, a template, a downloaded record) is exposed.
+EXEC_CLASSES = ("code", "ssti", "deser", "cmdi")
+API_DEPTH = 3  # call levels above an execution sink whose public parameters count as API input
+
+
+def _public(q: str, fn) -> bool:
+    if is_test_path(fn.file):
+        return False
+    parts = q.split(".")
+    return not any(p.startswith("_") and not (p.startswith("__") and p.endswith("__")) for p in parts)
+
+
+def api_sources(facts: Facts, matches: list[SpecMatch]) -> list[tuple[str, int, int]]:
+    """(function, index, param node) for parameters of public functions within API_DEPTH calls of an execution sink.
+    Only in a distributable package: an application's helpers are called by the application, not by outsiders."""
+    if not getattr(facts, "package", False):
+        return []
+    sink_fns = {facts.nodes[m.node].fn for m in matches
+                if m.role == "sink" and m.cls in EXEC_CLASSES and m.node in facts.nodes}
+    sink_fns |= {facts.nodes[n].fn for n, c in facts.extra_sinks if c in EXEC_CLASSES and n in facts.nodes}
+    callers: dict[str, set[str]] = {}
+    for k, g in facts.calls:
+        if k in facts.nodes:
+            callers.setdefault(g, set()).add(facts.nodes[k].fn)
+    methods: dict[str, set[str]] = {}
+    for q, fn in facts.functions.items():
+        if fn.cls:
+            methods.setdefault(fn.cls, set()).add(q)
+    near, frontier = set(sink_fns), set(sink_fns)
+    for _ in range(API_DEPTH):
+        # Data enters an object through any of its methods (the constructor, a setter) and reaches the sink through
+        # another: a method near a sink brings its class's other methods with it.
+        frontier |= {m for f in frontier if facts.functions.get(f) and facts.functions[f].cls
+                     for m in methods.get(facts.functions[f].cls, ())}
+        frontier = {c for f in frontier for c in callers.get(f, ())} | frontier
+        frontier -= near
+        near |= frontier
+    out = []
+    for f, i, p in facts.params:
+        fn = facts.functions.get(f)
+        if f in near and fn and _public(f, fn) and fn.params[i:i + 1] not in (["self"], ["cls"]):
+            out.append((f, i, p))
+    return out
+
+
 def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out = [fact("cls", c) for c in CLASSES]
+    out += [fact("kind_cls", "api", c) for c in EXEC_CLASSES]
+    out += [fact("src", p, "api") for _f, _i, p in api_sources(facts, matches)]
     for n in facts.nodes.values():
         out.append(fact("node", n.id, n.fn))
         if is_test_path(n.file):
@@ -370,6 +421,8 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
 
     findings = []
     graph = _Graph(facts)
+    route = {pid for _f, _n, _c, pid in facts.route_params}
+    api = {p for _f, _i, p in api_sources(facts, matches)} - route
     for (s, k, c), st in sorted(status.items()):
         sn, kn_ = facts.nodes[s], facts.nodes[k]
         f = Finding(source=s, sink=k, cls=c, status=st)
@@ -387,6 +440,8 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
             f.learned.append({"kind": "source", "subject": x,
                               "knowledge": [y.kid for y in kn if y.pred in ("framework_source", "entry_source", "registrar", "source_api")
                                             and y.args[0] == x]})
+        if not sm and s in api:
+            f.source_kind, f.source_rule = "api", "library-api"
         if not sm and learned_src.get(s):
             f.source_kind, f.source_rule = "http", "learned-source"
         if not sm and stored.get(s):  # read back from a table / model / file that holds attacker data
@@ -410,6 +465,10 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
         f.path = graph.witness(s, k, c, kills, asm_nodes, avoid_kills=avoid)
         f.proof = proof_tree(derivs, _status_atom(f), facts)
         findings.append(f)
+    # API input is the fallback attack surface: where a request (or any non-API source) already reaches a sink, the
+    # API finding at that sink adds nothing.
+    reached = {(f.sink, f.cls) for f in findings if f.source_kind != "api"}
+    findings = [f for f in findings if f.source_kind != "api" or (f.sink, f.cls) not in reached]
     return dedupe(findings)
 
 

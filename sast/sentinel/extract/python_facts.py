@@ -140,6 +140,7 @@ class Facts:
     store_reads: set[tuple[int, str]] = field(default_factory=set)  # read node, key
     file_writes: set[tuple[int, int, int]] = field(default_factory=set)  # write call, path node, content node
     file_reads: set[tuple[int, int]] = field(default_factory=set)  # open() call reading a file, path node
+    package: bool = False  # the repository ships a distributable package (setup.py / pyproject.toml / setup.cfg)
 
     def _flow_graph(self) -> tuple[dict[int, set[int]], dict[int, set[int]]]:
         """Over-approximate interprocedural value flow between nodes (intra edges, argument -> parameter,
@@ -341,6 +342,7 @@ class PythonExtractor:
 
     # ── public API ──────────────────────────────────────────────────────────
     def run(self) -> Facts:
+        self.facts.package = any((self.root / n).is_file() for n in ("setup.py", "pyproject.toml", "setup.cfg"))
         for path in sorted(self.root.rglob("*.py")):
             rel = path.relative_to(self.root).as_posix()
             if any(part.startswith(".") for part in rel.split("/")):

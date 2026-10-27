@@ -19,12 +19,15 @@ def _write(root: Path, files: dict[str, str]) -> Path:
 def test_frontier_finds_unmodelled_sinks_and_transfers():
     r = run_frontier()
     rep, etl = r["acme-reports"], r["acme-etl"]
-    assert rep["Semgrep OSS"]["tp"] == 0 and rep["engine without frontier"]["tp"] == 0
+    # Curated specs know one of these sinks (a Jinja2 template compiled from a string); the rest are unmodelled.
+    assert rep["Semgrep OSS"]["tp"] <= 1 and rep["engine without frontier"]["tp"] <= 1
     assert rep["engine with frontier"]["recall"] == 1.0 and rep["engine with frontier"]["fp"] == 0
     assert rep["frontier"]["questions"] <= 16
     # The second repository only asks about what the first did not teach.
     assert etl["engine with frontier"]["recall"] == 1.0 and etl["engine with frontier"]["fp"] == 0
-    assert {"dill.loads", "etl.api.archive"} <= set(etl["frontier"]["subjects"]) and etl["frontier"]["questions"] <= 3
+    # `dill.loads` is a curated deserialization sink now: the frontier only asks about the project's own entry point.
+    assert "etl.api.archive" in set(etl["frontier"]["subjects"]) and "dill.loads" not in set(etl["frontier"]["subjects"])
+    assert etl["frontier"]["questions"] <= 3
 
 
 def test_script_style_import_and_orm_base_resolution(tmp_path):
