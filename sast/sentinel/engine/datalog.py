@@ -13,6 +13,7 @@ and truth maintenance (which knowledge items a decision depends on).
 from __future__ import annotations
 
 import hashlib
+import os
 import threading
 import time
 from collections import OrderedDict, defaultdict
@@ -24,7 +25,20 @@ import clingo
 import clingo.ast as A
 
 MEMO_SIZE = 6  # whole-repo models are large; a scan only re-asks a handful of distinct inputs
+# Above this resident size the memo keeps only the newest model: on the largest repositories a handful of whole-program
+# models (with their provenance indexes) is several GB each. Eviction only costs a re-solve; results are unchanged.
+MEMO_RSS_MB = int(os.environ.get("SENTINEL_MEMO_RSS_MB", "6000"))
 SOLVE_STATS = {"solves": 0, "hits": 0, "seconds": 0.0, "max_seconds": 0.0}
+
+
+
+def _rss_mb() -> float:
+    try:
+        with open("/proc/self/statm") as f:
+            return int(f.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") / 2**20
+    except (OSError, ValueError):
+        return 0.0
+
 
 RULES_DIR = Path(__file__).parent / "rules"
 PROV_HEADS = {
@@ -185,7 +199,7 @@ class Program:
             SOLVE_STATS["seconds"] += dt
             SOLVE_STATS["max_seconds"] = max(SOLVE_STATS["max_seconds"], dt)
             self._memo[key] = model
-            while len(self._memo) > MEMO_SIZE:
+            while len(self._memo) > MEMO_SIZE or (len(self._memo) > 1 and _rss_mb() > MEMO_RSS_MB):
                 self._memo.popitem(last=False)
         return model
 
