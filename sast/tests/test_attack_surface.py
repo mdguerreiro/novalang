@@ -81,3 +81,20 @@ def test_one_library_input_finding_per_sink_named_by_its_entry():
     api = [f for f in fs if f.source_kind == "api"]
     assert len({(f.sink, f.cls) for f in api}) == len(api)
     assert all(f.source_fn.startswith("mylib.") for f in api)  # the public function, not the synthetic node
+
+
+def test_remote_reply_counts_only_where_it_is_executed(tmp_path):
+    pkg = tmp_path / "pkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    (pkg / "m.py").write_text(
+        "import requests, sqlite3\n\n\n"
+        "def sync(url):\n"
+        "    name = requests.get(url).text\n"
+        "    open(name, 'w').write('x')\n"
+        "    sqlite3.connect('db').cursor().execute(\"SELECT * FROM t WHERE n = '%s'\" % name)\n"
+        "    eval(name)\n")
+    facts = extract(tmp_path)
+    fs = {f.cls for f in analyze(facts, match_specs(tmp_path, facts)).findings
+          if f.source_kind == "network" and f.status in ("confirmed", "undecided")}
+    assert fs == {"code"}

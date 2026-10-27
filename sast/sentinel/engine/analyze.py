@@ -197,7 +197,9 @@ def ensure_api_node(facts: Facts, matches: list[SpecMatch]) -> None:
 
 def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     out = [fact("cls", c) for c in CLASSES]
-    out += [fact("kind_cls", "api", c) for c in EXEC_CLASSES]
+    # Library input and remote replies are attacker data where they are executed: a downloaded value written into a
+    # SQL statement or a file path of the program's own choosing is how clients work (airflow: 460 such findings).
+    out += [fact("kind_cls", k, c) for k in ("api", "network") for c in EXEC_CLASSES]
     if API_NODE in facts.nodes:
         out.append(fact("src", API_NODE, "api"))
     for n in facts.nodes.values():
