@@ -654,39 +654,61 @@ class _Graph:
 
     MAX_STATES = 2_000_000  # (node, call stack) states; beyond it no witness is shown (as when the search is exhausted)
 
-    def _reaches(self, k: int) -> set[int]:
-        """Nodes that can reach k at all (call/return matching ignored): the stack-aware search never needs others."""
-        cache = self.__dict__.setdefault("_reach_cache", {})
-        if k in cache:
-            return cache[k]
-        rev = self.__dict__.get("_rev")
-        if rev is None:
-            rev = defaultdict(set)
+    def _adj(self) -> tuple[dict, dict]:
+        """Forward and reverse adjacency of the flow graph with call/return matching ignored (built once)."""
+        if "_rev" not in self.__dict__:
+            fwd, rev = defaultdict(set), defaultdict(set)
             for a, bs in self.succ.items():
                 for b in bs:
-                    rev[b].add(a)
+                    fwd[a].add(b); rev[b].add(a)
             for a, uses in self.args.items():
                 for c, i in uses:
                     for g in self.callee.get(c, ()):
                         p = self.params.get((g, i))
                         if p is not None:
-                            rev[p].add(a)
+                            fwd[a].add(p); rev[p].add(a)
             for fn, rs in self.rets.items():
                 for c in self.callers.get(fn, ()):
                     for r in rs:
-                        rev[c].add(r)
-            self._rev = rev
+                        fwd[r].add(c); rev[c].add(r)
+            self._fwd, self._rev = fwd, rev
+        return self._fwd, self._rev
+
+    def _from(self, s: int) -> set[int]:
+        """Nodes reachable from s at all; the last few are kept (findings come sorted by source)."""
+        cache = self.__dict__.setdefault("_from_cache", {})
+        if s in cache:
+            return cache[s]
+        fwd, _ = self._adj()
+        seen, todo = {s}, [s]
+        while todo:
+            for b in fwd.get(todo.pop(), ()):
+                if b not in seen:
+                    seen.add(b)
+                    todo.append(b)
+        if len(cache) >= 4:
+            cache.pop(next(iter(cache)))
+        cache[s] = seen
+        return seen
+
+    def _reaches(self, k: int, s: int) -> set[int]:
+        """Nodes on some s -> k path (call/return matching ignored): the stack-aware search never needs others. The
+        backward search from k stays inside what s reaches: a sink deep in a library is reached from most of a 2M-node
+        graph, and closing over all of it once per sink took litellm's analysis from minutes to hours."""
+        allowed = self._from(s)
+        if k not in allowed:
+            return set()
+        _, rev = self._adj()
         seen, todo = {k}, [k]
         while todo:
             for a in rev.get(todo.pop(), ()):
-                if a not in seen:
+                if a not in seen and a in allowed:
                     seen.add(a)
                     todo.append(a)
-        cache[k] = seen
         return seen
 
     def _bfs(self, s, k, cls, kills, avoid):
-        ok = self._reaches(k)
+        ok = self._reaches(k, s)
         if s not in ok:
             return None
         start = (s, ())
