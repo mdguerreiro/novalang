@@ -200,7 +200,8 @@ def ensure_api_node(facts: Facts, matches: list[SpecMatch]) -> None:
         if params:
             facts.nodes[API_NODE] = Node(API_NODE, "<library API>", "", 0, 0, 0, 0, kind="api", label="library API")
             facts.edges.update((API_NODE, p) for _f, _i, p in params)
-    replies = {m.node for m in matches if m.role == "source" and m.kind == "network" and m.node is not None}
+    replies = {m.node for m in matches if m.role == "source" and m.kind == "network" and m.node is not None
+               and not is_test_path(facts.nodes[m.node].file if m.node in facts.nodes else "")}  # test clients
     if replies:
         facts.nodes.setdefault(NET_NODE, Node(NET_NODE, "<remote reply>", "", 0, 0, 0, 0, kind="network",
                                               label="remote reply"))
@@ -222,6 +223,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
             out.append(fact("test_node", n.id))
     out += [fact("edge", a, b) for a, b in facts.edges]
     out += [fact("call", k, g) for k, g in facts.calls]
+    out += [fact("name_call", k) for k, how in facts.resolved.items() if how == "cha-name"]
     out += [fact("arg_in", k, i, a) for k, i, a in facts.arg_in]
     out += [fact("param", f, i, p) for f, i, p in facts.params]
     out += [fact("ret", f, r) for f, r in facts.rets]

@@ -69,3 +69,29 @@ def test_name_bound_call_does_not_taint_unrelated_self(tmp_path):
         "    thing = pick(request.args['t'])\n"
         "    return thing.run('x')\n")
     assert ("run", "cmdi") not in _findings(tmp_path, src)
+
+
+def test_name_bound_call_does_not_return_the_candidates_own_taint(tmp_path):
+    src = (
+        "import os, subprocess\n"
+        "from flask import Flask, request\n"
+        "app = Flask(__name__)\n\n"
+        "class PoolView:\n"
+        "    def delete(self, pk):\n"
+        "        return request.args['origin']\n\n"
+        "class Cleaner:\n"
+        "    def wipe(self, table):\n"
+        "        stmt = table.delete()\n"           # receiver type unknown: bound to PoolView.delete by name
+        "        os.system(stmt)\n\n"
+        "class Shell:\n"
+        "    def run_it(self, cmd):\n"
+        "        return cmd\n\n"
+        "def passthrough(runner):\n"
+        "    os.system(runner.run_it(request.args['c']))\n\n"  # what the caller passes still comes back (p2r)
+        "@app.route('/p')\n"
+        "def view():\n"
+        "    passthrough(Shell())\n"
+        "    Cleaner().wipe(None)\n")
+    found = _findings(tmp_path, src)
+    assert ("wipe", "cmdi") not in found
+    assert ("passthrough", "cmdi") in found

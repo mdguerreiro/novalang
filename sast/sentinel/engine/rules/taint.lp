@@ -87,7 +87,10 @@ p2a_s(F,I,K,C,Asm) :- pc(X,F,I,C,any), arg_in(Y,J,X), call(Y,G), p2a_s(G,J,K,C,A
 traw(S,S) :- src(S,_).
 traw(B,S) :- traw(A,S), edge(A,B).
 traw(K,S) :- traw(A,S), arg_in(K,J,A), call(K,G), p2r_raw(G,J).
-traw(K,S) :- call(K,G), ret(G,R), traw(R,S).
+% A call bound by method name only (receiver type unknown) takes back what its own arguments carry (p2r), never taint
+% that starts inside the candidate: `x.delete()` anywhere is not the return of every project `delete` that reads a
+% request (airflow: request -> PoolModelView.delete -> every `table.delete()`).
+traw(K,S) :- call(K,G), ret(G,R), traw(R,S), not name_call(K).
 
 % Demand: class/mode taint only for (source, class) pairs whose raw taint reaches a sink of that class. Every
 % parameter of every registered view is a source; most never reach a sink, and tracking them all is sources x nodes.
@@ -95,7 +98,7 @@ t_need(S,C) :- cand(S,_,C).
 t(S,S,C,M) :- src(S,_), t_need(S,C), mode(M), not killed(S,C), not blocked(S,M).
 t(B,S,C,M) :- t(A,S,C,M), edge(A,B), not killed(B,C), not blocked(B,M).
 t(K,S,C,M) :- t(A,S,C,M), arg_in(K,J,A), call(K,G), p2r(G,J,C,M), not killed(K,C), not blocked(K,M).
-t(K,S,C,M) :- call(K,G), ret(G,R), t(R,S,C,M), not killed(K,C), not blocked(K,M).
+t(K,S,C,M) :- call(K,G), ret(G,R), t(R,S,C,M), not killed(K,C), not blocked(K,M), not name_call(K).
 
 tk(S,S,C,W) :- src(S,_), kill(S,C,W).
 tk(B,S,C,W) :- t(A,S,C,any), edge(A,B), kill(B,C,W).
@@ -103,8 +106,8 @@ tk(B,S,C,W) :- tk(A,S,C,W), edge(A,B).
 tk(K,S,C,W) :- tk(A,S,C,W), arg_in(K,J,A), call(K,G), p2r_raw(G,J).
 tk(K,S,C,W) :- t(A,S,C,any), arg_in(K,J,A), call(K,G), p2k_r(G,J,C,W).
 tk(K,S,C,W) :- t(A,S,C,any), arg_in(K,J,A), call(K,G), p2r(G,J,C,any), kill(K,C,W).
-tk(K,S,C,W) :- call(K,G), ret(G,R), tk(R,S,C,W).
-tk(K,S,C,W) :- call(K,G), ret(G,R), t(R,S,C,any), kill(K,C,W).
+tk(K,S,C,W) :- call(K,G), ret(G,R), tk(R,S,C,W), not name_call(K).
+tk(K,S,C,W) :- call(K,G), ret(G,R), t(R,S,C,any), kill(K,C,W), not name_call(K).
 
 % Only for (source, class) pairs that reach a sink at all (cand is computed from raw taint, no cycle).
 ta_need(S,C) :- cand(S,_,C).
@@ -112,7 +115,7 @@ ta(N,S,C,Asm) :- t(N,S,C,any), assume_at(N,Asm), ta_need(S,C).
 ta(B,S,C,Asm) :- ta(X,S,C,Asm), edge(X,B), t(B,S,C,any).
 ta(K,S,C,Asm) :- ta(X,S,C,Asm), arg_in(K,J,X), call(K,G), p2r(G,J,C,any), t(K,S,C,any).
 ta(K,S,C,Asm) :- t(X,S,C,any), arg_in(K,J,X), call(K,G), p2a_r(G,J,C,Asm), t(K,S,C,any).
-ta(K,S,C,Asm) :- call(K,G), ret(G,R), ta(R,S,C,Asm), t(K,S,C,any).
+ta(K,S,C,Asm) :- call(K,G), ret(G,R), ta(R,S,C,Asm), t(K,S,C,any), not name_call(K).
 
 % ── findings ────────────────────────────────────────────────────────────────────────────
 cand(S,K,C) :- traw(K,S), sink(K,C), src_cls(S,C).
