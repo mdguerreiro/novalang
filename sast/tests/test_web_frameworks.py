@@ -64,3 +64,33 @@ def test_flask_blueprints_and_add_url_rule(tmp_path):
     found = {f.sink_fn for f in analyze(facts, match_specs(root, facts), _pack()).findings
              if f.cls == "cmdi" and f.status in ("confirmed", "undecided")}
     assert found == {"web.app.a", "web.app.b"}
+
+
+def test_django_template_filters_are_weak_xss_sources(tmp_path):
+    root = _write(tmp_path, {
+        "app/__init__.py": "",
+        "app/templatetags/__init__.py": "",
+        "app/templatetags/tags.py": (
+            "import subprocess\n"
+            "from django import template\n"
+            "from django.utils.html import escape, format_html\n"
+            "from django.utils.safestring import mark_safe\n"
+            "register = template.Library()\n\n"
+            "@register.filter\n"
+            "def bad(value):\n"
+            "    return mark_safe('<b>' + value + '</b>')\n\n"
+            "@register.filter(is_safe=True)\n"
+            "def good(value):\n"
+            "    return mark_safe('<b>' + escape(value) + '</b>')\n\n"
+            "@register.simple_tag\n"
+            "def fmt(user):\n"
+            "    return mark_safe(format_html('<i>{}</i>', user))\n\n"
+            "@register.filter\n"
+            "def run(value):\n"
+            "    subprocess.call(value, shell=True)\n"),
+    })
+    facts = extract(root)
+    fs = [f for f in analyze(facts, match_specs(root, facts), []).findings if f.status in ("confirmed", "undecided")]
+    # Only XSS counts (a filter's value running a command is the template author's own data), and it stays weak.
+    assert {(f.sink_fn, f.cls, f.source_kind) for f in fs} == {("app.templatetags.tags.bad", "xss", "template")}
+    assert all(any("weak_source" in str(a["asm"]) for a in f.assumptions) for f in fs), [f.assumptions for f in fs]

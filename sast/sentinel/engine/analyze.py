@@ -66,6 +66,8 @@ CURATED: list[KnowledgeFact] = [
     # Outside data that is attacker-controlled only in some deployments: a library's API input, a remote server's reply.
     KnowledgeFact("K-cur-api-weak", "weak_kind", ("api",)),
     KnowledgeFact("K-cur-network-weak", "weak_kind", ("network",)),
+    # A template filter or tag receives whatever the template passes it, often user content stored earlier.
+    KnowledgeFact("K-cur-template-weak", "weak_kind", ("template",)),
     KnowledgeFact("K-cur-fixed-host", "safe_type", ("fixed_host", "ssrf")),
     KnowledgeFact("K-cur-fixed-host-r", "safe_type", ("fixed_host", "redirect")),
     KnowledgeFact("K-cur-rel-path", "safe_type", ("relative_path", "redirect")),
@@ -200,6 +202,9 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     # Library input and remote replies are attacker data where they are executed: a downloaded value written into a
     # SQL statement or a file path of the program's own choosing is how clients work (airflow: 460 such findings).
     out += [fact("kind_cls", k, c) for k in ("api", "network") for c in EXEC_CLASSES]
+    # A template filter's input matters where the filter's output is marked safe for HTML; anything else it does with
+    # the value is the template author's own data handling.
+    out.append(fact("kind_cls", "template", "xss"))
     if API_NODE in facts.nodes:
         out.append(fact("src", API_NODE, "api"))
     for n in facts.nodes.values():
@@ -247,6 +252,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
             if fn.cls and q.rsplit(".", 1)[-1] in HTTP_METHOD_NAMES
             and any(b not in facts.classes for b in facts.classes.get(fn.cls, []))]
     out += [fact("view_method", q) for q in view_methods(facts)]
+    out += [fact("template_filter", q) for q, d in facts.decorated if TEMPLATE_FILTER_RE.fullmatch(d)]
     out += [fact("generic_reg", q) for q in {q for _k, q in facts.callnames}
             if q.startswith("*.") and q[2:] in GENERIC_METHODS or q in BUILTIN_CALLS]
     out += [fact("generic_api", q) for q in {q for _k, q in facts.callnames} | set(facts.libcalls.values())
@@ -301,6 +307,9 @@ def view_methods(facts: Facts) -> set[str]:
             if fn.cls and q.rsplit(".", 1)[-1] in HTTP_METHOD_NAMES and not is_test_path(fn.file) and is_view(fn.cls)}
 
 
+# Django template filters and tags: their arguments are whatever the template passes in (kind "template": weak,
+# counted only where the result is marked safe for HTML).
+TEMPLATE_FILTER_RE = re.compile(r"django\.template\.(base\.|library\.)?Library\(\)\.(filter|simple_tag)")
 HTTP_METHOD_NAMES = {"get", "post", "put", "patch", "delete", "head", "options", "on_get", "on_post", "on_put",
                      "on_patch", "on_delete", "GET", "POST", "PUT", "DELETE", "do_GET", "do_POST", "do_PUT", "do_DELETE"}
 _BUILTINS = set(dir(__import__("builtins")))
@@ -463,6 +472,7 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
 
     findings = []
     graph = _Graph(facts)
+    tfilters = {q for q, d in facts.decorated if TEMPLATE_FILTER_RE.fullmatch(d)}
     for (s, k, c), st in sorted(status.items()):
         sn, kn_ = facts.nodes[s], facts.nodes[k]
         f = Finding(source=s, sink=k, cls=c, status=st)
@@ -482,6 +492,8 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
                                             and y.args[0] == x]})
         if s == API_NODE:
             f.source_kind, f.source_rule = "api", "library-api"
+        elif not sm and sn.kind == "param" and sn.fn in tfilters:
+            f.source_kind, f.source_rule = "template", "template-filter"
         if not sm and learned_src.get(s):
             f.source_kind, f.source_rule = "http", "learned-source"
         if not sm and stored.get(s):  # read back from a table / model / file that holds attacker data

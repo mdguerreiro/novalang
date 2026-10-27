@@ -350,6 +350,9 @@ rules:
       - pattern: markupsafe.escape(...)
       - pattern: html.escape(...)
       - pattern: flask.escape(...)
+      - pattern: django.utils.html.escape(...)
+      - pattern: django.utils.html.conditional_escape(...)
+      - pattern: django.utils.html.format_html(...)
   - id: spec.sanitizer.cmdi.shlex-quote
     languages: [python]
     severity: INFO

@@ -181,6 +181,8 @@ src(P,"http")      :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I), param(F,_,P)
 % Class-based views: the HTTP-verb methods of a class deriving from a framework view base receive the request.
 src(P,"http")      :- view_method(F), param(F,_,P), not typed(P,_), not self_param(P).
 reach(F)           :- view_method(F).
+src(P,"template")  :- template_filter(F), param(F,_,P), not self_param(P), not test_fn(F).
+reach(F)           :- template_filter(F).
 learned_src(P,Q)   :- fn_ref(K,I,F), callname(K,Q), registrar(Q,I), param(F,_,P).
 answered_reg(Q)    :- registrar(Q,_).
 answered_reg(Q)    :- not_registrar(Q).
