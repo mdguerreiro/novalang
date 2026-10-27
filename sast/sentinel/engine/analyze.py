@@ -188,13 +188,23 @@ API_NODE = 2_000_000_000  # one synthetic source standing for "whoever calls the
 # public parameter near an execution sink: taint is tracked once, not once per parameter (airflow: 12k parameters).
 
 
+# Remote replies are pooled the same way: an HTTP client library has hundreds of request calls (litellm: 131 on a
+# 2.4M-node graph), and tracking each reply as its own source ran out of memory.
+NET_NODE = 2_000_000_001
+POOLED = {API_NODE: "api", NET_NODE: "network"}
+
+
 def ensure_api_node(facts: Facts, matches: list[SpecMatch]) -> None:
-    if API_NODE in facts.nodes:
-        return
-    params = api_sources(facts, matches)
-    if params:
-        facts.nodes[API_NODE] = Node(API_NODE, "<library API>", "", 0, 0, 0, 0, kind="api", label="library API")
-        facts.edges.update((API_NODE, p) for _f, _i, p in params)
+    if API_NODE not in facts.nodes:
+        params = api_sources(facts, matches)
+        if params:
+            facts.nodes[API_NODE] = Node(API_NODE, "<library API>", "", 0, 0, 0, 0, kind="api", label="library API")
+            facts.edges.update((API_NODE, p) for _f, _i, p in params)
+    replies = {m.node for m in matches if m.role == "source" and m.kind == "network" and m.node is not None}
+    if replies:
+        facts.nodes.setdefault(NET_NODE, Node(NET_NODE, "<remote reply>", "", 0, 0, 0, 0, kind="network",
+                                              label="remote reply"))
+        facts.edges.update((NET_NODE, n) for n in replies)
 
 
 def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
@@ -205,8 +215,7 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
     # A template filter's input matters where the filter's output is marked safe for HTML; anything else it does with
     # the value is the template author's own data handling.
     out.append(fact("kind_cls", "template", "xss"))
-    if API_NODE in facts.nodes:
-        out.append(fact("src", API_NODE, "api"))
+    out += [fact("src", n, kind) for n, kind in POOLED.items() if n in facts.nodes]
     for n in facts.nodes.values():
         out.append(fact("node", n.id, n.fn))
         if is_test_path(n.file):
@@ -267,7 +276,8 @@ def edb(facts: Facts, matches: list[SpecMatch]) -> list[str]:
         if m.node is None:
             continue
         if m.role == "source":
-            out.append(fact("src", m.node, m.kind or "http"))
+            if m.kind != "network":  # pooled: NET_NODE
+                out.append(fact("src", m.node, m.kind or "http"))
         elif m.role == "sink":
             out.append(fact("sink", m.node, m.cls))
         elif m.role == "sanitizer":
@@ -515,10 +525,14 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
         f.assumptions = [{"asm": _jsonable(a), "label": _asm_label(a)} for a in seen]
         avoid = st in ("confirmed", "undecided")
         f.path = graph.witness(s, k, c, kills, asm_nodes, avoid_kills=avoid)
-        if s == API_NODE:  # report the public function the input enters through
-            f.path = [st for st in (f.path or []) if st.node != API_NODE]
+        if s in POOLED:  # report the public function the input enters through / the request call that replied
+            f.path = [st for st in (f.path or []) if st.node != s]
             if f.path:
                 f.source_fn, f.file, f.line = f.path[0].fn, f.path[0].file, f.path[0].line
+                if s == NET_NODE and f.path[0].node in src_rule:
+                    f.source_kind, f.source_rule = "network", src_rule[f.path[0].node].rule_id
+            if s == NET_NODE and f.source_kind != "network":
+                f.source_kind, f.source_rule = "network", "network-reply"
         f.proof = proof_tree(derivs, _status_atom(f), facts)
         findings.append(f)
     # API input is the fallback attack surface: where a reported request (or other non-API) flow already reaches a

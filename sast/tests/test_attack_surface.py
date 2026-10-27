@@ -126,3 +126,21 @@ def test_inline_containment_check_mitigates_archive_member_paths(tmp_path):
     facts = extract(tmp_path)
     st = {f.sink_fn.rsplit(".", 1)[-1]: f.status for f in analyze(facts, match_specs(tmp_path, facts)).findings if f.cls == "path"}
     assert st == {"loop_continue": "mitigated", "inline_resolve": "mitigated", "unguarded": "undecided"}
+
+
+def test_remote_replies_are_one_pooled_source_reported_at_the_request(tmp_path):
+    pkg = tmp_path / "cli"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    (pkg / "m.py").write_text(
+        "import requests\n\n\n"
+        "def run(url, other):\n"
+        "    a = requests.get(url).text\n"
+        "    b = requests.post(other).text\n"
+        "    eval(a + b)\n")
+    facts = extract(tmp_path)
+    fs = [f for f in analyze(facts, match_specs(tmp_path, facts)).findings if f.source_kind == "network"]
+    assert len(fs) == 1  # two replies, one sink: one finding
+    f = fs[0]
+    assert (f.cls, f.sink_fn, f.source_fn) == ("code", "cli.m.run", "cli.m.run") and f.line in (5, 6)  # a request line
+    assert f.source_rule.startswith("spec.source.network") and all(st.node < 2_000_000_000 for st in f.path)
