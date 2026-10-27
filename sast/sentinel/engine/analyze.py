@@ -471,6 +471,15 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
     reached = {(f.sink, f.cls) for f in findings if f.source_kind != "api" and f.status in ("confirmed", "undecided")}
     findings = [f for f in findings if f.source_kind != "api"
                 or ((f.sink, f.cls) not in reached and f.sink_rule != "spec.sink.cmdi.subprocess-argv")]
+    # "Library input reaches this sink" is one issue per sink, whichever public function it enters through: keep the
+    # shortest path (the entry closest to the sink).
+    best: dict[tuple[int, str], Finding] = {}
+    for f in findings:
+        if f.source_kind == "api":
+            k_ = (f.sink, f.cls)
+            if k_ not in best or (len(f.path), f.source_fn) < (len(best[k_].path), best[k_].source_fn):
+                best[k_] = f
+    findings = [f for f in findings if f.source_kind != "api" or best.get((f.sink, f.cls)) is f]
     return dedupe(findings)
 
 
