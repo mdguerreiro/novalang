@@ -320,21 +320,21 @@ injection in the same Recipe-card area as a dev CVE. Engine only, no model calls
 class (template injection counts for code injection, CWE-1336 < CWE-94) in a target function; flagged fixed tree =
 false alarm.
 
-| Held-out CVE | class | frozen engine (90a9ea8) | new engine (6d543e2) | + web pack (038f983), in progress |
+| Held-out CVE | class | frozen engine (90a9ea8) | new engine (6d543e2) | + web pack (038f983) |
 |---|---|---|---|---|
 | CVE-2021-25283 | code | missed (52) | missed (107) | missed (107) |
-| CVE-2021-25963 | xss | missed (0) | missed (2) | - |
+| CVE-2021-25963 | xss | missed (0) | missed (2) | missed (6) |
 | CVE-2021-45452 | path | missed (44) | missed (54) | missed (134) |
-| CVE-2023-41040 | path | missed (0) | missed (1) | - |
+| CVE-2023-41040 | path | missed (0) | missed (1) | missed (1) |
 | CVE-2023-42819 | path | missed (12) | missed (21) | caught, fix flagged (36) |
-| CVE-2023-50265 | path | missed, fix flagged (270) | missed, fix flagged (321) | - |
-| CVE-2024-27132 | xss | missed (43) | missed (73) | - |
-| CVE-2024-27133 | xss | missed (43) | missed (73) | - |
+| CVE-2023-50265 | path | missed, fix flagged (270) | missed, fix flagged (321) | missed, fix flagged (321) |
+| CVE-2024-27132 | xss | missed (43) | missed (73) | missed (73) |
+| CVE-2024-27133 | xss | missed (43) | missed (73) | missed (73) |
 | CVE-2024-31462 | path | missed (0) | missed (25) | missed (25) |
 | CVE-2024-39877 | code | missed (650) | caught, fix clean (1316) | caught, fix clean (1323) |
 | CVE-2024-41656 | xss | missed (30) | missed (37) | missed (116) |
 | CVE-2024-41675 | xss | missed (0) | missed (0) | missed (16) |
-| **total** | | **0 caught, 0 with fix clean; 1 fixed trees flagged; 1144 findings** | **1 caught, 1 with fix clean; 1 fixed trees flagged; 2030 findings** | **2 caught, 1 with fix clean; 1 fixed trees flagged; 1757 findings** |
+| **total** | | **0 caught, 0 with fix clean; 1 fixed trees flagged; 1144 findings** | **1 caught, 1 with fix clean; 1 fixed trees flagged; 2030 findings** | **2 caught, 1 with fix clean; 2 fixed trees flagged; 2231 findings** |
 
 Dev split (the 16 CVEs the fixes were designed from; development evidence, not proof):
 
@@ -372,8 +372,9 @@ What this does and does not show:
   clean), with no model calls.
 - Most of the held-out misses are path traversal and XSS in web applications (Django, Flask, Gradio). Engine-only, the
   engine knows Flask's request object and nothing else about routing; the curated web pack adds documented routing
-  (Django URLconf, Flask/FastAPI registration, class-based views). Its held-out run is in progress (so far +1 caught,
-  jumpserver, with the fix still flagged). In the product the frontier learns the rest per repository; that is the
+  (Django URLconf, Flask/FastAPI registration, class-based views). On the held-out split it adds one catch (jumpserver,
+  path traversal through a Django view) but with the fixed tree still flagged, so no new clean catch; it also adds
+  findings on the Django-based trees (sentry 37 -> 116, django 54 -> 134). In the product the frontier learns the rest per repository; that is the
   live run still to do on this split.
 - The held-out split has no deserialization, SQL or command-injection CVEs (no buildable rows left), so it cannot
   confirm the library-input and deserialization gains from the dev split.
