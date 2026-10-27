@@ -73,6 +73,10 @@ class Scanner:
         self._base_cache: dict[str, Analysis] | None = None  # per-batch baseline analyses for gating (None = off)
         self.frontier = os.environ.get("SENTINEL_FRONTIER", "1") != "0"
         self.reader = make_reader() if os.environ.get("SENTINEL_READS", "0") == "1" else None  # hybrid tier (opt-in)  # off = the engine without frontier inference
+        self.reviewer = None  # engine-guided review (opt-in: SENTINEL_REVIEW=1, sentinel/review.py)
+        if os.environ.get("SENTINEL_REVIEW", "0") == "1":
+            from .agent.reader import make_review_reader
+            self.reviewer = make_review_reader()
         from .learn.packs import load_packs
         self.packs = load_packs(self)  # curated knowledge packs (knowledge/packs, SENTINEL_PACKS): active global facts
 
@@ -264,6 +268,7 @@ class Scanner:
 
         stage_marks.append(('tier2', time.time()))
         reads = self._handler_reads(repo_id, facts, a1, outcome) if self.reader is not None else {"read": 0, "issues": 0}
+        rev = self._review(repo_id, org, facts, a1, outcome) if self.reviewer is not None else {"read": 0, "issues": 0, "proposed": []}
         stage_marks.append(('reads', time.time()))
         # Shadow evaluation: what would candidate/shadow knowledge change? (shown, never applied)
         # Shadow spec rules are matched the same way; candidate rules never run (they failed a gate, and
@@ -315,6 +320,7 @@ class Scanner:
         if seen_ids:
             marks = ",".join("?" * len(seen_ids))
             self.store.x(f"UPDATE findings SET is_open=0 WHERE repo_id=? AND id NOT IN ({marks})", repo_id, *seen_ids)
+        pending += [k for k in rev["proposed"] if k not in pending]
         self._gate_batch(pending + [k for k in t1_ids if k not in pending])
 
         self.rank(repo_id)
@@ -324,6 +330,7 @@ class Scanner:
         stats["solves"] = {k: round(SOLVE_STATS[k] - solve0[k], 2) for k in ("solves", "hits", "seconds")}
         stats["timings"] = {name: round(t - stage_marks[i][1], 2) for i, (name, t) in enumerate(stage_marks[1:])}
         stats.update(handler_reads=reads["read"], read_issues=reads["issues"])
+        stats.update(review_reads=rev["read"], review_issues=rev["issues"], review_proposed=len(rev["proposed"]))
         stats.update(knn_answers=fr.get("knn", 0), frontier_deferred=fr.get("deferred", 0))
         stats.update(frontier_questions=fr["questions"], frontier_cached=fr["cached"], frontier_facts=len(fr["facts"]),
                      found_by_frontier=sum(1 for o in outcome.values() if o["finding"].learned
@@ -719,6 +726,34 @@ class Scanner:
                          {"gate": "citation", "ok": True, "detail": "cited line was in the read"}]}}]}
                 issues += 1
         return {"read": read, "issues": issues}
+
+    def _review(self, repo_id: str, org: str, facts: Facts, a: Analysis, outcome: dict) -> dict:
+        """Engine-guided review (sentinel/review.py): read the top of the ranked attack surface; issues join the review
+        lane, API-level answers are proposed as knowledge (gated with the scan's other proposals)."""
+        from . import review as rv
+        name = self.reviewer.name
+
+        def get(key):
+            row = self.store.one("SELECT issues FROM handler_reads WHERE key=? AND model=?", key, name)
+            return json.loads(row["issues"]) if row else None
+
+        def put(key, fn, issues):
+            self.store.x("INSERT OR REPLACE INTO handler_reads(key, model, fn, issues, read_at) VALUES (?,?,?,?,?)",
+                         key, name, fn, json.dumps(issues), time.time())
+
+        res = rv.review(facts, a, self.reviewer, get, put, select=os.environ.get("SENTINEL_REVIEW_SELECT", "engine"))
+        for g, x in zip(res["findings"], res["issues"]):
+            if g.fingerprint in outcome:
+                continue
+            outcome[g.fingerprint] = {"finding": g, "lane": "review", "decided_by": None, "verdicts": [
+                {"kind": "reader", "actor": f"review:{name}", "verdict": "TRUE_POSITIVE", "reason_code": x.get("kind"),
+                 "evidence": x, "gate": {"accepted": False, "lane": "review", "checks": [
+                     {"gate": "citation", "ok": True, "detail": "cited line was in the read"}]}}]}
+        proposed = []
+        for pred, args, scope, conf, why in res["proposals"]:
+            o_, r_ = (org, None) if scope == "org" else (org, repo_id) if scope == "repo" else (None, None)
+            proposed.append(self.ks.propose(pred, args, scope, o_, r_, f"review:{name}", conf, why)["id"])
+        return {"read": res["read"], "issues": len(res["issues"]), "proposed": proposed}
 
     def _ask_html(self, mechanism: str, facts: Facts, a: Analysis) -> list[dict]:
         handlers = sorted({f for f, d in a.model.get("handler_of") if d == mechanism})
