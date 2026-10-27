@@ -19,7 +19,7 @@ def test_public_api_parameters_reach_execution_sinks():
     _facts, _m, fs = _run()
     by = {(f.sink_fn, f.cls) for f in fs if f.source_kind == "api"}
     assert ("mylib.cards.load", "deser") in by
-    assert ("mylib.cards.clone", "cmdi") in by  # argument injection through a list element
+    assert ("mylib.cards.clone", "cmdi") not in by  # a library's own arguments to a program: not argument injection
 
 
 def test_api_input_is_weak_and_limited_to_execution_classes():

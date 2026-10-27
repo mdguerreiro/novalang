@@ -465,10 +465,12 @@ def build_findings(facts: Facts, matches: list[SpecMatch], model: Model, kn: lis
         f.path = graph.witness(s, k, c, kills, asm_nodes, avoid_kills=avoid)
         f.proof = proof_tree(derivs, _status_atom(f), facts)
         findings.append(f)
-    # API input is the fallback attack surface: where a request (or any non-API source) already reaches a sink, the
-    # API finding at that sink adds nothing.
-    reached = {(f.sink, f.cls) for f in findings if f.source_kind != "api"}
-    findings = [f for f in findings if f.source_kind != "api" or (f.sink, f.cls) not in reached]
+    # API input is the fallback attack surface: where a reported request (or other non-API) flow already reaches a
+    # sink, the API finding there adds nothing. A library passing its own arguments to a program's argument list is
+    # how libraries work, not argument injection: API input does not count for that sink.
+    reached = {(f.sink, f.cls) for f in findings if f.source_kind != "api" and f.status in ("confirmed", "undecided")}
+    findings = [f for f in findings if f.source_kind != "api"
+                or ((f.sink, f.cls) not in reached and f.sink_rule != "spec.sink.cmdi.subprocess-argv")]
     return dedupe(findings)
 
 
