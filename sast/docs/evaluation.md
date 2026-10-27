@@ -338,25 +338,25 @@ false alarm.
 
 Dev split (the 16 CVEs the fixes were designed from; development evidence, not proof):
 
-| Dev CVE | class | frozen engine (90a9ea8) | new engine (6d543e2) |
-|---|---|---|---|
-| CVE-2019-1010259 | sqli | missed (37) | missed (101) |
-| CVE-2021-34363 | path | caught, fix flagged (4) | caught, fix flagged (5) |
-| CVE-2021-39207 | deser | missed (98) | caught, fix clean (205) |
-| CVE-2022-24065 | cmdi | missed (8) | missed (8) |
-| CVE-2022-28347 | sqli | missed (44) | missed (54) |
-| CVE-2023-37274 | code | missed (0) | missed (6) |
-| CVE-2023-40581 | cmdi | missed (29) | caught, fix clean (34) |
-| CVE-2023-50943 | deser | missed (481) | caught, fix flagged (974) |
-| CVE-2023-6709 | code | missed (43) | caught, fix clean (75) |
-| CVE-2024-21520 | xss | missed (0) | missed (1) |
-| CVE-2024-37058 | deser | missed (36) | missed (66) |
-| CVE-2024-37060 | deser | missed (13) | caught, fix flagged (40) |
-| CVE-2024-39330 | path | missed (40) | missed (49) |
-| CVE-2024-39863 | xss | missed (650) | missed (1316) |
-| CVE-2024-4181 | code | missed (0) | caught, fix flagged (24) |
-| CVE-2024-41950 | code | missed (0) | caught, fix clean (9) |
-| **total** | | **1 caught, 0 with fix clean; 1 fixed trees flagged; 1483 findings** | **8 caught, 4 with fix clean; 4 fixed trees flagged; 2967 findings** |
+| Dev CVE | class | frozen engine (90a9ea8) | new engine (6d543e2) | + web pack (038f983) |
+|---|---|---|---|---|
+| CVE-2019-1010259 | sqli | missed (37) | missed (101) | missed (101) |
+| CVE-2021-34363 | path | caught, fix flagged (4) | caught, fix flagged (5) | caught, fix flagged (5) |
+| CVE-2021-39207 | deser | missed (98) | caught, fix clean (205) | caught, fix clean (205) |
+| CVE-2022-24065 | cmdi | missed (8) | missed (8) | missed (8) |
+| CVE-2022-28347 | sqli | missed (44) | missed (54) | missed (134) |
+| CVE-2023-37274 | code | missed (0) | missed (6) | missed (23) |
+| CVE-2023-40581 | cmdi | missed (29) | caught, fix clean (34) | caught, fix clean (34) |
+| CVE-2023-50943 | deser | missed (481) | caught, fix flagged (974) | caught, fix flagged (981) |
+| CVE-2023-6709 | code | missed (43) | caught, fix clean (75) | caught, fix clean (75) |
+| CVE-2024-21520 | xss | missed (0) | missed (1) | missed (1) |
+| CVE-2024-37058 | deser | missed (36) | missed (66) | missed (66) |
+| CVE-2024-37060 | deser | missed (13) | caught, fix flagged (40) | caught, fix flagged (40) |
+| CVE-2024-39330 | path | missed (40) | missed (49) | missed (136) |
+| CVE-2024-39863 | xss | missed (650) | missed (1316) | missed (1323) |
+| CVE-2024-4181 | code | missed (0) | caught, fix flagged (24) | caught, fix flagged (24) |
+| CVE-2024-41950 | code | missed (0) | caught, fix clean (9) | caught, fix clean (9) |
+| **total** | | **1 caught, 0 with fix clean; 1 fixed trees flagged; 1483 findings** | **8 caught, 4 with fix clean; 4 fixed trees flagged; 2967 findings** | **8 caught, 4 with fix clean; 4 fixed trees flagged; 3165 findings** |
 
 Precision: "fix flagged" is a finding of the CVE's class still in a target function after the fix: the fix is a
 check or restructuring the engine does not see as closing the flow (not verified case by case, and held-out code is
