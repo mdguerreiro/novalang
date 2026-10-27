@@ -8,7 +8,7 @@ Real-CVE diagnosis (2026-10-27, docs/evaluation.md "Why real CVEs are missed"): 
 tools whose attacker input is not a web request. Fixed generally (library input near execution sinks, remote replies,
 closures, template/argument-injection/pickle-loader sinks, curated web-framework pack, class-based views). Engine only,
 no model calls: dev split 1 -> 8 caught (4 with the fix clean); held-out split never read 0 -> 1 of 12 (fix clean).
-Cost: about twice the weak-source findings on large libraries. Next: the live run on the held-out split (frontier
+Cost after limiting remote replies to execution sinks (cc64124): +45% findings on the held-out split, +55% on dev, vs the old engine. Next: the live run on the held-out split (frontier
 learns routing per repository), precision breakdown on the largest trees, and a held-out set with deserialization /
 SQL / command injection.
  (real CVEs, live model)
