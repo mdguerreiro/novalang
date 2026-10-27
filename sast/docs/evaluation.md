@@ -320,21 +320,21 @@ injection in the same Recipe-card area as a dev CVE. Engine only, no model calls
 class (template injection counts for code injection, CWE-1336 < CWE-94) in a target function; flagged fixed tree =
 false alarm.
 
-| Held-out CVE | class | frozen engine (90a9ea8) | new engine (6d543e2) | + web pack (038f983) |
-|---|---|---|---|---|
-| CVE-2021-25283 | code | missed (52) | missed (107) | missed (107) |
-| CVE-2021-25963 | xss | missed (0) | missed (2) | missed (6) |
-| CVE-2021-45452 | path | missed (44) | missed (54) | missed (134) |
-| CVE-2023-41040 | path | missed (0) | missed (1) | missed (1) |
-| CVE-2023-42819 | path | missed (12) | missed (21) | caught, fix flagged (36) |
-| CVE-2023-50265 | path | missed, fix flagged (270) | missed, fix flagged (321) | missed, fix flagged (321) |
-| CVE-2024-27132 | xss | missed (43) | missed (73) | missed (73) |
-| CVE-2024-27133 | xss | missed (43) | missed (73) | missed (73) |
-| CVE-2024-31462 | path | missed (0) | missed (25) | missed (25) |
-| CVE-2024-39877 | code | missed (650) | caught, fix clean (1316) | caught, fix clean (1323) |
-| CVE-2024-41656 | xss | missed (30) | missed (37) | missed (116) |
-| CVE-2024-41675 | xss | missed (0) | missed (0) | missed (16) |
-| **total** | | **0 caught, 0 with fix clean; 1 fixed trees flagged; 1144 findings** | **1 caught, 1 with fix clean; 1 fixed trees flagged; 2030 findings** | **2 caught, 1 with fix clean; 2 fixed trees flagged; 2231 findings** |
+| Held-out CVE | class | frozen engine (90a9ea8) | new engine (6d543e2) | + web pack (038f983) | + replies only where executed (cc64124) |
+|---|---|---|---|---|---|
+| CVE-2021-25283 | code | missed (52) | missed (107) | missed (107) | missed (85) |
+| CVE-2021-25963 | xss | missed (0) | missed (2) | missed (6) | missed (5) |
+| CVE-2021-45452 | path | missed (44) | missed (54) | missed (134) | missed (134) |
+| CVE-2023-41040 | path | missed (0) | missed (1) | missed (1) | missed (1) |
+| CVE-2023-42819 | path | missed (12) | missed (21) | caught, fix flagged (36) | caught, fix flagged (30) |
+| CVE-2023-50265 | path | missed, fix flagged (270) | missed, fix flagged (321) | missed, fix flagged (321) | missed, fix flagged (285) |
+| CVE-2024-27132 | xss | missed (43) | missed (73) | missed (73) | missed (62) |
+| CVE-2024-27133 | xss | missed (43) | missed (73) | missed (73) | missed (62) |
+| CVE-2024-31462 | path | missed (0) | missed (25) | missed (25) | missed (18) |
+| CVE-2024-39877 | code | missed (650) | caught, fix clean (1316) | caught, fix clean (1323) | caught, fix clean (846) |
+| CVE-2024-41656 | xss | missed (30) | missed (37) | missed (116) | missed (116) |
+| CVE-2024-41675 | xss | missed (0) | missed (0) | missed (16) | missed (16) |
+| **total** | | **0 caught, 0 with fix clean; 1 fixed trees flagged; 1144 findings** | **1 caught, 1 with fix clean; 1 fixed trees flagged; 2030 findings** | **2 caught, 1 with fix clean; 2 fixed trees flagged; 2231 findings** | **2 caught, 1 with fix clean; 2 fixed trees flagged; 1660 findings** |
 
 Dev split (the 16 CVEs the fixes were designed from; development evidence, not proof):
 
@@ -365,6 +365,10 @@ not read). The cost shows in the counts: the new sources roughly double what is 
 library input 19 (16 deserialization, 2 command, 1 template), remote replies 18. These are weak-source findings
 (review lane, never `confirmed` on their own): the verifier and the triage model exist to rank and remove them, and
 their cost is what the live pipeline has to absorb. Engine-only counts here are an upper bound on what a user sees.
+Broken down by source on the dev split, most of the added noise on large repositories came from remote replies, not
+library input (airflow: 336 path and 126 SQL findings from downloaded values). cc64124 counts a remote reply only
+where it is executed (code, template, deserialization, command): on the held-out split findings drop 2231 -> 1660
+(-26%) with the same catches; still +45% over the frozen engine.
 
 What this does and does not show:
 - The causes were real and general. Fixing them moved the dev split from 1 to 8 caught (4 with the fix clean), and on
