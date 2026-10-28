@@ -95,3 +95,12 @@ def test_name_bound_call_does_not_return_the_candidates_own_taint(tmp_path):
     found = _findings(tmp_path, src)
     assert ("wipe", "cmdi") not in found
     assert ("passthrough", "cmdi") in found
+
+
+def test_files_in_other_encodings_do_not_abort_extraction(tmp_path):
+    (tmp_path / "app").mkdir()
+    (tmp_path / "app" / "__init__.py").write_text("")
+    (tmp_path / "app" / "latin.py").write_bytes(b"# -*- coding: latin-1 -*-\nNAME = '\xb1'\n")
+    (tmp_path / "app" / "broken.py").write_bytes(b"X = '\xb1'\n")  # no cookie, not UTF-8
+    facts = extract(tmp_path)
+    assert facts.files["app/latin.py"].endswith("NAME = '±'\n") and "app/broken.py" in facts.files

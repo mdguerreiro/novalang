@@ -277,6 +277,19 @@ class Facts:
         return best
 
 
+def _read_source(path: Path) -> str:
+    """Decode a source file the way Python does (PEP 263 coding cookie, BOM), else latin-1: one oddly encoded file in a
+    customer repository must not abort the scan."""
+    import io
+    import tokenize
+    raw = path.read_bytes()
+    try:
+        enc, _ = tokenize.detect_encoding(io.BytesIO(raw).readline)
+        return raw.decode(enc)
+    except (SyntaxError, UnicodeDecodeError, LookupError):
+        return raw.decode("latin-1")
+
+
 def _span_size(n: Node) -> tuple[int, int]:
     return (n.l2 - n.l1, (n.c2 - n.c1) if n.l1 == n.l2 else 10_000 + n.c2)
 
@@ -363,7 +376,7 @@ class PythonExtractor:
             rel = path.relative_to(self.root).as_posix()
             if any(part.startswith(".") for part in rel.split("/")):
                 continue
-            src = path.read_text(encoding="utf-8")
+            src = _read_source(path)
             self.facts.files[rel] = src
             try:
                 with warnings.catch_warnings():  # customer code: invalid escapes etc. are not our business
