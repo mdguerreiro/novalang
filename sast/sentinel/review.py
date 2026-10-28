@@ -188,7 +188,11 @@ def review(facts: Facts, a: Analysis, reader, cache_get, cache_put, budget: int 
         key = hashlib.sha256(json.dumps([reader.name, ctx, chunks]).encode()).hexdigest()[:24]
         found = cache_get(key)
         if found is None:
-            found = [i.__dict__ for i in reader.read(chunks, ctx)]
+            got = reader.read(chunks, ctx)
+            if got is None:  # transient API failure: not cached, retried next scan
+                res["failed"] = res.get("failed", 0) + 1
+                continue
+            found = [i.__dict__ for i in got]
             cache_put(key, p.fn, found)
             res["read"] += 1
         else:

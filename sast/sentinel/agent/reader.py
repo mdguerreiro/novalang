@@ -64,8 +64,9 @@ class ClaudeReader:
                 output_config={"effort": os.environ.get("SENTINEL_READ_EFFORT", "medium"),
                                "format": {"type": "json_schema", "schema": SCHEMA}},
                 messages=[{"role": "user", "content": PROMPT.format(classes=", ".join(CLASSES), code=render(chunks))}])
-        except anthropic.APIError:
-            return []
+        except (anthropic.RateLimitError, anthropic.InternalServerError, anthropic.APIConnectionError):
+            return []  # transient: this handler goes unread this scan
+        # Anything else (billing, auth, a malformed request) raises: an empty answer would read as "no issues".
         text = next((b.text for b in r.content if b.type == "text"), "{}")
         try:
             return [ReadIssue(**x) for x in json.loads(text)["issues"]]
@@ -128,7 +129,7 @@ class ClaudeReviewReader:
         self.model, self.beta = MODEL, FALLBACK_BETA
         self.name = f"claude-review-v1:{MODEL}"
 
-    def read(self, chunks: list[tuple[str, int, str]], context: str = "") -> list[ReadIssue]:
+    def read(self, chunks: list[tuple[str, int, str]], context: str = "") -> list[ReadIssue] | None:
         import anthropic
         try:
             r = self.client.beta.messages.create(
@@ -137,8 +138,9 @@ class ClaudeReviewReader:
                                "format": {"type": "json_schema", "schema": REVIEW_SCHEMA}},
                 messages=[{"role": "user", "content": REVIEW_PROMPT.format(
                     context=context, classes=", ".join(CLASSES), code=render(chunks))}])
-        except anthropic.APIError:
-            return []
+        except (anthropic.RateLimitError, anthropic.InternalServerError, anthropic.APIConnectionError):
+            return None  # transient: this read is skipped and not cached, so the next scan retries it
+        # Anything else (billing, auth, a malformed request) raises: an empty answer would read as "no issues".
         if r.stop_reason == "refusal":
             return []
         text = next((b.text for b in r.content if b.type == "text"), "{}")

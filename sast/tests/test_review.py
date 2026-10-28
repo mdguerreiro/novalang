@@ -142,3 +142,27 @@ def test_ranking_sees_text_built_sql_and_view_methods_behind_unknown_decorators(
 def test_auto_budget_scales_with_the_ranked_surface():
     assert rv.budget_for(10, "auto") == 30 and rv.budget_for(1000, "auto") == 50 and rv.budget_for(28000, "auto") == 100
     assert rv.budget_for(5000, 30) == 30
+
+
+def test_failed_reads_are_not_cached_and_billing_errors_raise(tmp_path):
+    import pytest
+    facts, a = _setup(tmp_path)
+    store, get, put = _mem_cache()
+
+    class Flaky:
+        name = "flaky"
+
+        def read(self, chunks, context=""):
+            return None  # what the Claude reader returns on a rate limit / 5xx
+
+    res = rv.review(facts, a, Flaky(), get, put, budget=5)
+    assert res["read"] == 0 and res["failed"] > 0 and not store
+
+    class Broke:
+        name = "broke"
+
+        def read(self, chunks, context=""):
+            raise RuntimeError("credit balance too low")
+
+    with pytest.raises(RuntimeError):
+        rv.review(facts, a, Broke(), get, put, budget=5)
