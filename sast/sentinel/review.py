@@ -23,7 +23,17 @@ from dataclasses import dataclass, field
 from .engine.analyze import CLASSES, CWE, VIEW_BASE_RE, Analysis, Finding, Step, _public
 from .extract.python_facts import Facts, is_test_path
 
-REVIEW_BUDGET = int(os.environ.get("SENTINEL_REVIEW_BUDGET", "30"))  # reads per scan, highest-ranked first
+# Reads per scan, highest-ranked first. "auto": 5% of the ranked attack surface, at least 30 and at most 100 (a fixed 30
+# covers a library of 400 functions and 1% of a 28k-function framework).
+REVIEW_BUDGET = os.environ.get("SENTINEL_REVIEW_BUDGET", "30")
+AUTO_MIN, AUTO_MAX, AUTO_SHARE = 30, 100, 0.05
+
+
+def budget_for(ranked: int, budget: int | str | None = None) -> int:
+    b = REVIEW_BUDGET if budget is None else budget
+    if str(b) == "auto":
+        return max(AUTO_MIN, min(AUTO_MAX, -(-int(ranked * AUTO_SHARE * 100) // 100)))
+    return int(b)
 MIN_CONFIDENCE = float(os.environ.get("SENTINEL_REVIEW_MIN_CONF", "0.6"))
 MAX_LINES = 260  # lines per read (function + callees)
 
@@ -161,15 +171,16 @@ def innermost(facts: Facts, file: str, line: int) -> str | None:
     return best
 
 
-def review(facts: Facts, a: Analysis, reader, cache_get, cache_put, budget: int = REVIEW_BUDGET,
+def review(facts: Facts, a: Analysis, reader, cache_get, cache_put, budget: int | str | None = None,
            select: str = "engine") -> dict:
     """Read the top `budget` picks. Returns {"picks", "read", "cached", "issues": [...], "findings": [Finding],
     "proposals": [(pred, args, scope, confidence, rationale)]}. `cache_get(key)` / `cache_put(key, fn, issues)` persist
     reads (the same code is never read twice by the same reader)."""
-    picks = rank(facts, a, select)[:budget]
+    ranked = rank(facts, a, select)
+    picks = ranked[:budget_for(len(ranked), budget)]
     reported = {(f.sink_fn, f.cls) for f in a.findings if f.status in ("confirmed", "undecided")}
     spec_sink_nodes = {m.node for m in a.matches if m.role == "sink"}
-    res = {"picks": [p.fn for p in picks], "read": 0, "cached": 0, "issues": [], "findings": [], "proposals": []}
+    res = {"picks": [p.fn for p in picks], "ranked": len(ranked), "read": 0, "cached": 0, "issues": [], "findings": [], "proposals": []}
     seen = set()
     for p in picks:
         chunks = chunks_for(facts, p.fn)

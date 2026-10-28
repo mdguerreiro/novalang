@@ -137,3 +137,8 @@ def test_ranking_sees_text_built_sql_and_view_methods_behind_unknown_decorators(
     picks = {p.fn: p.why for p in rv.rank(facts, a)}
     assert "builds SQL/HTML/shell text" in picks["pkg.ops.Ops.explain_prefix"]
     assert "in a view class" in picks["pkg.views.ProviderView.index.clean"]
+
+
+def test_auto_budget_scales_with_the_ranked_surface():
+    assert rv.budget_for(10, "auto") == 30 and rv.budget_for(1000, "auto") == 50 and rv.budget_for(28000, "auto") == 100
+    assert rv.budget_for(5000, 30) == 30
