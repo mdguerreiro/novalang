@@ -4,6 +4,16 @@ Running plan/status, updated every loop iteration so work can resume from here.
 
 ## Where it stands
 
+Confidence run (2026-10-27/28, docs/evaluation.md "Confidence"): 27 CVEs never read during development (two held-out
+splits). Engine alone: 1 -> 4 caught (3 with the fix clean); on dev trees 75% fewer findings, false positives down
+from 87% to 53% (labelled random samples). Most remaining misses are not source-to-sink flows the engine can see
+(14 of 21: no sink of the class in the vulnerable function). Engine-guided review (`sentinel/review.py`, opt-in
+`SENTINEL_REVIEW=1`): the engine ranks the attack surface, the model reads the top 30 functions per repository:
+7 caught (5 clean) at $9.38 for all 54 trees; its reports 29% real / 17% false. Ablation: the same model and budget on
+keyword-grep picks reads the vulnerable function 3 times instead of 8 and catches 5. Next: a larger, size-scaled read
+budget for big frameworks (the vulnerable function is usually not read in 10-28k-function repositories), and feeding
+the review's proposed facts (sink_api / not_sanitizer) back through the gate.
+
 Real-CVE diagnosis (2026-10-27, docs/evaluation.md "Why real CVEs are missed"): most real CVEs are in libraries and
 tools whose attacker input is not a web request. Fixed generally (library input near execution sinks, remote replies,
 closures, template/argument-injection/pickle-loader sinks, curated web-framework pack, class-based views). Engine only,

@@ -384,6 +384,101 @@ What this does and does not show:
   confirm the library-input and deserialization gains from the dev split.
 - 12 CVEs is small; one caught case is a signal, not a rate.
 
+## Confidence: precision audits, a second held-out split, and engine-guided review
+
+Goal set by the user: be confident the engine works well. Three measurements, all on code never read during
+development except where stated: (1) recall on more unseen CVEs, (2) precision measured by reading reported
+findings, (3) what the model adds when the engine decides where it reads.
+
+### A second held-out split (rw4)
+
+15 CVEs mined from the 54 cloned repositories' own history (`rw4/mine.py`): a non-merge commit whose message names a
+CVE id and a vulnerability class; vulnerable tree = its parent, fixed tree = the commit, targets = the non-test
+functions it changes (1-6). Seeded order, at most 3 per repository, CVEs of splits 1-2 excluded. Built and frozen before
+any of the changes below. Class labels come from commit-message keywords (noisy). Together with rw3: 27 unseen CVEs.
+
+### Precision, measured
+
+A random sample of 40 reported findings on dev trees (stratified by source kind, seeded), each labelled by a reviewer
+agent that reads the code: TP (real, attacker-reachable), WEAK (real pattern, attacker control doubtful: operator CLI,
+config, developer-chosen input), FP. Rates weighted by how many findings each source kind produces:
+
+| Engine | Findings on 9 dev trees | TP | WEAK | FP |
+|---|---|---|---|---|
+| cc64124 + pack (audit 1) | 1206 | 0.5% | 12% | 87% |
+| 2a5d159 (audit 2) | 305 | 6% | 41% | 53% |
+
+What audit 1 found and what fixed it (each a general rule with tests): a lookup key tainted the record it selects
+(`TaskInstance.filter_by(dag_id=...)` made every task instance attacker data; 498799f); a call bound by method name
+alone poured its receiver into an unrelated class's `self` (498799f). airflow: 846 -> 43 findings, its CVE still caught
+with the fixed tree clean. Audit 2's causes, fixed in b4c6d5e: a name-bound call returned the candidate's own taint
+to every call site (`table.delete()` receiving the return of every `delete` that reads a request); `yaml.load` with a
+project's SafeLoader subclass; `zipfile` extraction (CPython strips `..`); test clients' replies (airflow 43 -> 20).
+Not fixed: a project method named `execute` matched as DB-API (3 findings, one repository).
+
+Two scale fixes found on the way: remote replies pooled into one synthetic source (litellm, 131 replies on a 2.4M-node
+graph, ran out of memory; 2a5d159), and the witness search and Semgrep match lifting (f89a73d, a23658a): one
+litellm analysis had run for over an hour; with both, 10-13 minutes.
+
+### Why the engine still misses unseen CVEs
+
+For each held-out miss, from engine output only (`missdiag.py`, no code read): in 14 of 21 the vulnerable function
+contains no sink of the CVE's class the engine knows (framework internals such as Django's SQL compiler, a template
+tag, an incomplete validator: the bug is not a source-to-sink flow); in 4 the sink is there but no attacker data
+reaches it; in 2 data reaches the function but only as another class; 1 is a benchmark data error (target function
+absent from the tree). Taint analysis alone cannot close most of this gap, and the frontier cannot either: it only asks
+about code tainted data already reaches.
+
+### Engine-guided review
+
+`sentinel/review.py` (1f93c22, 97faa56): the engine ranks the attack surface (functions reachable from an entry point
+or a library's public API, a view class, doing something security-relevant: modelled sinks, sensitive library calls,
+SQL/HTML/shell text built by formatting, guards, validators; already-reported sinks demoted) and a model reads the top
+30, one function plus its project callees per call, cached by a hash of exactly that code. Issues go to the review
+lane, never auto-confirmed; a cited line outside what was read is discarded. API-level answers become proposed,
+gated knowledge (a dangerous library call the specs miss -> `sink_api`; a project validator shown bypassable ->
+`not_sanitizer`), e.g. `markupsafe.Markup` (XSS) and `httpx.Client().stream` (SSRF) were proposed from held-out reads.
+
+Held-out, 27 CVEs, vulnerable and fixed tree each (model: the default Opus tier, structured output, medium effort):
+
+| | caught | fix clean | fixed tree flagged | target function read | cost (54 trees) |
+|---|---|---|---|---|---|
+| frozen engine (90a9ea8) | 1 | 1 | 0 | - | $0 |
+| engine alone (b0e76b7) | 4 | 3 | 2 | - | $0 |
+| + review, ranking v1 (1f93c22) | 5 | 4 | 2 | 6 | $12.00 |
+| + review, ranking v2 (97faa56) | 7 | 5 | 3 | 8 | $9.38 |
+| + review, grep ranking (ablation) | 5 | 4 | 2 | 3 | $11.97 |
+
+Ranking v2's two signals (text-built SQL/HTML/shell, view-class methods) were chosen from dev CVEs only (the
+target's rank on dev: DRF 17 -> 1, airflow XSS unranked -> 4). Review-only catches: gradio open redirect (28415),
+stable-diffusion-webui path traversal (31462), changedetection XSS (52558, fixed tree still flagged). A fixed tree costs
+little: only the functions the fix changed are read again.
+
+Precision of what the review reports (all 72 issues of both runs, labelled by three reviewer agents with the audit
+rubric; held-out code read for grading only, after the runs): TP 29%, WEAK 54%, FP 17% (unique code locations: 11 /
+17 / 5 of 33). WEAK is mostly operator-only input (salt runners, Django `startproject` templates, an app's own
+configured URLs). Real issues it reported that are not the scored CVE: GitPython's unsafe-option guard bypassed by
+`upload_pack`/abbreviated options, Django 2.2's alias SQL injection (CVE-2022-28346) in the older Django trees, open
+redirects in jumpserver, ckan and shuup, unescaped page diffs in changedetection's RSS feed. It also reported the
+sinks of mlflow CVE-2024-27132/27133 and sentry CVE-2024-41656 outside the functions the fixes changed, which the
+scorer (finding in a target function) does not count.
+
+What this shows and does not:
+- Engine alone, unseen code: 1 -> 4 of 27 caught (3 clean), with 75% fewer findings per tree on dev trees and false
+  positives down from 87% to 53% of what is reported.
+- The guided review adds catches taint analysis cannot make, at about $0.35 per CVE (both trees), and reports far
+  more precisely than the engine (FP 17% vs 53%).
+- The engine is what makes the review work. Same model, same 30 reads per repository, functions chosen by keyword
+  grep instead of the engine: the vulnerable function was read in 3 of 27 CVEs (engine ranking: 8), one review-only
+  catch (yt-dlp command injection, which the engine rankings did not pick) against three, at a higher cost ($11.97 vs
+  $9.38). The two rankings miss different CVEs; together they would catch 8.
+- The limit is ranking: with 30 reads the vulnerable function was read in 8 of 27 CVEs; Django and litellm have
+  10-28k functions. When it was read, the model usually found the bug.
+- Live spend for this evaluation: $34.48 (pilot $1.13, ranking v1 $12.00, v2 $9.38, grep $11.97), within the $50
+  approved.
+- Caveats: 27 CVEs; one run per configuration (model output varies); the model may have seen these public CVEs in
+  training (9 of the 27 are from 2025-2026; the split is too small to compare the two groups); labels are by model reviewers with a fixed rubric, not by the projects.
+
 ## Stored data (second-order flows, RIPS-style)
 
 Writes and reads are matched by table (SQL `INSERT/UPDATE` vs `SELECT ... FROM`), ORM model (constructor /
