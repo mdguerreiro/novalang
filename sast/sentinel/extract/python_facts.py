@@ -258,10 +258,17 @@ class Facts:
 
     def node_at(self, file: str, l1: int, c1: int, l2: int, c2: int) -> Node | None:
         """Exact span match first, then the smallest node that contains the span."""
+        # Per-file index (insertion order kept, so ties resolve as before): one Semgrep match per call scanned all
+        # nodes, minutes on a 2M-node repository.
+        idx = self.__dict__.get("_by_file")
+        if idx is None or idx[0] != len(self.nodes):
+            by: dict[str, list[Node]] = defaultdict(list)
+            for x in self.nodes.values():
+                if x.kind not in ("def", "guard", "param"):
+                    by[x.file].append(x)
+            idx = self.__dict__["_by_file"] = (len(self.nodes), by)
         best = None
-        for n in self.nodes.values():
-            if n.file != file or n.kind in ("def", "guard", "param"):
-                continue
+        for n in idx[1].get(file, ()):
             if (n.l1, n.c1, n.l2, n.c2) == (l1, c1, l2, c2):
                 return n
             if (n.l1, n.c1) <= (l1, c1) and (n.l2, n.c2) >= (l2, c2):
