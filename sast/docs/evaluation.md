@@ -429,6 +429,16 @@ reaches it; in 2 data reaches the function but only as another class; 1 is a ben
 absent from the tree). Taint analysis alone cannot close most of this gap, and the frontier cannot either: it only asks
 about code tainted data already reaches.
 
+### A third, fresh held-out split (rw5)
+
+24 CVE/GHSA fix commits from 45 further repositories, not used before (Flask, Jinja, requests, Pillow, OctoPrint, zulip,
+wagtail, langchain, open-webui, pgAdmin, pyload, ...; 12 of them yielded cases), mined like rw4 with GHSA ids also
+accepted and up to 4 cases per repository; frozen before the runs. Engine alone (57010db): 5 of 24 caught, 2 with the
+fixed tree clean; 4 fixed trees flagged (3 of the catches and one deserialization case flagged only after its fix). So
+on all 51 unseen CVEs the engine alone catches 9 (5 clean). The guided-review runs on this split stopped when the API
+account ran out of credit (the reader turned that error into empty "no issues" answers; fixed in faffe63: billing and
+auth errors now stop the scan, transient failures are not cached). They resume when credit is available.
+
 ### Engine-guided review
 
 `sentinel/review.py` (1f93c22, 97faa56): the engine ranks the attack surface (functions reachable from an entry point
