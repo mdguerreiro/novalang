@@ -1,0 +1,660 @@
+{
+ "CVE-2021-45452-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 134,
+  "minutes": 2.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "interface-source (RC1)",
+   "Pysa": "interface-source (RC1)"
+  },
+  "near": [],
+  "kinds": {
+   "cli/sqli": 36,
+   "http/redirect": 4,
+   "http/sqli": 67,
+   "api/deser": 6,
+   "cli/code": 1,
+   "api/ssti": 1,
+   "archive/sqli": 7,
+   "http/path": 4,
+   "http/xss": 5,
+   "api/cmdi": 3
+  }
+ },
+ "CVE-2021-45452-fix": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 134,
+  "minutes": 2.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/sqli": 36,
+   "http/redirect": 4,
+   "http/sqli": 67,
+   "api/deser": 6,
+   "cli/code": 1,
+   "api/ssti": 1,
+   "archive/sqli": 7,
+   "http/path": 4,
+   "http/xss": 5,
+   "api/cmdi": 3
+  }
+ },
+ "CVE-2024-39877-vul": {
+  "cls": "code",
+  "flagged": true,
+  "reported": 846,
+  "minutes": 8.9,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "intrinsic (RC2)",
+   "Codeql": "detected",
+   "Pysa": "no sink (RC1)"
+  },
+  "near": [
+   {
+    "cls": "ssti",
+    "source_fn": "airflow.models.dag.DAG.get_doc_md",
+    "sink_fn": "airflow.models.dag.DAG.get_doc_md",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "http/sqli": 241,
+   "http/path": 468,
+   "http/ssti": 29,
+   "api/ssti": 2,
+   "archive/path": 16,
+   "archive/sqli": 8,
+   "archive/ssti": 1,
+   "api/deser": 3,
+   "api/code": 1,
+   "http/xss": 6,
+   "cli/path": 16,
+   "cli/sqli": 6,
+   "cli/ssti": 1,
+   "network/ssti": 21,
+   "http/redirect": 11,
+   "network/cmdi": 2,
+   "http/ssrf": 6,
+   "http/deser": 1,
+   "route/sqli": 7
+  }
+ },
+ "CVE-2024-39877-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 878,
+  "minutes": 9.0,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "http/sqli": 241,
+   "http/path": 468,
+   "http/ssrf": 36,
+   "http/ssti": 29,
+   "archive/path": 16,
+   "archive/sqli": 8,
+   "archive/ssrf": 2,
+   "archive/ssti": 1,
+   "api/deser": 3,
+   "api/code": 1,
+   "http/xss": 6,
+   "api/ssti": 1,
+   "cli/path": 16,
+   "cli/sqli": 6,
+   "cli/ssrf": 1,
+   "cli/ssti": 1,
+   "network/ssti": 21,
+   "http/redirect": 11,
+   "network/cmdi": 2,
+   "http/deser": 1,
+   "route/sqli": 7
+  }
+ },
+ "CVE-2024-41656-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 116,
+  "minutes": 3.4,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f (RC2)"
+  },
+  "near": [],
+  "kinds": {
+   "cli/path": 21,
+   "api/deser": 4,
+   "http/path": 35,
+   "http/redirect": 3,
+   "route/path": 18,
+   "stored/path": 4,
+   "http/ssrf": 1,
+   "archive/path": 9,
+   "route/sqli": 16,
+   "api/code": 3,
+   "route/xss": 1,
+   "route/redirect": 1
+  }
+ },
+ "CVE-2024-41656-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 116,
+  "minutes": 3.6,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/path": 21,
+   "api/deser": 4,
+   "http/path": 35,
+   "http/redirect": 3,
+   "route/path": 18,
+   "stored/path": 4,
+   "http/ssrf": 1,
+   "archive/path": 9,
+   "route/sqli": 16,
+   "api/code": 3,
+   "route/xss": 1,
+   "route/redirect": 1
+  }
+ },
+ "CVE-2024-31462-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 18,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "rule implementation (RC1)",
+   "Codeql": "detected",
+   "Pysa": "inadquate capability (RC2), no sink (RC1)"
+  },
+  "near": [],
+  "kinds": {
+   "api/deser": 16,
+   "network/deser": 1,
+   "api/code": 1
+  }
+ },
+ "CVE-2024-31462-fix": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 13,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "api/deser": 11,
+   "network/deser": 1,
+   "api/code": 1
+  }
+ },
+ "CVE-2023-42819-vul": {
+  "cls": "path",
+  "flagged": true,
+  "reported": 30,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "no sink (RC1)",
+   "Codeql": "detected",
+   "Pysa": "no req (RC1)"
+  },
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.get",
+    "sink_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.get",
+    "lane": "confirmed"
+   },
+   {
+    "cls": "path",
+    "source_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.post",
+    "sink_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.post",
+    "lane": "confirmed"
+   },
+   {
+    "cls": "path",
+    "source_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.patch",
+    "sink_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.patch",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.delete",
+    "sink_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.delete",
+    "lane": "confirmed"
+   }
+  ],
+  "kinds": {
+   "http/redirect": 6,
+   "route/redirect": 3,
+   "route/path": 5,
+   "api/code": 1,
+   "archive/path": 2,
+   "route/ssrf": 1,
+   "cli/cmdi": 2,
+   "cli/path": 6,
+   "cli/sqli": 4
+  }
+ },
+ "CVE-2023-42819-fix": {
+  "cls": "path",
+  "flagged": true,
+  "reported": 30,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.get",
+    "sink_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.get",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.post",
+    "sink_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.post",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.patch",
+    "sink_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.patch",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.delete",
+    "sink_fn": "apps.ops.api.playbook.PlaybookFileBrowserAPIView.delete",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "http/redirect": 6,
+   "route/redirect": 3,
+   "route/path": 5,
+   "api/code": 1,
+   "archive/path": 2,
+   "route/ssrf": 1,
+   "cli/cmdi": 2,
+   "cli/path": 6,
+   "cli/sqli": 4
+  }
+ },
+ "CVE-2024-41675-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 16,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "hard to detect (RC3)",
+   "DevSkim": "hard_to_detect (RC3)",
+   "Dlint": "hard to detect (RC3)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "no sink (RC1)"
+  },
+  "near": [],
+  "kinds": {
+   "route/xss": 14,
+   "route/sqli": 2
+  }
+ },
+ "CVE-2024-41675-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 16,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "route/xss": 14,
+   "route/sqli": 2
+  }
+ },
+ "CVE-2021-25283-vul": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 85,
+  "minutes": 11.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "detected",
+   "Semgrep": "detected",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f source (RC2)"
+  },
+  "near": [],
+  "kinds": {
+   "cli/code": 8,
+   "cli/path": 20,
+   "archive/path": 18,
+   "network/cmdi": 1,
+   "cli/cmdi": 1,
+   "cli/deser": 2,
+   "cli/ssti": 1,
+   "archive/code": 3,
+   "network/code": 7,
+   "api/cmdi": 7,
+   "api/deser": 8,
+   "api/ssti": 6,
+   "api/code": 2,
+   "cli/sqli": 1
+  }
+ },
+ "CVE-2021-25283-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 85,
+  "minutes": 11.8,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/code": 8,
+   "cli/path": 20,
+   "archive/path": 18,
+   "network/cmdi": 1,
+   "cli/cmdi": 1,
+   "cli/deser": 2,
+   "cli/ssti": 1,
+   "archive/code": 3,
+   "network/code": 7,
+   "api/cmdi": 7,
+   "api/deser": 8,
+   "api/ssti": 6,
+   "api/code": 2,
+   "cli/sqli": 1
+  }
+ },
+ "CVE-2023-41040-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 1,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "rule implementation (RC1)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f source (RC2)"
+  },
+  "near": [],
+  "kinds": {
+   "api/cmdi": 1
+  }
+ },
+ "CVE-2023-41040-fix": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 1,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "api/cmdi": 1
+  }
+ },
+ "CVE-2021-25963-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 5,
+  "minutes": 0.4,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "detected",
+   "Pysa": "no sink (RC1)"
+  },
+  "near": [],
+  "kinds": {
+   "route/redirect": 3,
+   "http/redirect": 1,
+   "api/cmdi": 1
+  }
+ },
+ "CVE-2021-25963-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 5,
+  "minutes": 0.4,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "route/redirect": 3,
+   "http/redirect": 1,
+   "api/cmdi": 1
+  }
+ },
+ "CVE-2024-27132-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 62,
+  "minutes": 1.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f source (RC2)"
+  },
+  "near": [],
+  "kinds": {
+   "cli/cmdi": 2,
+   "cli/path": 24,
+   "cli/ssrf": 1,
+   "cli/deser": 1,
+   "archive/path": 4,
+   "network/cmdi": 7,
+   "api/deser": 9,
+   "api/cmdi": 1,
+   "http/xss": 1,
+   "http/path": 12
+  }
+ },
+ "CVE-2024-27132-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 62,
+  "minutes": 1.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/cmdi": 2,
+   "cli/path": 24,
+   "cli/ssrf": 1,
+   "cli/deser": 1,
+   "archive/path": 4,
+   "network/cmdi": 7,
+   "api/deser": 9,
+   "api/cmdi": 1,
+   "http/xss": 1,
+   "http/path": 12
+  }
+ },
+ "CVE-2024-27133-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 62,
+  "minutes": 1.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f source (RC2)"
+  },
+  "near": [],
+  "kinds": {
+   "cli/cmdi": 2,
+   "cli/path": 24,
+   "cli/ssrf": 1,
+   "cli/deser": 1,
+   "archive/path": 4,
+   "network/cmdi": 7,
+   "api/deser": 9,
+   "api/cmdi": 1,
+   "http/xss": 1,
+   "http/path": 12
+  }
+ },
+ "CVE-2024-27133-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 62,
+  "minutes": 1.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/cmdi": 2,
+   "cli/path": 24,
+   "cli/ssrf": 1,
+   "cli/deser": 1,
+   "archive/path": 4,
+   "network/cmdi": 7,
+   "api/deser": 9,
+   "api/cmdi": 1,
+   "http/xss": 1,
+   "http/path": 12
+  }
+ },
+ "CVE-2023-50265-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 285,
+  "minutes": 15.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "detected",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "rule implementation (RC1)",
+   "Codeql": "detected",
+   "Pysa": "no source (RC1)"
+  },
+  "near": [],
+  "kinds": {
+   "cli/sqli": 23,
+   "cli/ssrf": 35,
+   "cli/path": 182,
+   "http/sqli": 3,
+   "archive/path": 17,
+   "http/ssrf": 4,
+   "http/path": 1,
+   "cli/cmdi": 7,
+   "cli/code": 11,
+   "http/xss": 1,
+   "cli/deser": 1
+  }
+ },
+ "CVE-2023-50265-fix": {
+  "cls": "path",
+  "flagged": true,
+  "reported": 287,
+  "minutes": 16.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "bazarr.app.ui.swaggerui_static",
+    "sink_fn": "bazarr.app.ui.swaggerui_static",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/sqli": 23,
+   "cli/ssrf": 35,
+   "cli/path": 182,
+   "http/sqli": 3,
+   "archive/path": 17,
+   "http/path": 3,
+   "http/ssrf": 4,
+   "cli/cmdi": 7,
+   "cli/code": 11,
+   "http/xss": 1,
+   "cli/deser": 1
+  }
+ }
+}

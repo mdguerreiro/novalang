@@ -1,0 +1,954 @@
+{
+ "CVE-2026-54017-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 16,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "http/idor": 9,
+   "http/path": 5,
+   "api/code": 2
+  }
+ },
+ "CVE-2026-54017-fix": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 16,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "http/idor": 9,
+   "http/path": 5,
+   "api/code": 2
+  }
+ },
+ "GHSA-C7VM-F5P4-8FQH-vul": {
+  "cls": "redirect",
+  "flagged": false,
+  "reported": 5,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/ssrf": 2,
+   "archive/path": 2,
+   "api/cmdi": 1
+  }
+ },
+ "GHSA-C7VM-F5P4-8FQH-fix": {
+  "cls": "redirect",
+  "flagged": false,
+  "reported": 5,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/ssrf": 2,
+   "archive/path": 2,
+   "api/cmdi": 1
+  }
+ },
+ "CVE-2026-45401-vul": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 16,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "http/idor": 9,
+   "http/path": 5,
+   "api/code": 2
+  }
+ },
+ "CVE-2026-45401-fix": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 16,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "http/idor": 9,
+   "http/path": 5,
+   "api/code": 2
+  }
+ },
+ "CVE-2020-12759-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 42,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/path": 1,
+   "http/redirect": 34,
+   "http/path": 3,
+   "http/sqli": 1,
+   "http/cmdi": 3
+  }
+ },
+ "CVE-2020-12759-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 42,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/path": 1,
+   "http/redirect": 34,
+   "http/path": 3,
+   "http/sqli": 1,
+   "http/cmdi": 3
+  }
+ },
+ "CVE-2021-23727-vul": {
+  "cls": "cmdi",
+  "flagged": false,
+  "reported": 3,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "api/code": 1,
+   "api/deser": 2
+  }
+ },
+ "CVE-2021-23727-fix": {
+  "cls": "cmdi",
+  "flagged": false,
+  "reported": 3,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "api/code": 1,
+   "api/deser": 2
+  }
+ },
+ "CVE-2024-3116-vul": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 248,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "http/redirect": 8,
+   "http/sqli": 141,
+   "route/sqli": 63,
+   "route/path": 2,
+   "route/ssrf": 18,
+   "http/path": 12,
+   "http/xss": 3,
+   "header/xss": 1
+  }
+ },
+ "CVE-2024-3116-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 248,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "http/redirect": 8,
+   "http/sqli": 141,
+   "route/sqli": 63,
+   "route/path": 2,
+   "route/ssrf": 18,
+   "http/path": 12,
+   "http/xss": 3,
+   "header/xss": 1
+  }
+ },
+ "GHSA-88JQ-GRJP-JX6F-vul": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 17,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/ssrf": 1,
+   "http/idor": 9,
+   "http/path": 5,
+   "api/code": 2
+  }
+ },
+ "GHSA-88JQ-GRJP-JX6F-fix": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 17,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/ssrf": 1,
+   "http/idor": 9,
+   "http/path": 5,
+   "api/code": 2
+  }
+ },
+ "CVE-2025-12763-vul": {
+  "cls": "cmdi",
+  "flagged": false,
+  "reported": 470,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/path": 2,
+   "http/redirect": 8,
+   "http/deser": 144,
+   "http/sqli": 146,
+   "route/deser": 63,
+   "route/sqli": 64,
+   "route/path": 2,
+   "route/ssrf": 18,
+   "http/path": 16,
+   "http/xss": 6,
+   "header/xss": 1
+  }
+ },
+ "CVE-2025-12763-fix": {
+  "cls": "cmdi",
+  "flagged": false,
+  "reported": 470,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/path": 2,
+   "http/redirect": 8,
+   "http/deser": 144,
+   "http/sqli": 146,
+   "route/deser": 63,
+   "route/sqli": 64,
+   "route/path": 2,
+   "route/ssrf": 18,
+   "http/path": 16,
+   "http/xss": 6,
+   "header/xss": 1
+  }
+ },
+ "GHSA-QX72-X46H-WR9P-vul": {
+  "cls": "path",
+  "flagged": true,
+  "reported": 11,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "src.pyload.plugins.extractors.UnTar.UnTar.extract",
+    "sink_fn": "src.pyload.plugins.extractors.UnTar._safe_extractall",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/path": 7,
+   "api/code": 1,
+   "archive/path": 1,
+   "http/path": 2
+  }
+ },
+ "GHSA-QX72-X46H-WR9P-fix": {
+  "cls": "path",
+  "flagged": true,
+  "reported": 11,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "src.pyload.plugins.extractors.UnTar.UnTar.extract",
+    "sink_fn": "src.pyload.plugins.extractors.UnTar._safe_extractall",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/path": 7,
+   "api/code": 1,
+   "archive/path": 1,
+   "http/path": 2
+  }
+ },
+ "CVE-2019-19775-vul": {
+  "cls": "redirect",
+  "flagged": true,
+  "reported": 42,
+  "minutes": 0.4,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [
+   {
+    "cls": "redirect",
+    "source_fn": "zerver.views.camo.handle_camo_url",
+    "sink_fn": "zerver.views.camo.handle_camo_url",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/path": 1,
+   "http/redirect": 34,
+   "http/path": 3,
+   "http/sqli": 1,
+   "http/cmdi": 3
+  }
+ },
+ "CVE-2019-19775-fix": {
+  "cls": "redirect",
+  "flagged": true,
+  "reported": 42,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "redirect",
+    "source_fn": "zerver.views.camo.handle_camo_url",
+    "sink_fn": "zerver.views.camo.handle_camo_url",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/path": 1,
+   "http/redirect": 34,
+   "http/path": 3,
+   "http/sqli": 1,
+   "http/cmdi": 3
+  }
+ },
+ "CVE-2025-65958-vul": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 25,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/ssrf": 1,
+   "http/ssrf": 11,
+   "http/path": 11,
+   "api/code": 2
+  }
+ },
+ "CVE-2025-65958-fix": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 25,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/ssrf": 1,
+   "http/ssrf": 11,
+   "http/path": 11,
+   "api/code": 2
+  }
+ },
+ "GHSA-P5CM-246W-84JM-vul": {
+  "cls": "xss",
+  "flagged": true,
+  "reported": 18,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [
+   {
+    "cls": "xss",
+    "source_fn": "wagtail.contrib.table_block.templatetags.table_block_tags.cell_classname",
+    "sink_fn": "wagtail.contrib.table_block.templatetags.table_block_tags.cell_classname",
+    "lane": "undecided"
+   },
+   {
+    "cls": "xss",
+    "source_fn": "wagtail.contrib.table_block.templatetags.table_block_tags.cell_span",
+    "sink_fn": "wagtail.contrib.table_block.templatetags.table_block_tags.cell_span",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "http/idor": 4,
+   "http/redirect": 8,
+   "cli/sqli": 1,
+   "template/xss": 5
+  }
+ },
+ "GHSA-P5CM-246W-84JM-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 16,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "http/idor": 4,
+   "http/redirect": 8,
+   "cli/sqli": 1,
+   "template/xss": 3
+  }
+ },
+ "CVE-2019-6446-vul": {
+  "cls": "deser",
+  "flagged": false,
+  "reported": 5,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "api/code": 2,
+   "api/deser": 3
+  }
+ },
+ "CVE-2019-6446-fix": {
+  "cls": "deser",
+  "flagged": true,
+  "reported": 6,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "deser",
+    "source_fn": "keras.datasets.imdb.load_data",
+    "sink_fn": "keras.datasets.imdb.load_data",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "api/code": 2,
+   "api/deser": 4
+  }
+ },
+ "GHSA-74V8-HGWQ-2PPV-vul": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 11,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/path": 7,
+   "api/code": 1,
+   "archive/path": 1,
+   "http/path": 2
+  }
+ },
+ "GHSA-74V8-HGWQ-2PPV-fix": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 11,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/path": 7,
+   "api/code": 1,
+   "archive/path": 1,
+   "http/path": 2
+  }
+ },
+ "CVE-2024-46946-vul": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 15,
+  "minutes": 0.9,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "api/deser": 9,
+   "api/cmdi": 5,
+   "api/code": 1
+  }
+ },
+ "CVE-2024-46946-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 15,
+  "minutes": 1.0,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "api/deser": 9,
+   "api/cmdi": 5,
+   "api/code": 1
+  }
+ },
+ "CVE-2026-35397-vul": {
+  "cls": "path",
+  "flagged": true,
+  "reported": 14,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.fileio.atomic_writing",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.fileio.atomic_writing",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.fileio._simple_writing",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.fileio.FileManagerMixin.open",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.largefilemanager.LargeFileManager._save_large_file",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.largefilemanager.AsyncLargeFileManager._save_large_file",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "route/path": 14
+  }
+ },
+ "CVE-2026-35397-fix": {
+  "cls": "path",
+  "flagged": true,
+  "reported": 14,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.fileio.atomic_writing",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.fileio.atomic_writing",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.fileio._simple_writing",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.fileio.FileManagerMixin.open",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.largefilemanager.LargeFileManager._save_large_file",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "jupyter_server.services.contents.handlers.ContentsHandler.put",
+    "sink_fn": "jupyter_server.services.contents.largefilemanager.AsyncLargeFileManager._save_large_file",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "route/path": 14
+  }
+ },
+ "CVE-2026-26058-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 56,
+  "minutes": 1.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "http/path": 6,
+   "http/sqli": 7,
+   "http/redirect": 40,
+   "cli/sqli": 1,
+   "api/deser": 1,
+   "http/cmdi": 1
+  }
+ },
+ "CVE-2026-26058-fix": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 56,
+  "minutes": 1.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "http/path": 6,
+   "http/sqli": 7,
+   "http/redirect": 40,
+   "cli/sqli": 1,
+   "api/deser": 1,
+   "http/cmdi": 1
+  }
+ },
+ "CVE-2024-2044-vul": {
+  "cls": "deser",
+  "flagged": false,
+  "reported": 235,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "http/redirect": 8,
+   "http/sqli": 131,
+   "route/sqli": 60,
+   "route/path": 2,
+   "route/ssrf": 18,
+   "http/path": 12,
+   "http/xss": 3,
+   "header/xss": 1
+  }
+ },
+ "CVE-2024-2044-fix": {
+  "cls": "deser",
+  "flagged": false,
+  "reported": 235,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "http/redirect": 8,
+   "http/sqli": 131,
+   "route/sqli": 60,
+   "route/path": 2,
+   "route/ssrf": 18,
+   "http/path": 12,
+   "http/xss": 3,
+   "header/xss": 1
+  }
+ },
+ "CVE-2026-33340-vul": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 134,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/path": 30,
+   "cli/cmdi": 8,
+   "api/code": 4,
+   "http/path": 57,
+   "http/cmdi": 19,
+   "http/sqli": 2,
+   "api/cmdi": 8,
+   "api/deser": 6
+  }
+ },
+ "CVE-2026-33340-fix": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 134,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/path": 30,
+   "cli/cmdi": 8,
+   "api/code": 4,
+   "http/path": 57,
+   "http/cmdi": 19,
+   "http/sqli": 2,
+   "api/cmdi": 8,
+   "api/deser": 6
+  }
+ },
+ "CVE-2025-12762-vul": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 468,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/path": 2,
+   "http/redirect": 8,
+   "http/deser": 144,
+   "http/sqli": 146,
+   "route/deser": 63,
+   "route/sqli": 64,
+   "route/path": 2,
+   "route/ssrf": 18,
+   "http/path": 14,
+   "http/xss": 6,
+   "header/xss": 1
+  }
+ },
+ "CVE-2025-12762-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 470,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "web.pgadmin.tools.restore._get_create_req_data",
+    "sink_fn": "web.pgadmin.tools.restore.has_meta_commands",
+    "lane": "confirmed"
+   },
+   {
+    "cls": "path",
+    "source_fn": "web.pgadmin.tools.restore._get_create_req_data",
+    "sink_fn": "web.pgadmin.tools.restore.has_meta_commands",
+    "lane": "confirmed"
+   }
+  ],
+  "kinds": {
+   "cli/path": 2,
+   "http/redirect": 8,
+   "http/deser": 144,
+   "http/sqli": 146,
+   "route/deser": 63,
+   "route/sqli": 64,
+   "route/path": 2,
+   "route/ssrf": 18,
+   "http/path": 16,
+   "http/xss": 6,
+   "header/xss": 1
+  }
+ },
+ "CVE-2020-10935-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 38,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/path": 1,
+   "http/redirect": 32,
+   "http/path": 1,
+   "http/sqli": 1,
+   "http/cmdi": 3
+  }
+ },
+ "CVE-2020-10935-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 38,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/path": 1,
+   "http/redirect": 32,
+   "http/path": 1,
+   "http/sqli": 1,
+   "http/cmdi": 3
+  }
+ },
+ "CVE-2023-34540-vul": {
+  "cls": "code",
+  "flagged": true,
+  "reported": 7,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [
+   {
+    "cls": "code",
+    "source_fn": "langchain.utilities.jira.JiraAPIWrapper.other",
+    "sink_fn": "langchain.utilities.jira.JiraAPIWrapper.other",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "api/ssti": 1,
+   "api/code": 3,
+   "api/cmdi": 1,
+   "api/deser": 2
+  }
+ },
+ "CVE-2023-34540-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 6,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "api/ssti": 1,
+   "api/code": 2,
+   "api/cmdi": 1,
+   "api/deser": 2
+  }
+ },
+ "GHSA-FCW5-X6J4-CCMP-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 14,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "route/path": 14
+  }
+ },
+ "GHSA-FCW5-X6J4-CCMP-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 14,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "route/path": 14
+  }
+ },
+ "GHSA-XVXQ-G8HW-FX4G-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 17,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "route/path": 4,
+   "cli/path": 1,
+   "http/deser": 1,
+   "http/path": 1,
+   "route/redirect": 2,
+   "http/redirect": 5,
+   "route/xss": 2,
+   "cli/deser": 1
+  }
+ },
+ "GHSA-XVXQ-G8HW-FX4G-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 17,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "route/path": 4,
+   "cli/path": 1,
+   "http/deser": 1,
+   "http/path": 1,
+   "route/redirect": 2,
+   "http/redirect": 5,
+   "route/xss": 2,
+   "cli/deser": 1
+  }
+ }
+}

@@ -1,0 +1,3153 @@
+{
+ "seed": 20261028,
+ "alloc": {
+  "cli": 12,
+  "api": 8,
+  "http": 6,
+  "archive": 5,
+  "network": 5,
+  "route": 4
+ },
+ "population": {
+  "cli": 157,
+  "archive": 18,
+  "api": 69,
+  "network": 15,
+  "http": 39,
+  "route": 7
+ },
+ "sample": [
+  {
+   "repo": "CVE-2024-39863",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-vul",
+   "cls": "deser",
+   "kind": "api",
+   "status": "undecided",
+   "source_fn": "airflow.utils.yaml.safe_load",
+   "sink_fn": "airflow.utils.yaml.safe_load",
+   "file": "airflow/utils/yaml.py",
+   "line": 37,
+   "source_rule": "library-api",
+   "sink_rule": "spec.sink.deser.yaml-unsafe",
+   "path": [
+    {
+     "file": "airflow/utils/yaml.py",
+     "line": 37,
+     "fn": "airflow.utils.yaml.safe_load",
+     "kind": "flow",
+     "label": "stream"
+    },
+    {
+     "file": "airflow/utils/yaml.py",
+     "line": 47,
+     "fn": "airflow.utils.yaml.safe_load",
+     "kind": "sink",
+     "label": "stream"
+    }
+   ],
+   "id": "v5-275"
+  },
+  {
+   "repo": "CVE-2024-39863",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-vul",
+   "cls": "sqli",
+   "kind": "http",
+   "status": "undecided",
+   "source_fn": "airflow.www.views.Airflow.delete",
+   "sink_fn": "airflow.utils.db._move_dangling_data_to_new_table",
+   "file": "airflow/www/views.py",
+   "line": 1883,
+   "source_rule": "spec.source.flask.request-params",
+   "sink_rule": "spec.sink.sqli.dbapi-execute",
+   "path": [
+    {
+     "file": "airflow/www/views.py",
+     "line": 1883,
+     "fn": "airflow.www.views.Airflow.delete",
+     "kind": "source",
+     "label": "request.values.get('origin')"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 198,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "param",
+     "label": "url"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 205,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "guard",
+     "label": "not expr:\";\" in unquote(url)(url)"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 208,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "flow",
+     "label": "url"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 211,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "assumption",
+     "label": "urljoin(request.host_url, url)"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 211,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "assumption",
+     "label": "urlsplit(urljoin(request.host_url, url))"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 216,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "assumption",
+     "label": "redirect_url.geturl()"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 1883,
+     "fn": "airflow.www.views.Airflow.delete",
+     "kind": "return",
+     "label": "get_safe_url(request.values.get('origin'))"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 1903,
+     "fn": "airflow.www.views.Airflow.delete",
+     "kind": "assumption",
+     "label": "redirect(origin)"
+    },
+    {
+     "file": "airflow/utils/db.py",
+     "line": 1256,
+     "fn": "airflow.utils.db._move_dangling_data_to_new_table",
+     "kind": "return",
+     "label": "source_table.delete()"
+    },
+    {
+     "file": "airflow/utils/db.py",
+     "line": 1256,
+     "fn": "airflow.utils.db._move_dangling_data_to_new_table",
+     "kind": "assumption",
+     "label": "source_table.delete().where(tuple_(*pk_cols).in_(session.select(*target_table.pr"
+    },
+    {
+     "file": "airflow/utils/db.py",
+     "line": 1264,
+     "fn": "airflow.utils.db._move_dangling_data_to_new_table",
+     "kind": "sink",
+     "label": "delete"
+    }
+   ],
+   "id": "v5-291"
+  },
+  {
+   "repo": "CVE-2022-24065",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2022-24065-vul",
+   "cls": "path",
+   "kind": "archive",
+   "status": "undecided",
+   "source_fn": "cookiecutter.zipfile.unzip",
+   "sink_fn": "cookiecutter.zipfile.unzip",
+   "file": "cookiecutter/zipfile.py",
+   "line": 55,
+   "source_rule": "spec.source.archive.opened",
+   "sink_rule": "spec.sink.path.archive-extract",
+   "path": [
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 55,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "source",
+     "label": "ZipFile(zip_path)"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 57,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "guard",
+     "label": "not expr:len(zip_file.namelist()) == 0(zip_file)"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 76,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "sink",
+     "label": "zip_file"
+    }
+   ],
+   "id": "v5-257"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "sqli",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "parlai.scripts.build_dict.build_dict",
+   "sink_fn": "parlai.core.worlds.BatchWorld.parley",
+   "file": "parlai/scripts/build_dict.py",
+   "line": 65,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.sqli.dbapi-execute",
+   "path": [
+    {
+     "file": "parlai/scripts/build_dict.py",
+     "line": 65,
+     "fn": "parlai.scripts.build_dict.build_dict",
+     "kind": "source",
+     "label": "opt.parse_args()"
+    },
+    {
+     "file": "parlai/scripts/build_dict.py",
+     "line": 66,
+     "fn": "parlai.scripts.build_dict.build_dict",
+     "kind": "guard",
+     "label": "not expr:not opt.get('dict_file')(opt)"
+    },
+    {
+     "file": "parlai/scripts/build_dict.py",
+     "line": 72,
+     "fn": "parlai.scripts.build_dict.build_dict",
+     "kind": "guard",
+     "label": "not expr:skip_if_built and PathManager.exists(opt['dict_file'])(opt)"
+    },
+    {
+     "file": "parlai/scripts/build_dict.py",
+     "line": 77,
+     "fn": "parlai.scripts.build_dict.build_dict",
+     "kind": "guard",
+     "label": "expr:opt.get('dict_class')(opt)"
+    },
+    {
+     "file": "parlai/scripts/build_dict.py",
+     "line": 79,
+     "fn": "parlai.scripts.build_dict.build_dict",
+     "kind": "assumption",
+     "label": "str2class(opt['dict_class'])(opt)"
+    },
+    {
+     "file": "parlai/scripts/build_dict.py",
+     "line": 84,
+     "fn": "parlai.scripts.build_dict.build_dict",
+     "kind": "guard",
+     "label": "not expr:PathManager.exists(opt['dict_file']) or ( hasattr(dictionary, 'is_prebuilt') and dictionary.is_prebuilt() )(dictionary)"
+    },
+    {
+     "file": "parlai/scripts/build_dict.py",
+     "line": 113,
+     "fn": "parlai.scripts.build_dict.build_dict",
+     "kind": "flow",
+     "label": "dictionary"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1239,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "param",
+     "label": "user_agents"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1252,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "guard",
+     "label": "not expr:type(user_agents) != list(user_agents)"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1267,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "call",
+     "label": "MultiWorld(opt, user_agents, default_world=default_world)"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1273,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "flow",
+     "label": "world"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 755,
+     "fn": "parlai.core.worlds.BatchWorld.__init__",
+     "kind": "param",
+     "label": "world"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 765,
+     "fn": "parlai.core.worlds.BatchWorld.__init__",
+     "kind": "assumption",
+     "label": "world.share()"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 766,
+     "fn": "parlai.core.worlds.BatchWorld.__init__",
+     "kind": "flow",
+     "label": "shared"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 771,
+     "fn": "parlai.core.worlds.BatchWorld.__init__",
+     "kind": "assumption",
+     "label": "shared['world_class'](opt, None, shared)"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1,
+     "fn": "<heap>",
+     "kind": "flow",
+     "label": "parlai.core.worlds.BatchWorld.worlds"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 853,
+     "fn": "parlai.core.worlds.BatchWorld.parley",
+     "kind": "flow",
+     "label": "self.worlds"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 854,
+     "fn": "parlai.core.worlds.BatchWorld.parley",
+     "kind": "sink",
+     "label": "w.agents[agent_idx]"
+    }
+   ],
+   "id": "v5-149"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "path",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "parlai.tasks.eli5.data_creation.select_sentences_tfidf.setup_args",
+   "sink_fn": "parlai.tasks.eli5.data_creation.select_sentences_tfidf.main",
+   "file": "parlai/tasks/eli5/data_creation/select_sentences_tfidf.py",
+   "line": 103,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.path.file-access",
+   "path": [
+    {
+     "file": "parlai/tasks/eli5/data_creation/select_sentences_tfidf.py",
+     "line": 103,
+     "fn": "parlai.tasks.eli5.data_creation.select_sentences_tfidf.setup_args",
+     "kind": "source",
+     "label": "parser.parse_args()"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/select_sentences_tfidf.py",
+     "line": 107,
+     "fn": "parlai.tasks.eli5.data_creation.select_sentences_tfidf.main",
+     "kind": "return",
+     "label": "setup_args()"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/select_sentences_tfidf.py",
+     "line": 112,
+     "fn": "parlai.tasks.eli5.data_creation.select_sentences_tfidf.main",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/select_sentences_tfidf.py",
+     "line": 119,
+     "fn": "parlai.tasks.eli5.data_creation.select_sentences_tfidf.main",
+     "kind": "flow",
+     "label": "eli_path"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/select_sentences_tfidf.py",
+     "line": 120,
+     "fn": "parlai.tasks.eli5.data_creation.select_sentences_tfidf.main",
+     "kind": "sink",
+     "label": "qa_json"
+    }
+   ],
+   "id": "v5-176"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "cmdi",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "parlai.tasks.eli5.data_creation.download_support_docs.setup_args",
+   "sink_fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+   "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+   "line": 131,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.cmdi.subprocess-argv",
+   "path": [
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 131,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.setup_args",
+     "kind": "source",
+     "label": "parser.parse_args()"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 135,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "return",
+     "label": "setup_args()"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 137,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 136,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "flow",
+     "label": "pjoin(opt['datapath'], opt['output_dir'], 'processed_data/collected_docs')"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 178,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "guard",
+     "label": "call:os.path.isdir(output_dir)"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 203,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "guard",
+     "label": "not expr:isfile(pjoin(output_dir, 'tmp', 'counts_%s_%d.json' % (mode, opt['slnum'])))(output_dir)"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 228,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "flow",
+     "label": "output_dir"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 326,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "sink",
+     "label": "fpath"
+    }
+   ],
+   "id": "v5-167"
+  },
+  {
+   "repo": "CVE-2024-39863",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-vul",
+   "cls": "sqli",
+   "kind": "route",
+   "status": "undecided",
+   "source_fn": "airflow.www.views.PoolModelView.delete",
+   "sink_fn": "airflow.utils.db_cleanup._do_delete",
+   "file": "airflow/www/views.py",
+   "line": 4390,
+   "source_rule": "route-parameter",
+   "sink_rule": "spec.sink.sqli.dbapi-execute",
+   "path": [
+    {
+     "file": "airflow/www/views.py",
+     "line": 4390,
+     "fn": "airflow.www.views.PoolModelView.delete",
+     "kind": "source",
+     "label": "pk"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 4397,
+     "fn": "airflow.www.views.PoolModelView.delete",
+     "kind": "assumption",
+     "label": "super().delete(pk)"
+    },
+    {
+     "file": "airflow/utils/db_cleanup.py",
+     "line": 188,
+     "fn": "airflow.utils.db_cleanup._do_delete",
+     "kind": "return",
+     "label": "source_table.delete()"
+    },
+    {
+     "file": "airflow/utils/db_cleanup.py",
+     "line": 188,
+     "fn": "airflow.utils.db_cleanup._do_delete",
+     "kind": "assumption",
+     "label": "source_table.delete().where(tuple_(*pk_cols).in_(select(*[target_table.c[x.name]"
+    },
+    {
+     "file": "airflow/utils/db_cleanup.py",
+     "line": 196,
+     "fn": "airflow.utils.db_cleanup._do_delete",
+     "kind": "sink",
+     "label": "delete"
+    }
+   ],
+   "id": "v5-304"
+  },
+  {
+   "repo": "CVE-2024-37060",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-37060-vul",
+   "cls": "path",
+   "kind": "archive",
+   "status": "undecided",
+   "source_fn": "examples.multistep_workflow.load_raw_data.load_raw_data",
+   "sink_fn": "examples.multistep_workflow.load_raw_data.load_raw_data",
+   "file": "examples/multistep_workflow/load_raw_data.py",
+   "line": 31,
+   "source_rule": "spec.source.archive.opened",
+   "sink_rule": "spec.sink.path.archive-extract",
+   "path": [
+    {
+     "file": "examples/multistep_workflow/load_raw_data.py",
+     "line": 31,
+     "fn": "examples.multistep_workflow.load_raw_data.load_raw_data",
+     "kind": "source",
+     "label": "zipfile.ZipFile(local_filename, 'r')"
+    },
+    {
+     "file": "examples/multistep_workflow/load_raw_data.py",
+     "line": 32,
+     "fn": "examples.multistep_workflow.load_raw_data.load_raw_data",
+     "kind": "sink",
+     "label": "zip_ref"
+    }
+   ],
+   "id": "v5-230"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "deser",
+   "kind": "api",
+   "status": "undecided",
+   "source_fn": "projects.anti_scaling.scripts.remove_projection_matrices.remove_projection_matrices",
+   "sink_fn": "projects.anti_scaling.scripts.remove_projection_matrices.remove_projection_matrices",
+   "file": "projects/anti_scaling/scripts/remove_projection_matrices.py",
+   "line": 17,
+   "source_rule": "library-api",
+   "sink_rule": "spec.sink.deser.pickle-backed",
+   "path": [
+    {
+     "file": "projects/anti_scaling/scripts/remove_projection_matrices.py",
+     "line": 17,
+     "fn": "projects.anti_scaling.scripts.remove_projection_matrices.remove_projection_matrices",
+     "kind": "flow",
+     "label": "model_file"
+    },
+    {
+     "file": "projects/anti_scaling/scripts/remove_projection_matrices.py",
+     "line": 26,
+     "fn": "projects.anti_scaling.scripts.remove_projection_matrices.remove_projection_matrices",
+     "kind": "assumption",
+     "label": "PathManager.open(model_file, 'rb')"
+    },
+    {
+     "file": "projects/anti_scaling/scripts/remove_projection_matrices.py",
+     "line": 27,
+     "fn": "projects.anti_scaling.scripts.remove_projection_matrices.remove_projection_matrices",
+     "kind": "sink",
+     "label": "f"
+    }
+   ],
+   "id": "v5-185"
+  },
+  {
+   "repo": "CVE-2023-6709",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-6709-vul",
+   "cls": "deser",
+   "kind": "api",
+   "status": "undecided",
+   "source_fn": "mlflow.utils.file_utils.render_and_merge_yaml",
+   "sink_fn": "mlflow.utils.file_utils.render_and_merge_yaml",
+   "file": "mlflow/utils/file_utils.py",
+   "line": 322,
+   "source_rule": "library-api",
+   "sink_rule": "spec.sink.deser.yaml-unsafe",
+   "path": [
+    {
+     "file": "mlflow/utils/file_utils.py",
+     "line": 322,
+     "fn": "mlflow.utils.file_utils.render_and_merge_yaml",
+     "kind": "flow",
+     "label": "context_name"
+    },
+    {
+     "file": "mlflow/utils/file_utils.py",
+     "line": 354,
+     "fn": "mlflow.utils.file_utils.render_and_merge_yaml",
+     "kind": "assumption",
+     "label": "j2_env.get_template(context_name)"
+    },
+    {
+     "file": "mlflow/utils/file_utils.py",
+     "line": 354,
+     "fn": "mlflow.utils.file_utils.render_and_merge_yaml",
+     "kind": "assumption",
+     "label": "j2_env.get_template(context_name).render({})"
+    },
+    {
+     "file": "mlflow/utils/file_utils.py",
+     "line": 355,
+     "fn": "mlflow.utils.file_utils.render_and_merge_yaml",
+     "kind": "sink",
+     "label": "context_source"
+    }
+   ],
+   "id": "v5-42"
+  },
+  {
+   "repo": "CVE-2023-6709",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-6709-vul",
+   "cls": "cmdi",
+   "kind": "network",
+   "status": "undecided",
+   "source_fn": "tests.gateway.tools.UvicornGateway.request",
+   "sink_fn": "tests.test_cli.test_mlflow_gc_sqlite_older_than",
+   "file": "tests/gateway/tools.py",
+   "line": 181,
+   "source_rule": "spec.source.network.http-client",
+   "sink_rule": "spec.sink.cmdi.subprocess-argv",
+   "path": [
+    {
+     "file": "tests/gateway/tools.py",
+     "line": 181,
+     "fn": "tests.gateway.tools.UvicornGateway.request",
+     "kind": "assumption",
+     "label": "requests.request(method, f'{self.url}/{path}', *args, **kwargs)"
+    },
+    {
+     "file": "mlflow/utils/request_utils.py",
+     "line": 190,
+     "fn": "mlflow.utils.request_utils._get_http_response_with_retries",
+     "kind": "return",
+     "label": "session.request(method, url, **kwargs)"
+    },
+    {
+     "file": "mlflow/utils/rest_utils.py",
+     "line": 107,
+     "fn": "mlflow.utils.rest_utils.http_request",
+     "kind": "return",
+     "label": "_get_http_response_with_retries(method, url, max_retries, backoff_factor, backof"
+    },
+    {
+     "file": "mlflow/gateway/client.py",
+     "line": 92,
+     "fn": "mlflow.gateway.client.MlflowGatewayClient._call_endpoint",
+     "kind": "return",
+     "label": "http_request(host_creds=self._host_creds, endpoint=route, method=method, timeout"
+    },
+    {
+     "file": "mlflow/gateway/client.py",
+     "line": 102,
+     "fn": "mlflow.gateway.client.MlflowGatewayClient._call_endpoint",
+     "kind": "flow",
+     "label": "response"
+    },
+    {
+     "file": "mlflow/gateway/client.py",
+     "line": 339,
+     "fn": "mlflow.gateway.client.MlflowGatewayClient.query",
+     "kind": "return",
+     "label": "self._call_endpoint('POST', query_route, data)"
+    },
+    {
+     "file": "mlflow/gateway/client.py",
+     "line": 339,
+     "fn": "mlflow.gateway.client.MlflowGatewayClient.query",
+     "kind": "assumption",
+     "label": "self._call_endpoint('POST', query_route, data).json()"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 354,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_experiment",
+     "kind": "return",
+     "label": "session.query(SqlExperiment)"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 354,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_experiment",
+     "kind": "assumption",
+     "label": "session.query(SqlExperiment).options(*query_options)"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 354,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_experiment",
+     "kind": "assumption",
+     "label": "session.query(SqlExperiment).options(*query_options).filter(SqlExperiment.experi"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 354,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_experiment",
+     "kind": "assumption",
+     "label": "session.query(SqlExperiment).options(*query_options).filter(SqlExperiment.experi"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 353,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_experiment",
+     "kind": "flow",
+     "label": "experiment"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 368,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_experiment",
+     "kind": "flow",
+     "label": "experiment"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 386,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore.get_experiment",
+     "kind": "return",
+     "label": "self._get_experiment(session, experiment_id, ViewType.ALL, eager=True)"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 386,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore.get_experiment",
+     "kind": "assumption",
+     "label": "self._get_experiment(session, experiment_id, ViewType.ALL, eager=True).to_mlflow"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 462,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore.create_run",
+     "kind": "return",
+     "label": "self.get_experiment(experiment_id)"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 471,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore.create_run",
+     "kind": "flow",
+     "label": "experiment"
+    },
+    {
+     "file": "mlflow/utils/uri.py",
+     "line": 243,
+     "fn": "mlflow.utils.uri.append_to_uri_path",
+     "kind": "param",
+     "label": "uri"
+    },
+    {
+     "file": "mlflow/utils/uri.py",
+     "line": 267,
+     "fn": "mlflow.utils.uri.append_to_uri_path",
+     "kind": "flow",
+     "label": "uri"
+    },
+    {
+     "file": "mlflow/utils/uri.py",
+     "line": 299,
+     "fn": "mlflow.utils.uri._join_posixpaths_and_append_absolute_suffixes",
+     "kind": "param",
+     "label": "prefix_path"
+    },
+    {
+     "file": "mlflow/utils/uri.py",
+     "line": 313,
+     "fn": "mlflow.utils.uri._join_posixpaths_and_append_absolute_suffixes",
+     "kind": "guard",
+     "label": "not expr:len(prefix_path) == 0(prefix_path)"
+    },
+    {
+     "file": "mlflow/utils/uri.py",
+     "line": 320,
+     "fn": "mlflow.utils.uri._join_posixpaths_and_append_absolute_suffixes",
+     "kind": "assumption",
+     "label": "posixpath.join(prefix_path, suffix_path)"
+    },
+    {
+     "file": "mlflow/utils/uri.py",
+     "line": 267,
+     "fn": "mlflow.utils.uri.append_to_uri_path",
+     "kind": "return",
+     "label": "_join_posixpaths_and_append_absolute_suffixes(uri, path)"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 470,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore.create_run",
+     "kind": "return",
+     "label": "append_to_uri_path(experiment.artifact_location, run_id, SqlAlchemyStore.ARTIFAC"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 486,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore.create_run",
+     "kind": "flow",
+     "label": "artifact_location"
+    }
+   ],
+   "id": "v5-45"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "deser",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "projects.image_chat.interactive.setup_interactive",
+   "sink_fn": "parlai.core.image_featurizers.DetectronFeatureExtractor._build_detection_model",
+   "file": "projects/image_chat/interactive.py",
+   "line": 311,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.deser.pickle-backed",
+   "path": [
+    {
+     "file": "projects/image_chat/interactive.py",
+     "line": 311,
+     "fn": "projects.image_chat.interactive.setup_interactive",
+     "kind": "source",
+     "label": "parser.parse_args()"
+    },
+    {
+     "file": "projects/image_chat/interactive.py",
+     "line": 312,
+     "fn": "projects.image_chat.interactive.setup_interactive",
+     "kind": "guard",
+     "label": "not expr:not opt.get(\"model_file\")(opt)"
+    },
+    {
+     "file": "projects/image_chat/interactive.py",
+     "line": 314,
+     "fn": "projects.image_chat.interactive.setup_interactive",
+     "kind": "guard",
+     "label": "not expr:opt.get(\"fixed_cands_path\") is None(opt)"
+    },
+    {
+     "file": "projects/image_chat/interactive.py",
+     "line": 320,
+     "fn": "projects.image_chat.interactive.setup_interactive",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "projects/image_chat/interactive.py",
+     "line": 321,
+     "fn": "projects.image_chat.interactive.setup_interactive",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "projects/image_chat/interactive.py",
+     "line": 322,
+     "fn": "projects.image_chat.interactive.setup_interactive",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "projects/image_chat/interactive.py",
+     "line": 323,
+     "fn": "projects.image_chat.interactive.setup_interactive",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "projects/image_chat/interactive.py",
+     "line": 325,
+     "fn": "projects.image_chat.interactive.setup_interactive",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/image_featurizers.py",
+     "line": 56,
+     "fn": "parlai.core.image_featurizers.ImageLoader.__init__",
+     "kind": "param",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/image_featurizers.py",
+     "line": 57,
+     "fn": "parlai.core.image_featurizers.ImageLoader.__init__",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/image_featurizers.py",
+     "line": 1,
+     "fn": "<heap>",
+     "kind": "flow",
+     "label": "parlai.core.image_featurizers.ImageLoader.opt"
+    },
+    {
+     "file": "parlai/core/image_featurizers.py",
+     "line": 165,
+     "fn": "parlai.core.image_featurizers.ImageLoader._init_faster_r_cnn",
+     "kind": "flow",
+     "label": "self.opt"
+    },
+    {
+     "file": "parlai/core/image_featurizers.py",
+     "line": 284,
+     "fn": "parlai.core.image_featurizers.DetectronFeatureExtractor.__init__",
+     "kind": "param",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/image_featurizers.py",
+     "line": 285,
+     "fn": "parlai.core.image_featurizers.DetectronFeatureExtractor.__init__",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/image_featurizers.py",
+     "line": 1,
+     "fn": "<heap>",
+     "kind": "flow",
+     "label": "parlai.core.image_featurizers.DetectronFeatureExtractor.opt"
+    },
+    {
+     "file": "parlai/core/image_featurizers.py",
+     "line": 317,
+     "fn": "parlai.core.image_featurizers.DetectronFeatureExtractor._build_detection_model",
+     "kind": "flow",
+     "label": "self.opt"
+    },
+    {
+     "file": "parlai/core/image_featurizers.py",
+     "line": 320,
+     "fn": "parlai.core.image_featurizers.DetectronFeatureExtractor._build_detection_model",
+     "kind": "flow",
+     "label": "dp"
+    },
+    {
+     "file": "parlai/core/image_featurizers.py",
+     "line": 326,
+     "fn": "parlai.core.image_featurizers.DetectronFeatureExtractor._build_detection_model",
+     "kind": "sink",
+     "label": "model_path"
+    }
+   ],
+   "id": "v5-191"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "deser",
+   "kind": "api",
+   "status": "undecided",
+   "source_fn": "parlai.tasks.light_dialog.builder.build_from_db",
+   "sink_fn": "parlai.tasks.light_dialog.builder.build_from_db",
+   "file": "parlai/tasks/light_dialog/builder.py",
+   "line": 339,
+   "source_rule": "library-api",
+   "sink_rule": "spec.sink.deser.pickle",
+   "path": [
+    {
+     "file": "parlai/tasks/light_dialog/builder.py",
+     "line": 339,
+     "fn": "parlai.tasks.light_dialog.builder.build_from_db",
+     "kind": "flow",
+     "label": "fname"
+    },
+    {
+     "file": "parlai/tasks/light_dialog/builder.py",
+     "line": 341,
+     "fn": "parlai.tasks.light_dialog.builder.build_from_db",
+     "kind": "flow",
+     "label": "fname"
+    },
+    {
+     "file": "parlai/tasks/light_dialog/builder.py",
+     "line": 342,
+     "fn": "parlai.tasks.light_dialog.builder.build_from_db",
+     "kind": "assumption",
+     "label": "open(dbp, 'rb')"
+    },
+    {
+     "file": "parlai/tasks/light_dialog/builder.py",
+     "line": 343,
+     "fn": "parlai.tasks.light_dialog.builder.build_from_db",
+     "kind": "sink",
+     "label": "file"
+    }
+   ],
+   "id": "v5-180"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "sqli",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "parlai.core.params.ParlaiParser.parse_kwargs",
+   "sink_fn": "parlai.core.worlds.BatchWorld.parley",
+   "file": "parlai/core/params.py",
+   "line": 1243,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.sqli.dbapi-execute",
+   "path": [
+    {
+     "file": "parlai/core/params.py",
+     "line": 1243,
+     "fn": "parlai.core.params.ParlaiParser.parse_kwargs",
+     "kind": "source",
+     "label": "self.parse_args(args=string_args)"
+    },
+    {
+     "file": "tests/test_multiworld.py",
+     "line": 43,
+     "fn": "tests.test_multiworld.TestMultiworld.test_equal",
+     "kind": "return",
+     "label": "ParlaiParser(True, True).parse_kwargs(task='teacher1,teacher2', multitask_weight"
+    },
+    {
+     "file": "tests/test_multiworld.py",
+     "line": 52,
+     "fn": "tests.test_multiworld.TestMultiworld.test_equal",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1239,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "param",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1257,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "assumption",
+     "label": "copy.deepcopy(opt)"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1258,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1269,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "guard",
+     "label": "not expr:opt.get('batchsize', 1) > 1 and opt.get('dynamic_batching')(opt)"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1271,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "guard",
+     "label": "expr:opt.get('batchsize', 1) > 1(opt)"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1273,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 755,
+     "fn": "parlai.core.worlds.BatchWorld.__init__",
+     "kind": "param",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 771,
+     "fn": "parlai.core.worlds.BatchWorld.__init__",
+     "kind": "assumption",
+     "label": "shared['world_class'](opt, None, shared)"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1,
+     "fn": "<heap>",
+     "kind": "flow",
+     "label": "parlai.core.worlds.BatchWorld.worlds"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 853,
+     "fn": "parlai.core.worlds.BatchWorld.parley",
+     "kind": "flow",
+     "label": "self.worlds"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 854,
+     "fn": "parlai.core.worlds.BatchWorld.parley",
+     "kind": "sink",
+     "label": "w.agents[agent_idx]"
+    }
+   ],
+   "id": "v5-135"
+  },
+  {
+   "repo": "CVE-2023-6709",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-6709-vul",
+   "cls": "deser",
+   "kind": "api",
+   "status": "undecided",
+   "source_fn": "mlflow.pmdarima.load_model",
+   "sink_fn": "mlflow.pmdarima._load_model",
+   "file": "mlflow/pmdarima/__init__.py",
+   "line": 408,
+   "source_rule": "library-api",
+   "sink_rule": "spec.sink.deser.pickle",
+   "path": [
+    {
+     "file": "mlflow/pmdarima/__init__.py",
+     "line": 408,
+     "fn": "mlflow.pmdarima.load_model",
+     "kind": "flow",
+     "label": "dst_path"
+    },
+    {
+     "file": "mlflow/pmdarima/__init__.py",
+     "line": 491,
+     "fn": "mlflow.pmdarima.load_model",
+     "kind": "flow",
+     "label": "dst_path"
+    },
+    {
+     "file": "mlflow/tracking/artifact_utils.py",
+     "line": 93,
+     "fn": "mlflow.tracking.artifact_utils._download_artifact_from_uri",
+     "kind": "param",
+     "label": "output_path"
+    },
+    {
+     "file": "mlflow/tracking/artifact_utils.py",
+     "line": 101,
+     "fn": "mlflow.tracking.artifact_utils._download_artifact_from_uri",
+     "kind": "flow",
+     "label": "output_path"
+    },
+    {
+     "file": "mlflow/tracking/artifact_utils.py",
+     "line": 100,
+     "fn": "mlflow.tracking.artifact_utils._download_artifact_from_uri",
+     "kind": "assumption",
+     "label": "get_artifact_repository(artifact_uri=root_uri).download_artifacts(artifact_path="
+    },
+    {
+     "file": "mlflow/pmdarima/__init__.py",
+     "line": 491,
+     "fn": "mlflow.pmdarima.load_model",
+     "kind": "return",
+     "label": "_download_artifact_from_uri(artifact_uri=model_uri, output_path=dst_path)"
+    },
+    {
+     "file": "mlflow/pmdarima/__init__.py",
+     "line": 495,
+     "fn": "mlflow.pmdarima.load_model",
+     "kind": "flow",
+     "label": "local_model_path"
+    },
+    {
+     "file": "mlflow/pmdarima/__init__.py",
+     "line": 494,
+     "fn": "mlflow.pmdarima.load_model",
+     "kind": "flow",
+     "label": "os.path.join(local_model_path, flavor_conf.get(_MODEL_BINARY_KEY, _MODEL_BINARY_"
+    },
+    {
+     "file": "mlflow/pmdarima/__init__.py",
+     "line": 498,
+     "fn": "mlflow.pmdarima.load_model",
+     "kind": "flow",
+     "label": "pmdarima_model_file_path"
+    },
+    {
+     "file": "mlflow/pmdarima/__init__.py",
+     "line": 506,
+     "fn": "mlflow.pmdarima._load_model",
+     "kind": "param",
+     "label": "path"
+    },
+    {
+     "file": "mlflow/pmdarima/__init__.py",
+     "line": 507,
+     "fn": "mlflow.pmdarima._load_model",
+     "kind": "assumption",
+     "label": "open(path, 'rb')"
+    },
+    {
+     "file": "mlflow/pmdarima/__init__.py",
+     "line": 508,
+     "fn": "mlflow.pmdarima._load_model",
+     "kind": "sink",
+     "label": "pickled_model"
+    }
+   ],
+   "id": "v5-15"
+  },
+  {
+   "repo": "CVE-2024-39863",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-vul",
+   "cls": "sqli",
+   "kind": "route",
+   "status": "undecided",
+   "source_fn": "airflow.www.views.PoolModelView.delete",
+   "sink_fn": "airflow.utils.db._move_duplicate_data_to_new_table",
+   "file": "airflow/www/views.py",
+   "line": 4390,
+   "source_rule": "route-parameter",
+   "sink_rule": "spec.sink.sqli.dbapi-execute",
+   "path": [
+    {
+     "file": "airflow/www/views.py",
+     "line": 4390,
+     "fn": "airflow.www.views.PoolModelView.delete",
+     "kind": "source",
+     "label": "pk"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 4397,
+     "fn": "airflow.www.views.PoolModelView.delete",
+     "kind": "assumption",
+     "label": "super().delete(pk)"
+    },
+    {
+     "file": "airflow/utils/db.py",
+     "line": 1371,
+     "fn": "airflow.utils.db._move_duplicate_data_to_new_table",
+     "kind": "return",
+     "label": "source_table.delete(where_clause)"
+    },
+    {
+     "file": "airflow/utils/db.py",
+     "line": 1373,
+     "fn": "airflow.utils.db._move_duplicate_data_to_new_table",
+     "kind": "sink",
+     "label": "delete"
+    }
+   ],
+   "id": "v5-303"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "cmdi",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "parlai.core.params.ParlaiParser.parse_args",
+   "sink_fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+   "file": "parlai/core/params.py",
+   "line": 1129,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.cmdi.subprocess-argv",
+   "path": [
+    {
+     "file": "parlai/core/params.py",
+     "line": 1129,
+     "fn": "parlai.core.params.ParlaiParser.parse_args",
+     "kind": "source",
+     "label": "super().parse_args(args=args)"
+    },
+    {
+     "file": "parlai/core/params.py",
+     "line": 1137,
+     "fn": "parlai.core.params.ParlaiParser.parse_args",
+     "kind": "flow",
+     "label": "self"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 131,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.setup_args",
+     "kind": "return",
+     "label": "parser.parse_args()"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 135,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "return",
+     "label": "setup_args()"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 137,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 136,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "flow",
+     "label": "pjoin(opt['datapath'], opt['output_dir'], 'processed_data/collected_docs')"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 178,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "guard",
+     "label": "call:os.path.isdir(output_dir)"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 203,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "guard",
+     "label": "not expr:isfile(pjoin(output_dir, 'tmp', 'counts_%s_%d.json' % (mode, opt['slnum'])))(output_dir)"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 228,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "flow",
+     "label": "output_dir"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 233,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "sink",
+     "label": "fpath + '.gz'"
+    }
+   ],
+   "id": "v5-99"
+  },
+  {
+   "repo": "CVE-2023-6709",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-6709-vul",
+   "cls": "deser",
+   "kind": "network",
+   "status": "undecided",
+   "source_fn": "tests.gateway.tools.UvicornGateway.request",
+   "sink_fn": "tests.xgboost.test_xgboost_autolog.test_xgb_autolog_infers_model_signature_correctly",
+   "file": "tests/gateway/tools.py",
+   "line": 181,
+   "source_rule": "spec.source.network.http-client",
+   "sink_rule": "spec.sink.deser.yaml-unsafe",
+   "path": [
+    {
+     "file": "tests/gateway/tools.py",
+     "line": 181,
+     "fn": "tests.gateway.tools.UvicornGateway.request",
+     "kind": "assumption",
+     "label": "requests.request(method, f'{self.url}/{path}', *args, **kwargs)"
+    },
+    {
+     "file": "mlflow/utils/request_utils.py",
+     "line": 190,
+     "fn": "mlflow.utils.request_utils._get_http_response_with_retries",
+     "kind": "return",
+     "label": "session.request(method, url, **kwargs)"
+    },
+    {
+     "file": "mlflow/utils/rest_utils.py",
+     "line": 107,
+     "fn": "mlflow.utils.rest_utils.http_request",
+     "kind": "return",
+     "label": "_get_http_response_with_retries(method, url, max_retries, backoff_factor, backof"
+    },
+    {
+     "file": "mlflow/gateway/client.py",
+     "line": 92,
+     "fn": "mlflow.gateway.client.MlflowGatewayClient._call_endpoint",
+     "kind": "return",
+     "label": "http_request(host_creds=self._host_creds, endpoint=route, method=method, timeout"
+    },
+    {
+     "file": "mlflow/gateway/client.py",
+     "line": 102,
+     "fn": "mlflow.gateway.client.MlflowGatewayClient._call_endpoint",
+     "kind": "flow",
+     "label": "response"
+    },
+    {
+     "file": "mlflow/gateway/client.py",
+     "line": 339,
+     "fn": "mlflow.gateway.client.MlflowGatewayClient.query",
+     "kind": "return",
+     "label": "self._call_endpoint('POST', query_route, data)"
+    },
+    {
+     "file": "mlflow/gateway/client.py",
+     "line": 339,
+     "fn": "mlflow.gateway.client.MlflowGatewayClient.query",
+     "kind": "assumption",
+     "label": "self._call_endpoint('POST', query_route, data).json()"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 515,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_run",
+     "kind": "return",
+     "label": "session.query(SqlRun)"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 515,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_run",
+     "kind": "assumption",
+     "label": "session.query(SqlRun).options(*query_options)"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 515,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_run",
+     "kind": "assumption",
+     "label": "session.query(SqlRun).options(*query_options).filter(SqlRun.run_uuid == run_uuid"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 515,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_run",
+     "kind": "assumption",
+     "label": "session.query(SqlRun).options(*query_options).filter(SqlRun.run_uuid == run_uuid"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 514,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_run",
+     "kind": "flow",
+     "label": "runs"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 518,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_run",
+     "kind": "guard",
+     "label": "not expr:len(runs) == 0(runs)"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 520,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_run",
+     "kind": "guard",
+     "label": "not expr:len(runs) > 1(runs)"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 526,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore._get_run",
+     "kind": "flow",
+     "label": "runs"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 635,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore.get_run",
+     "kind": "return",
+     "label": "self._get_run(run_uuid=run_id, session=session, eager=True)"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 636,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore.get_run",
+     "kind": "assumption",
+     "label": "run.to_mlflow_entity()"
+    },
+    {
+     "file": "mlflow/store/tracking/sqlalchemy_store.py",
+     "line": 639,
+     "fn": "mlflow.store.tracking.sqlalchemy_store.SqlAlchemyStore.get_run",
+     "kind": "assumption",
+     "label": "Run(mlflow_run.info, mlflow_run.data, RunInputs(dataset_inputs=inputs))"
+    },
+    {
+     "file": "tests/xgboost/test_xgboost_autolog.py",
+     "line": 30,
+     "fn": "tests.xgboost.test_xgboost_autolog.get_latest_run",
+     "kind": "return",
+     "label": "client.get_run(client.search_runs(['0'])[0].info.run_id)"
+    },
+    {
+     "file": "tests/xgboost/test_xgboost_autolog.py",
+     "line": 538,
+     "fn": "tests.xgboost.test_xgboost_autolog.test_xgb_autolog_infers_model_signature_correctly",
+     "kind": "return",
+     "label": "get_latest_run()"
+    },
+    {
+     "file": "tests/xgboost/test_xgboost_autolog.py",
+     "line": 540,
+     "fn": "tests.xgboost.test_xgboost_autolog.test_xgb_autolog_infers_model_signature_correctly",
+     "kind": "flow",
+     "label": "run"
+    },
+    {
+     "file": "tests/xgboost/test_xgboost_autolog.py",
+     "line": 546,
+     "fn": "tests.xgboost.test_xgboost_autolog.test_xgb_autolog_infers_model_signature_correctly",
+     "kind": "flow",
+     "label": "artifacts_dir"
+    },
+    {
+     "file": "tests/xgboost/test_xgboost_autolog.py",
+     "line": 549,
+     "fn": "tests.xgboost.test_xgboost_autolog.test_xgb_autolog_infers_model_signature_correctly",
+     "kind": "assumption",
+     "label": "open(ml_model_path)"
+    },
+    {
+     "file": "tests/xgboost/test_xgboost_autolog.py",
+     "line": 550,
+     "fn": "tests.xgboost.test_xgboost_autolog.test_xgb_autolog_infers_model_signature_correctly",
+     "kind": "sink",
+     "label": "f"
+    }
+   ],
+   "id": "v5-51"
+  },
+  {
+   "repo": "CVE-2024-39863",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-vul",
+   "cls": "sqli",
+   "kind": "route",
+   "status": "undecided",
+   "source_fn": "airflow.www.views.PoolModelView.delete",
+   "sink_fn": "airflow.models.serialized_dag.SerializedDagModel.remove_deleted_dags",
+   "file": "airflow/www/views.py",
+   "line": 4390,
+   "source_rule": "route-parameter",
+   "sink_rule": "spec.sink.sqli.dbapi-execute",
+   "path": [
+    {
+     "file": "airflow/www/views.py",
+     "line": 4390,
+     "fn": "airflow.www.views.PoolModelView.delete",
+     "kind": "source",
+     "label": "pk"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 4397,
+     "fn": "airflow.www.views.PoolModelView.delete",
+     "kind": "assumption",
+     "label": "super().delete(pk)"
+    },
+    {
+     "file": "airflow/models/serialized_dag.py",
+     "line": 266,
+     "fn": "airflow.models.serialized_dag.SerializedDagModel.remove_deleted_dags",
+     "kind": "return",
+     "label": "cls.__table__.delete()"
+    },
+    {
+     "file": "airflow/models/serialized_dag.py",
+     "line": 266,
+     "fn": "airflow.models.serialized_dag.SerializedDagModel.remove_deleted_dags",
+     "kind": "sink",
+     "label": "cls.__table__.delete().where(and_(cls.fileloc_hash.notin_(alive_fileloc_hashes),"
+    }
+   ],
+   "id": "v5-300"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "cmdi",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "parlai.tasks.eli5.data_creation.download_support_docs.setup_args",
+   "sink_fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+   "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+   "line": 131,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.cmdi.subprocess-argv",
+   "path": [
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 131,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.setup_args",
+     "kind": "source",
+     "label": "parser.parse_args()"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 135,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "return",
+     "label": "setup_args()"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 137,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 136,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "flow",
+     "label": "pjoin(opt['datapath'], opt['output_dir'], 'processed_data/collected_docs')"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 178,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "guard",
+     "label": "call:os.path.isdir(output_dir)"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 203,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "guard",
+     "label": "not expr:isfile(pjoin(output_dir, 'tmp', 'counts_%s_%d.json' % (mode, opt['slnum'])))(output_dir)"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 333,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "flow",
+     "label": "output_dir"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_support_docs.py",
+     "line": 335,
+     "fn": "parlai.tasks.eli5.data_creation.download_support_docs.main",
+     "kind": "sink",
+     "label": "d_name"
+    }
+   ],
+   "id": "v5-168"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "ssrf",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "parlai.core.params.ParlaiParser.parse_args",
+   "sink_fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.get_comments_from_post",
+   "file": "parlai/core/params.py",
+   "line": 1129,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.ssrf.requests",
+   "path": [
+    {
+     "file": "parlai/core/params.py",
+     "line": 1129,
+     "fn": "parlai.core.params.ParlaiParser.parse_args",
+     "kind": "source",
+     "label": "super().parse_args(args=args)"
+    },
+    {
+     "file": "parlai/core/params.py",
+     "line": 1137,
+     "fn": "parlai.core.params.ParlaiParser.parse_args",
+     "kind": "flow",
+     "label": "self"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 316,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.setup_args",
+     "kind": "return",
+     "label": "parser.parse_args()"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 320,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.main",
+     "kind": "return",
+     "label": "setup_args()"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 431,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.main",
+     "kind": "assumption",
+     "label": "PathManager.open(opt['id_list'])"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 432,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.main",
+     "kind": "assumption",
+     "label": "json.load(f)"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 468,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.main",
+     "kind": "flow",
+     "label": "post_ids"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 214,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.download_and_process_comments",
+     "kind": "param",
+     "label": "post_ids"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 220,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.download_and_process_comments",
+     "kind": "flow",
+     "label": "post_ids"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 221,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.download_and_process_comments",
+     "kind": "flow",
+     "label": "post_id"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 184,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.get_comments_from_post",
+     "kind": "param",
+     "label": "post_id"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 185,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.get_comments_from_post",
+     "kind": "flow",
+     "label": "post_id"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 186,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.get_comments_from_post",
+     "kind": "assumption",
+     "label": "requests.get(comment_ids_link)"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 187,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.get_comments_from_post",
+     "kind": "flow",
+     "label": "p_req"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 188,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.get_comments_from_post",
+     "kind": "flow",
+     "label": "comment_json"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 192,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.get_comments_from_post",
+     "kind": "flow",
+     "label": "cids"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 193,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.get_comments_from_post",
+     "kind": "flow",
+     "label": "curr_comments"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 194,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.get_comments_from_post",
+     "kind": "sink",
+     "label": "curr_comments_link"
+    }
+   ],
+   "id": "v5-133"
+  },
+  {
+   "repo": "CVE-2024-39863",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-vul",
+   "cls": "redirect",
+   "kind": "http",
+   "status": "undecided",
+   "source_fn": "airflow.www.views.Airflow.trigger",
+   "sink_fn": "airflow.www.views.Airflow.trigger",
+   "file": "airflow/www/views.py",
+   "line": 1912,
+   "source_rule": "spec.source.flask.request-params",
+   "sink_rule": "spec.sink.redirect.flask",
+   "path": [
+    {
+     "file": "airflow/www/views.py",
+     "line": 1912,
+     "fn": "airflow.www.views.Airflow.trigger",
+     "kind": "source",
+     "label": "request.values.get('origin')"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 198,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "param",
+     "label": "url"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 205,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "guard",
+     "label": "not expr:\";\" in unquote(url)(url)"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 208,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "flow",
+     "label": "url"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 211,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "assumption",
+     "label": "urljoin(request.host_url, url)"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 211,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "assumption",
+     "label": "urlsplit(urljoin(request.host_url, url))"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 216,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "assumption",
+     "label": "redirect_url.geturl()"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 1912,
+     "fn": "airflow.www.views.Airflow.trigger",
+     "kind": "return",
+     "label": "get_safe_url(request.values.get('origin'))"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 2007,
+     "fn": "airflow.www.views.Airflow.trigger",
+     "kind": "sink",
+     "label": "origin"
+    }
+   ],
+   "id": "v5-295"
+  },
+  {
+   "repo": "CVE-2023-6709",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-6709-vul",
+   "cls": "deser",
+   "kind": "network",
+   "status": "undecided",
+   "source_fn": "mlflow.lightgbm._load_model",
+   "sink_fn": "mlflow.lightgbm._load_model",
+   "file": "mlflow/lightgbm/__init__.py",
+   "line": 397,
+   "source_rule": "network-reply",
+   "sink_rule": "spec.sink.deser.pickle",
+   "path": [
+    {
+     "file": "mlflow/lightgbm/__init__.py",
+     "line": 397,
+     "fn": "mlflow.lightgbm._load_model",
+     "kind": "sink",
+     "label": "f"
+    }
+   ],
+   "id": "v5-13"
+  },
+  {
+   "repo": "CVE-2022-24065",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2022-24065-vul",
+   "cls": "path",
+   "kind": "archive",
+   "status": "undecided",
+   "source_fn": "cookiecutter.zipfile.unzip",
+   "sink_fn": "cookiecutter.utils.rmtree",
+   "file": "cookiecutter/zipfile.py",
+   "line": 55,
+   "source_rule": "spec.source.archive.opened",
+   "sink_rule": "spec.sink.path.file-access",
+   "path": [
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 55,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "source",
+     "label": "ZipFile(zip_path)"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 57,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "guard",
+     "label": "not expr:len(zip_file.namelist()) == 0(zip_file)"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 62,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "assumption",
+     "label": "zip_file.namelist()"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 63,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "guard",
+     "label": "not expr:not first_filename.endswith('/')(first_filename)"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 70,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "flow",
+     "label": "first_filename"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 72,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "flow",
+     "label": "project_name"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 112,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "flow",
+     "label": "unzip_path"
+    },
+    {
+     "file": "cookiecutter/repository.py",
+     "line": 96,
+     "fn": "cookiecutter.repository.determine_repo_dir",
+     "kind": "return",
+     "label": "unzip(zip_uri=template, is_url=is_repo_url(template), clone_to_dir=clone_to_dir,"
+    },
+    {
+     "file": "cookiecutter/repository.py",
+     "line": 103,
+     "fn": "cookiecutter.repository.determine_repo_dir",
+     "kind": "flow",
+     "label": "unzipped_dir"
+    },
+    {
+     "file": "cookiecutter/repository.py",
+     "line": 123,
+     "fn": "cookiecutter.repository.determine_repo_dir",
+     "kind": "flow",
+     "label": "repository_candidates"
+    },
+    {
+     "file": "cookiecutter/repository.py",
+     "line": 124,
+     "fn": "cookiecutter.repository.determine_repo_dir",
+     "kind": "guard",
+     "label": "call:cookiecutter.repository.repository_has_cookiecutter_json(repo_candidate)"
+    },
+    {
+     "file": "cookiecutter/repository.py",
+     "line": 125,
+     "fn": "cookiecutter.repository.determine_repo_dir",
+     "kind": "flow",
+     "label": "repo_candidate"
+    },
+    {
+     "file": "cookiecutter/main.py",
+     "line": 69,
+     "fn": "cookiecutter.main.cookiecutter",
+     "kind": "return",
+     "label": "determine_repo_dir(template=template, abbreviations=config_dict['abbreviations']"
+    },
+    {
+     "file": "cookiecutter/main.py",
+     "line": 125,
+     "fn": "cookiecutter.main.cookiecutter",
+     "kind": "flow",
+     "label": "repo_dir"
+    },
+    {
+     "file": "cookiecutter/utils.py",
+     "line": 26,
+     "fn": "cookiecutter.utils.rmtree",
+     "kind": "param",
+     "label": "path"
+    },
+    {
+     "file": "cookiecutter/utils.py",
+     "line": 31,
+     "fn": "cookiecutter.utils.rmtree",
+     "kind": "sink",
+     "label": "path"
+    }
+   ],
+   "id": "v5-256"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "path",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "parlai.crowdsourcing.tasks.acute_eval.fast_eval.FastAcuteExecutor.analyze_results",
+   "sink_fn": "parlai.crowdsourcing.tasks.acute_eval.analysis.AcuteAnalyzer._load_pairing_files",
+   "file": "parlai/crowdsourcing/tasks/acute_eval/fast_eval.py",
+   "line": 514,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.path.file-access",
+   "path": [
+    {
+     "file": "parlai/crowdsourcing/tasks/acute_eval/fast_eval.py",
+     "line": 514,
+     "fn": "parlai.crowdsourcing.tasks.acute_eval.fast_eval.FastAcuteExecutor.analyze_results",
+     "kind": "source",
+     "label": "parser.parse_args(arg_string)"
+    },
+    {
+     "file": "parlai/crowdsourcing/tasks/acute_eval/fast_eval.py",
+     "line": 532,
+     "fn": "parlai.crowdsourcing.tasks.acute_eval.fast_eval.FastAcuteExecutor.analyze_results",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/crowdsourcing/tasks/acute_eval/analysis.py",
+     "line": 102,
+     "fn": "parlai.crowdsourcing.tasks.acute_eval.analysis.AcuteAnalyzer.__init__",
+     "kind": "param",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/crowdsourcing/tasks/acute_eval/analysis.py",
+     "line": 116,
+     "fn": "parlai.crowdsourcing.tasks.acute_eval.analysis.AcuteAnalyzer.__init__",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/crowdsourcing/tasks/acute_eval/analysis.py",
+     "line": 1,
+     "fn": "<heap>",
+     "kind": "flow",
+     "label": "parlai.crowdsourcing.tasks.acute_eval.analysis.AcuteAnalyzer.pairings_filepath"
+    },
+    {
+     "file": "parlai/crowdsourcing/tasks/acute_eval/analysis.py",
+     "line": 322,
+     "fn": "parlai.crowdsourcing.tasks.acute_eval.analysis.AcuteAnalyzer._load_pairing_files",
+     "kind": "sink",
+     "label": "self.pairings_filepath"
+    }
+   ],
+   "id": "v5-142"
+  },
+  {
+   "repo": "CVE-2024-39863",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-vul",
+   "cls": "path",
+   "kind": "http",
+   "status": "undecided",
+   "source_fn": "airflow.www.views.Airflow.rendered_templates",
+   "sink_fn": "airflow.providers.amazon.aws.log.s3_task_handler.S3TaskHandler.set_context",
+   "file": "airflow/www/views.py",
+   "line": 1357,
+   "source_rule": "spec.source.flask.request-params",
+   "sink_rule": "spec.sink.path.file-access",
+   "path": [
+    {
+     "file": "airflow/www/views.py",
+     "line": 1357,
+     "fn": "airflow.www.views.Airflow.rendered_templates",
+     "kind": "source",
+     "label": "request.args.get('dag_id')"
+    },
+    {
+     "file": "airflow/providers/amazon/aws/log/s3_task_handler.py",
+     "line": 85,
+     "fn": "airflow.providers.amazon.aws.log.s3_task_handler.S3TaskHandler.set_context",
+     "kind": "sink",
+     "label": "self.handler.baseFilename"
+    }
+   ],
+   "id": "v5-280"
+  },
+  {
+   "repo": "CVE-2024-39863",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-vul",
+   "cls": "path",
+   "kind": "http",
+   "status": "undecided",
+   "source_fn": "airflow.www.views.Airflow.rendered_templates",
+   "sink_fn": "airflow.providers.apache.hdfs.log.hdfs_task_handler.HdfsTaskHandler.set_context",
+   "file": "airflow/www/views.py",
+   "line": 1357,
+   "source_rule": "spec.source.flask.request-params",
+   "sink_rule": "spec.sink.path.file-access",
+   "path": [
+    {
+     "file": "airflow/www/views.py",
+     "line": 1357,
+     "fn": "airflow.www.views.Airflow.rendered_templates",
+     "kind": "source",
+     "label": "request.args.get('dag_id')"
+    },
+    {
+     "file": "airflow/providers/apache/hdfs/log/hdfs_task_handler.py",
+     "line": 64,
+     "fn": "airflow.providers.apache.hdfs.log.hdfs_task_handler.HdfsTaskHandler.set_context",
+     "kind": "sink",
+     "label": "self.handler.baseFilename"
+    }
+   ],
+   "id": "v5-281"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "cmdi",
+   "kind": "network",
+   "status": "undecided",
+   "source_fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.gather_dump_urls",
+   "sink_fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.download_and_process",
+   "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+   "line": 37,
+   "source_rule": "spec.source.network.http-client",
+   "sink_rule": "spec.sink.cmdi.subprocess-argv",
+   "path": [
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 37,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.gather_dump_urls",
+     "kind": "assumption",
+     "label": "requests.get(base_url + mode)"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 38,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.gather_dump_urls",
+     "kind": "assumption",
+     "label": "BeautifulSoup(page.content, 'lxml')"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 39,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.gather_dump_urls",
+     "kind": "assumption",
+     "label": "soup.find_all(attrs={'class': 'file'})"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 42,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.gather_dump_urls",
+     "kind": "flow",
+     "label": "files"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 41,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.gather_dump_urls",
+     "kind": "assumption",
+     "label": "tg.find_all(lambda x: x.has_attr('href'))"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 40,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.gather_dump_urls",
+     "kind": "flow",
+     "label": "[tg.find_all(lambda x: x.has_attr('href'))[0]['href'] for tg in files if len(tg."
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 46,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.gather_dump_urls",
+     "kind": "flow",
+     "label": "f_urls"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 50,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.gather_dump_urls",
+     "kind": "flow",
+     "label": "url_st"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 51,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.gather_dump_urls",
+     "kind": "flow",
+     "label": "date_to_url"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 324,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.main",
+     "kind": "return",
+     "label": "gather_dump_urls(REDDIT_URL, 'comments')"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 327,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.main",
+     "kind": "flow",
+     "label": "date_to_url_comments"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 355,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.main",
+     "kind": "flow",
+     "label": "date_to_urls"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 369,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.main",
+     "kind": "flow",
+     "label": "submissions_url"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 66,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.download_and_process",
+     "kind": "param",
+     "label": "file_url"
+    },
+    {
+     "file": "parlai/tasks/eli5/data_creation/download_reddit_qalist.py",
+     "line": 76,
+     "fn": "parlai.tasks.eli5.data_creation.download_reddit_qalist.download_and_process",
+     "kind": "sink",
+     "label": "file_url"
+    }
+   ],
+   "id": "v5-154"
+  },
+  {
+   "repo": "CVE-2023-6709",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-6709-vul",
+   "cls": "ssrf",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "dev.set_matrix.parse_args",
+   "sink_fn": "dev.set_matrix.read_yaml",
+   "file": "dev/set_matrix.py",
+   "line": 313,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.ssrf.requests",
+   "path": [
+    {
+     "file": "dev/set_matrix.py",
+     "line": 313,
+     "fn": "dev.set_matrix.parse_args",
+     "kind": "source",
+     "label": "parser.parse_args(args)"
+    },
+    {
+     "file": "dev/set_matrix.py",
+     "line": 399,
+     "fn": "dev.set_matrix.generate_matrix",
+     "kind": "return",
+     "label": "parse_args(args)"
+    },
+    {
+     "file": "dev/set_matrix.py",
+     "line": 400,
+     "fn": "dev.set_matrix.generate_matrix",
+     "kind": "flow",
+     "label": "args"
+    },
+    {
+     "file": "dev/set_matrix.py",
+     "line": 110,
+     "fn": "dev.set_matrix.read_yaml",
+     "kind": "param",
+     "label": "location"
+    },
+    {
+     "file": "dev/set_matrix.py",
+     "line": 112,
+     "fn": "dev.set_matrix.read_yaml",
+     "kind": "guard",
+     "label": "regex:^https?://(location)"
+    },
+    {
+     "file": "dev/set_matrix.py",
+     "line": 113,
+     "fn": "dev.set_matrix.read_yaml",
+     "kind": "sink",
+     "label": "location"
+    }
+   ],
+   "id": "v5-6"
+  },
+  {
+   "repo": "CVE-2024-41950",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-41950-vul",
+   "cls": "ssti",
+   "kind": "api",
+   "status": "undecided",
+   "source_fn": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder.__init__",
+   "sink_fn": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder.__init__",
+   "file": "haystack/components/builders/chat_prompt_builder.py",
+   "line": 100,
+   "source_rule": "library-api",
+   "sink_rule": "spec.sink.ssti.template-from-string",
+   "path": [
+    {
+     "file": "haystack/components/builders/chat_prompt_builder.py",
+     "line": 100,
+     "fn": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder.__init__",
+     "kind": "flow",
+     "label": "template"
+    },
+    {
+     "file": "haystack/components/builders/chat_prompt_builder.py",
+     "line": 127,
+     "fn": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder.__init__",
+     "kind": "flow",
+     "label": "template"
+    },
+    {
+     "file": "haystack/components/builders/chat_prompt_builder.py",
+     "line": 128,
+     "fn": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder.__init__",
+     "kind": "guard",
+     "label": "expr:message.is_from(ChatRole.USER) or message.is_from(ChatRole.SYSTEM)(message)"
+    },
+    {
+     "file": "haystack/components/builders/chat_prompt_builder.py",
+     "line": 130,
+     "fn": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder.__init__",
+     "kind": "sink",
+     "label": "message.content"
+    }
+   ],
+   "id": "v5-217"
+  },
+  {
+   "repo": "CVE-2023-6709",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-6709-vul",
+   "cls": "path",
+   "kind": "archive",
+   "status": "undecided",
+   "source_fn": "mlflow.utils._spark_utils._SparkDirectoryDistributor.get_or_extract",
+   "sink_fn": "mlflow.utils._spark_utils._SparkDirectoryDistributor.get_or_extract",
+   "file": "mlflow/utils/_spark_utils.py",
+   "line": 148,
+   "source_rule": "spec.source.archive.opened",
+   "sink_rule": "spec.sink.path.archive-extract",
+   "path": [
+    {
+     "file": "mlflow/utils/_spark_utils.py",
+     "line": 148,
+     "fn": "mlflow.utils._spark_utils._SparkDirectoryDistributor.get_or_extract",
+     "kind": "source",
+     "label": "zipfile.ZipFile(local_path, 'r')"
+    },
+    {
+     "file": "mlflow/utils/_spark_utils.py",
+     "line": 149,
+     "fn": "mlflow.utils._spark_utils._SparkDirectoryDistributor.get_or_extract",
+     "kind": "sink",
+     "label": "zip_ref"
+    }
+   ],
+   "id": "v5-41"
+  },
+  {
+   "repo": "CVE-2024-39863",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-vul",
+   "cls": "sqli",
+   "kind": "route",
+   "status": "undecided",
+   "source_fn": "airflow.www.views.PoolModelView.delete",
+   "sink_fn": "airflow.models.serialized_dag.SerializedDagModel.remove_dag",
+   "file": "airflow/www/views.py",
+   "line": 4390,
+   "source_rule": "route-parameter",
+   "sink_rule": "spec.sink.sqli.dbapi-execute",
+   "path": [
+    {
+     "file": "airflow/www/views.py",
+     "line": 4390,
+     "fn": "airflow.www.views.PoolModelView.delete",
+     "kind": "source",
+     "label": "pk"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 4397,
+     "fn": "airflow.www.views.PoolModelView.delete",
+     "kind": "assumption",
+     "label": "super().delete(pk)"
+    },
+    {
+     "file": "airflow/models/serialized_dag.py",
+     "line": 243,
+     "fn": "airflow.models.serialized_dag.SerializedDagModel.remove_dag",
+     "kind": "return",
+     "label": "cls.__table__.delete()"
+    },
+    {
+     "file": "airflow/models/serialized_dag.py",
+     "line": 243,
+     "fn": "airflow.models.serialized_dag.SerializedDagModel.remove_dag",
+     "kind": "sink",
+     "label": "cls.__table__.delete().where(cls.dag_id == dag_id)"
+    }
+   ],
+   "id": "v5-299"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "deser",
+   "kind": "api",
+   "status": "undecided",
+   "source_fn": "projects.wizard_of_wikipedia.wizard_transformer_ranker.wizard_transformer_ranker.WizardTransformerRankerAgent.load",
+   "sink_fn": "projects.wizard_of_wikipedia.wizard_transformer_ranker.wizard_transformer_ranker.WizardTransformerRankerAgent.load",
+   "file": "projects/wizard_of_wikipedia/wizard_transformer_ranker/wizard_transformer_ranker.py",
+   "line": 142,
+   "source_rule": "library-api",
+   "sink_rule": "spec.sink.deser.pickle-backed",
+   "path": [
+    {
+     "file": "projects/wizard_of_wikipedia/wizard_transformer_ranker/wizard_transformer_ranker.py",
+     "line": 142,
+     "fn": "projects.wizard_of_wikipedia.wizard_transformer_ranker.wizard_transformer_ranker.WizardTransformerRankerAgent.load",
+     "kind": "flow",
+     "label": "path"
+    },
+    {
+     "file": "projects/wizard_of_wikipedia/wizard_transformer_ranker/wizard_transformer_ranker.py",
+     "line": 149,
+     "fn": "projects.wizard_of_wikipedia.wizard_transformer_ranker.wizard_transformer_ranker.WizardTransformerRankerAgent.load",
+     "kind": "assumption",
+     "label": "PathManager.open(path, 'rb')"
+    },
+    {
+     "file": "projects/wizard_of_wikipedia/wizard_transformer_ranker/wizard_transformer_ranker.py",
+     "line": 150,
+     "fn": "projects.wizard_of_wikipedia.wizard_transformer_ranker.wizard_transformer_ranker.WizardTransformerRankerAgent.load",
+     "kind": "sink",
+     "label": "f"
+    }
+   ],
+   "id": "v5-207"
+  },
+  {
+   "repo": "CVE-2021-39207",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+   "cls": "sqli",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "projects.personality_captions.interactive.setup_interactive",
+   "sink_fn": "parlai.core.worlds.BatchWorld.parley",
+   "file": "projects/personality_captions/interactive.py",
+   "line": 269,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.sqli.dbapi-execute",
+   "path": [
+    {
+     "file": "projects/personality_captions/interactive.py",
+     "line": 269,
+     "fn": "projects.personality_captions.interactive.setup_interactive",
+     "kind": "source",
+     "label": "parser.parse_args()"
+    },
+    {
+     "file": "projects/personality_captions/interactive.py",
+     "line": 270,
+     "fn": "projects.personality_captions.interactive.setup_interactive",
+     "kind": "guard",
+     "label": "not expr:not opt.get('model_file')(opt)"
+    },
+    {
+     "file": "projects/personality_captions/interactive.py",
+     "line": 272,
+     "fn": "projects.personality_captions.interactive.setup_interactive",
+     "kind": "guard",
+     "label": "not expr:opt.get('fixed_cands_path') is None(opt)"
+    },
+    {
+     "file": "projects/personality_captions/interactive.py",
+     "line": 276,
+     "fn": "projects.personality_captions.interactive.setup_interactive",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "projects/personality_captions/interactive.py",
+     "line": 277,
+     "fn": "projects.personality_captions.interactive.setup_interactive",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "projects/personality_captions/interactive.py",
+     "line": 283,
+     "fn": "projects.personality_captions.interactive.setup_interactive",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1239,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "param",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1257,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "assumption",
+     "label": "copy.deepcopy(opt)"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1258,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1269,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "guard",
+     "label": "not expr:opt.get('batchsize', 1) > 1 and opt.get('dynamic_batching')(opt)"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1271,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "guard",
+     "label": "expr:opt.get('batchsize', 1) > 1(opt)"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1273,
+     "fn": "parlai.core.worlds.create_task",
+     "kind": "flow",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 755,
+     "fn": "parlai.core.worlds.BatchWorld.__init__",
+     "kind": "param",
+     "label": "opt"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 771,
+     "fn": "parlai.core.worlds.BatchWorld.__init__",
+     "kind": "assumption",
+     "label": "shared['world_class'](opt, None, shared)"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 1,
+     "fn": "<heap>",
+     "kind": "flow",
+     "label": "parlai.core.worlds.BatchWorld.worlds"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 853,
+     "fn": "parlai.core.worlds.BatchWorld.parley",
+     "kind": "flow",
+     "label": "self.worlds"
+    },
+    {
+     "file": "parlai/core/worlds.py",
+     "line": 854,
+     "fn": "parlai.core.worlds.BatchWorld.parley",
+     "kind": "sink",
+     "label": "w.agents[agent_idx]"
+    }
+   ],
+   "id": "v5-202"
+  },
+  {
+   "repo": "CVE-2022-24065",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2022-24065-vul",
+   "cls": "path",
+   "kind": "archive",
+   "status": "undecided",
+   "source_fn": "cookiecutter.zipfile.unzip",
+   "sink_fn": "cookiecutter.generate.generate_file",
+   "file": "cookiecutter/zipfile.py",
+   "line": 55,
+   "source_rule": "spec.source.archive.opened",
+   "sink_rule": "spec.sink.path.file-access",
+   "path": [
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 55,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "source",
+     "label": "ZipFile(zip_path)"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 57,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "guard",
+     "label": "not expr:len(zip_file.namelist()) == 0(zip_file)"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 62,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "assumption",
+     "label": "zip_file.namelist()"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 63,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "guard",
+     "label": "not expr:not first_filename.endswith('/')(first_filename)"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 70,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "flow",
+     "label": "first_filename"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 72,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "flow",
+     "label": "project_name"
+    },
+    {
+     "file": "cookiecutter/zipfile.py",
+     "line": 112,
+     "fn": "cookiecutter.zipfile.unzip",
+     "kind": "flow",
+     "label": "unzip_path"
+    },
+    {
+     "file": "cookiecutter/repository.py",
+     "line": 96,
+     "fn": "cookiecutter.repository.determine_repo_dir",
+     "kind": "return",
+     "label": "unzip(zip_uri=template, is_url=is_repo_url(template), clone_to_dir=clone_to_dir,"
+    },
+    {
+     "file": "cookiecutter/repository.py",
+     "line": 103,
+     "fn": "cookiecutter.repository.determine_repo_dir",
+     "kind": "flow",
+     "label": "unzipped_dir"
+    },
+    {
+     "file": "cookiecutter/repository.py",
+     "line": 123,
+     "fn": "cookiecutter.repository.determine_repo_dir",
+     "kind": "flow",
+     "label": "repository_candidates"
+    },
+    {
+     "file": "cookiecutter/repository.py",
+     "line": 124,
+     "fn": "cookiecutter.repository.determine_repo_dir",
+     "kind": "guard",
+     "label": "call:cookiecutter.repository.repository_has_cookiecutter_json(repo_candidate)"
+    },
+    {
+     "file": "cookiecutter/repository.py",
+     "line": 125,
+     "fn": "cookiecutter.repository.determine_repo_dir",
+     "kind": "flow",
+     "label": "repo_candidate"
+    },
+    {
+     "file": "cookiecutter/main.py",
+     "line": 69,
+     "fn": "cookiecutter.main.cookiecutter",
+     "kind": "return",
+     "label": "determine_repo_dir(template=template, abbreviations=config_dict['abbreviations']"
+    },
+    {
+     "file": "cookiecutter/main.py",
+     "line": 90,
+     "fn": "cookiecutter.main.cookiecutter",
+     "kind": "flow",
+     "label": "repo_dir"
+    },
+    {
+     "file": "cookiecutter/main.py",
+     "line": 94,
+     "fn": "cookiecutter.main.cookiecutter",
+     "kind": "flow",
+     "label": "context_file"
+    },
+    {
+     "file": "cookiecutter/generate.py",
+     "line": 77,
+     "fn": "cookiecutter.generate.generate_context",
+     "kind": "param",
+     "label": "context_file"
+    },
+    {
+     "file": "cookiecutter/generate.py",
+     "line": 91,
+     "fn": "cookiecutter.generate.generate_context",
+     "kind": "assumption",
+     "label": "open(context_file, encoding='utf-8')"
+    },
+    {
+     "file": "cookiecutter/generate.py",
+     "line": 92,
+     "fn": "cookiecutter.generate.generate_context",
+     "kind": "assumption",
+     "label": "json.load(file_handle, object_pairs_hook=OrderedDict)"
+    },
+    {
+     "file": "cookiecutter/generate.py",
+     "line": 107,
+     "fn": "cookiecutter.generate.generate_context",
+     "kind": "flow",
+     "label": "obj"
+    },
+    {
+     "file": "cookiecutter/generate.py",
+     "line": 120,
+     "fn": "cookiecutter.generate.generate_context",
+     "kind": "flow",
+     "label": "context"
+    },
+    {
+     "file": "cookiecutter/main.py",
+     "line": 93,
+     "fn": "cookiecutter.main.cookiecutter",
+     "kind": "return",
+     "label": "generate_context(context_file=context_file, default_context=config_dict['default"
+    },
+    {
+     "file": "cookiecutter/main.py",
+     "line": 102,
+     "fn": "cookiecutter.main.cookiecutter",
+     "kind": "flow",
+     "label": "context"
+    },
+    {
+     "file": "cookiecutter/main.py",
+     "line": 105,
+     "fn": "cookiecutter.main.cookiecutter",
+     "kind": "flow",
+     "label": "context"
+    },
+    {
+     "file": "cookiecutter/main.py",
+     "line": 108,
+     "fn": "cookiecutter.main.cookiecutter",
+     "kind": "flow",
+     "label": "context"
+    },
+    {
+     "file": "cookiecutter/main.py",
+     "line": 116,
+     "fn": "cookiecutter.main.cookiecutter",
+     "kind": "flow",
+     "label": "context"
+    }
+   ],
+   "id": "v5-255"
+  },
+  {
+   "repo": "CVE-2023-6709",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-6709-vul",
+   "cls": "cmdi",
+   "kind": "network",
+   "status": "undecided",
+   "source_fn": "tests.gateway.tools.UvicornGateway.request",
+   "sink_fn": "mlflow.utils.file_utils.parallelized_download_file_using_http_uri.run_download",
+   "file": "tests/gateway/tools.py",
+   "line": 181,
+   "source_rule": "spec.source.network.http-client",
+   "sink_rule": "spec.sink.cmdi.subprocess-argv",
+   "path": [
+    {
+     "file": "tests/gateway/tools.py",
+     "line": 181,
+     "fn": "tests.gateway.tools.UvicornGateway.request",
+     "kind": "assumption",
+     "label": "requests.request(method, f'{self.url}/{path}', *args, **kwargs)"
+    },
+    {
+     "file": "mlflow/utils/request_utils.py",
+     "line": 190,
+     "fn": "mlflow.utils.request_utils._get_http_response_with_retries",
+     "kind": "return",
+     "label": "session.request(method, url, **kwargs)"
+    },
+    {
+     "file": "mlflow/utils/rest_utils.py",
+     "line": 107,
+     "fn": "mlflow.utils.rest_utils.http_request",
+     "kind": "return",
+     "label": "_get_http_response_with_retries(method, url, max_retries, backoff_factor, backof"
+    },
+    {
+     "file": "mlflow/store/artifact/databricks_models_artifact_repo.py",
+     "line": 77,
+     "fn": "mlflow.store.artifact.databricks_models_artifact_repo.DatabricksModelsArtifactRepository._call_endpoint",
+     "kind": "return",
+     "label": "http_request(host_creds=db_creds, endpoint=endpoint, method='GET', params=json)"
+    },
+    {
+     "file": "mlflow/store/artifact/databricks_models_artifact_repo.py",
+     "line": 125,
+     "fn": "mlflow.store.artifact.databricks_models_artifact_repo.DatabricksModelsArtifactRepository._get_signed_download_uri",
+     "kind": "return",
+     "label": "self._call_endpoint(json_body, REGISTRY_ARTIFACT_PRESIGNED_URI_ENDPOINT)"
+    },
+    {
+     "file": "mlflow/store/artifact/databricks_models_artifact_repo.py",
+     "line": 127,
+     "fn": "mlflow.store.artifact.databricks_models_artifact_repo.DatabricksModelsArtifactRepository._get_signed_download_uri",
+     "kind": "flow",
+     "label": "response"
+    },
+    {
+     "file": "mlflow/store/artifact/databricks_models_artifact_repo.py",
+     "line": 133,
+     "fn": "mlflow.store.artifact.databricks_models_artifact_repo.DatabricksModelsArtifactRepository._get_signed_download_uri",
+     "kind": "flow",
+     "label": "json_response"
+    },
+    {
+     "file": "mlflow/store/artifact/databricks_models_artifact_repo.py",
+     "line": 179,
+     "fn": "mlflow.store.artifact.databricks_models_artifact_repo.DatabricksModelsArtifactRepository._download_file",
+     "kind": "return",
+     "label": "self._get_signed_download_uri(remote_file_path)"
+    },
+    {
+     "file": "mlflow/store/artifact/databricks_models_artifact_repo.py",
+     "line": 192,
+     "fn": "mlflow.store.artifact.databricks_models_artifact_repo.DatabricksModelsArtifactRepository._download_file",
+     "kind": "flow",
+     "label": "signed_uri"
+    },
+    {
+     "file": "mlflow/store/artifact/databricks_models_artifact_repo.py",
+     "line": 140,
+     "fn": "mlflow.store.artifact.databricks_models_artifact_repo.DatabricksModelsArtifactRepository._parallelized_download_from_cloud",
+     "kind": "param",
+     "label": "signed_uri"
+    },
+    {
+     "file": "mlflow/store/artifact/databricks_models_artifact_repo.py",
+     "line": 151,
+     "fn": "mlflow.store.artifact.databricks_models_artifact_repo.DatabricksModelsArtifactRepository._parallelized_download_from_cloud",
+     "kind": "flow",
+     "label": "signed_uri"
+    },
+    {
+     "file": "mlflow/utils/file_utils.py",
+     "line": 694,
+     "fn": "mlflow.utils.file_utils.parallelized_download_file_using_http_uri",
+     "kind": "param",
+     "label": "http_uri"
+    },
+    {
+     "file": "mlflow/utils/file_utils.py",
+     "line": 729,
+     "fn": "mlflow.utils.file_utils.parallelized_download_file_using_http_uri.run_download",
+     "kind": "sink",
+     "label": "http_uri"
+    }
+   ],
+   "id": "v5-44"
+  },
+  {
+   "repo": "CVE-2024-39863",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-vul",
+   "cls": "sqli",
+   "kind": "http",
+   "status": "undecided",
+   "source_fn": "airflow.www.views.Airflow.delete",
+   "sink_fn": "airflow.models.serialized_dag.SerializedDagModel.remove_dag",
+   "file": "airflow/www/views.py",
+   "line": 1883,
+   "source_rule": "spec.source.flask.request-params",
+   "sink_rule": "spec.sink.sqli.dbapi-execute",
+   "path": [
+    {
+     "file": "airflow/www/views.py",
+     "line": 1883,
+     "fn": "airflow.www.views.Airflow.delete",
+     "kind": "source",
+     "label": "request.values.get('origin')"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 198,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "param",
+     "label": "url"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 205,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "guard",
+     "label": "not expr:\";\" in unquote(url)(url)"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 208,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "flow",
+     "label": "url"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 211,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "assumption",
+     "label": "urljoin(request.host_url, url)"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 211,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "assumption",
+     "label": "urlsplit(urljoin(request.host_url, url))"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 216,
+     "fn": "airflow.www.views.get_safe_url",
+     "kind": "assumption",
+     "label": "redirect_url.geturl()"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 1883,
+     "fn": "airflow.www.views.Airflow.delete",
+     "kind": "return",
+     "label": "get_safe_url(request.values.get('origin'))"
+    },
+    {
+     "file": "airflow/www/views.py",
+     "line": 1903,
+     "fn": "airflow.www.views.Airflow.delete",
+     "kind": "assumption",
+     "label": "redirect(origin)"
+    },
+    {
+     "file": "airflow/models/serialized_dag.py",
+     "line": 243,
+     "fn": "airflow.models.serialized_dag.SerializedDagModel.remove_dag",
+     "kind": "return",
+     "label": "cls.__table__.delete()"
+    },
+    {
+     "file": "airflow/models/serialized_dag.py",
+     "line": 243,
+     "fn": "airflow.models.serialized_dag.SerializedDagModel.remove_dag",
+     "kind": "sink",
+     "label": "cls.__table__.delete().where(cls.dag_id == dag_id)"
+    }
+   ],
+   "id": "v5-288"
+  },
+  {
+   "repo": "CVE-2024-4181",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-4181-vul",
+   "cls": "code",
+   "kind": "api",
+   "status": "undecided",
+   "source_fn": "llama_index.exec_utils.safe_eval",
+   "sink_fn": "llama_index.exec_utils.safe_eval",
+   "file": "llama_index/exec_utils.py",
+   "line": 132,
+   "source_rule": "library-api",
+   "sink_rule": "spec.sink.code.eval",
+   "path": [
+    {
+     "file": "llama_index/exec_utils.py",
+     "line": 132,
+     "fn": "llama_index.exec_utils.safe_eval",
+     "kind": "flow",
+     "label": "__source"
+    },
+    {
+     "file": "llama_index/exec_utils.py",
+     "line": 140,
+     "fn": "llama_index.exec_utils.safe_eval",
+     "kind": "sink",
+     "label": "__source"
+    }
+   ],
+   "id": "v5-209"
+  },
+  {
+   "repo": "CVE-2024-37060",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-37060-vul",
+   "cls": "path",
+   "kind": "http",
+   "status": "undecided",
+   "source_fn": "mlflow.server.handlers.get_model_version_artifact_handler",
+   "sink_fn": "mlflow.store.artifact.hdfs_artifact_repo._download_hdfs_file",
+   "file": "mlflow/server/handlers.py",
+   "line": 1262,
+   "source_rule": "spec.source.flask.request-params",
+   "sink_rule": "spec.sink.path.file-access",
+   "path": [
+    {
+     "file": "mlflow/server/handlers.py",
+     "line": 1262,
+     "fn": "mlflow.server.handlers.get_model_version_artifact_handler",
+     "kind": "source",
+     "label": "request.query_string.decode('utf-8')"
+    },
+    {
+     "file": "mlflow/server/handlers.py",
+     "line": 1263,
+     "fn": "mlflow.server.handlers.get_model_version_artifact_handler",
+     "kind": "assumption",
+     "label": "parser.parse(query_string, normalized=True)"
+    },
+    {
+     "file": "mlflow/server/handlers.py",
+     "line": 1267,
+     "fn": "mlflow.server.handlers.get_model_version_artifact_handler",
+     "kind": "flow",
+     "label": "request_dict"
+    },
+    {
+     "file": "mlflow/server/handlers.py",
+     "line": 432,
+     "fn": "mlflow.server.handlers._send_artifact",
+     "kind": "param",
+     "label": "path"
+    },
+    {
+     "file": "mlflow/server/handlers.py",
+     "line": 433,
+     "fn": "mlflow.server.handlers._send_artifact",
+     "kind": "flow",
+     "label": "path"
+    },
+    {
+     "file": "mlflow/store/artifact/hdfs_artifact_repo.py",
+     "line": 108,
+     "fn": "mlflow.store.artifact.hdfs_artifact_repo.HdfsArtifactRepository.download_artifacts",
+     "kind": "param",
+     "label": "artifact_path"
+    },
+    {
+     "file": "mlflow/store/artifact/hdfs_artifact_repo.py",
+     "line": 136,
+     "fn": "mlflow.store.artifact.hdfs_artifact_repo.HdfsArtifactRepository.download_artifacts",
+     "kind": "flow",
+     "label": "artifact_path"
+    },
+    {
+     "file": "mlflow/store/artifact/hdfs_artifact_repo.py",
+     "line": 137,
+     "fn": "mlflow.store.artifact.hdfs_artifact_repo.HdfsArtifactRepository.download_artifacts",
+     "kind": "flow",
+     "label": "local_path"
+    },
+    {
+     "file": "mlflow/store/artifact/hdfs_artifact_repo.py",
+     "line": 224,
+     "fn": "mlflow.store.artifact.hdfs_artifact_repo._download_hdfs_file",
+     "kind": "param",
+     "label": "local_file_path"
+    },
+    {
+     "file": "mlflow/store/artifact/hdfs_artifact_repo.py",
+     "line": 229,
+     "fn": "mlflow.store.artifact.hdfs_artifact_repo._download_hdfs_file",
+     "kind": "sink",
+     "label": "local_file_path"
+    }
+   ],
+   "id": "v5-243"
+  },
+  {
+   "repo": "CVE-2023-40581",
+   "root": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-40581-vul",
+   "cls": "path",
+   "kind": "cli",
+   "status": "undecided",
+   "source_fn": "devscripts.utils.get_filename_args",
+   "sink_fn": "devscripts.utils.write_file",
+   "file": "devscripts/utils.py",
+   "line": 29,
+   "source_rule": "spec.source.cli.argv",
+   "sink_rule": "spec.sink.path.file-access",
+   "path": [
+    {
+     "file": "devscripts/utils.py",
+     "line": 29,
+     "fn": "devscripts.utils.get_filename_args",
+     "kind": "source",
+     "label": "parser.parse_args()"
+    },
+    {
+     "file": "devscripts/utils.py",
+     "line": 32,
+     "fn": "devscripts.utils.get_filename_args",
+     "kind": "flow",
+     "label": "opts"
+    },
+    {
+     "file": "devscripts/prepare_manpage.py",
+     "line": 93,
+     "fn": "devscripts.prepare_manpage.main",
+     "kind": "return",
+     "label": "get_filename_args()"
+    },
+    {
+     "file": "devscripts/utils.py",
+     "line": 11,
+     "fn": "devscripts.utils.write_file",
+     "kind": "param",
+     "label": "fname"
+    },
+    {
+     "file": "devscripts/utils.py",
+     "line": 12,
+     "fn": "devscripts.utils.write_file",
+     "kind": "sink",
+     "label": "fname"
+    }
+   ],
+   "id": "v5-58"
+  }
+ ]
+}

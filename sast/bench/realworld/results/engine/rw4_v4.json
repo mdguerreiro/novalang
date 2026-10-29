@@ -1,0 +1,830 @@
+{
+ "CVE-2024-22423-vul": {
+  "cls": "cmdi",
+  "flagged": false,
+  "reported": 27,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/path": 26,
+   "api/code": 1
+  }
+ },
+ "CVE-2024-22423-fix": {
+  "cls": "cmdi",
+  "flagged": false,
+  "reported": 27,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/path": 26,
+   "api/code": 1
+  }
+ },
+ "CVE-2018-14574-vul": {
+  "cls": "redirect",
+  "flagged": false,
+  "reported": 31,
+  "minutes": 1.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "http/redirect": 3,
+   "api/deser": 6,
+   "cli/sqli": 12,
+   "cli/code": 1,
+   "archive/path": 2,
+   "http/xss": 4,
+   "api/cmdi": 3
+  }
+ },
+ "CVE-2018-14574-fix": {
+  "cls": "redirect",
+  "flagged": false,
+  "reported": 31,
+  "minutes": 1.4,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "http/redirect": 3,
+   "api/deser": 6,
+   "cli/sqli": 12,
+   "cli/code": 1,
+   "archive/path": 2,
+   "http/xss": 4,
+   "api/cmdi": 3
+  }
+ },
+ "CVE-2025-64459-vul": {
+  "cls": "sqli",
+  "flagged": false,
+  "reported": 31,
+  "minutes": 1.8,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "http/redirect": 3,
+   "api/deser": 7,
+   "cli/path": 2,
+   "cli/sqli": 16,
+   "cli/code": 1,
+   "archive/path": 2
+  }
+ },
+ "CVE-2025-64459-fix": {
+  "cls": "sqli",
+  "flagged": false,
+  "reported": 31,
+  "minutes": 1.8,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "http/redirect": 3,
+   "api/deser": 7,
+   "cli/path": 2,
+   "cli/sqli": 16,
+   "cli/code": 1,
+   "archive/path": 2
+  }
+ },
+ "CVE-2026-27696-vul": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 60,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Import.Import.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore._delete_watch",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Import.Import.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_all_last_checksums",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Import.Import.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_checksums_for_tag",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.processors.base.difference_detection_processor.read_last_raw_content_checksum",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.processors.base.difference_detection_processor.update_extra_watch_config",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore._delete_watch",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_all_last_checksums",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_checksums_for_tag",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore._delete_watch",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_all_last_checksums",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_checksums_for_tag",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore._delete_watch",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_all_last_checksums",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_checksums_for_tag",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "http/path": 37,
+   "route/path": 11,
+   "route/xss": 4,
+   "archive/path": 1,
+   "http/redirect": 4,
+   "http/xss": 2,
+   "cookie/xss": 1
+  }
+ },
+ "CVE-2026-27696-fix": {
+  "cls": "ssrf",
+  "flagged": false,
+  "reported": 60,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Import.Import.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore._delete_watch",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Import.Import.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_all_last_checksums",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Import.Import.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_checksums_for_tag",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.processors.base.difference_detection_processor.read_last_raw_content_checksum",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.processors.base.difference_detection_processor.update_extra_watch_config",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore._delete_watch",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_all_last_checksums",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_checksums_for_tag",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore._delete_watch",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_all_last_checksums",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_checksums_for_tag",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore._delete_watch",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_all_last_checksums",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.clear_checksums_for_tag",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "http/path": 37,
+   "route/path": 11,
+   "route/xss": 4,
+   "archive/path": 1,
+   "http/redirect": 4,
+   "http/xss": 2,
+   "cookie/xss": 1
+  }
+ },
+ "CVE-2022-22818-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 29,
+  "minutes": 1.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "http/redirect": 3,
+   "api/deser": 6,
+   "cli/sqli": 12,
+   "cli/code": 1,
+   "http/xss": 4,
+   "api/cmdi": 3
+  }
+ },
+ "CVE-2022-22818-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 29,
+  "minutes": 1.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "http/redirect": 3,
+   "api/deser": 6,
+   "cli/sqli": 12,
+   "cli/code": 1,
+   "http/xss": 4,
+   "api/cmdi": 3
+  }
+ },
+ "CVE-2026-28415-vul": {
+  "cls": "redirect",
+  "flagged": false,
+  "reported": 17,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "network/code": 12,
+   "cli/path": 2,
+   "api/code": 2,
+   "network/ssti": 1
+  }
+ },
+ "CVE-2026-28415-fix": {
+  "cls": "redirect",
+  "flagged": false,
+  "reported": 17,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "network/code": 12,
+   "cli/path": 2,
+   "api/code": 2,
+   "network/ssti": 1
+  }
+ },
+ "CVE-2025-52558-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 34,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/path": 12,
+   "cli/xss": 3,
+   "http/path": 12,
+   "route/path": 2,
+   "route/xss": 2,
+   "http/xss": 2,
+   "cookie/xss": 1
+  }
+ },
+ "CVE-2025-52558-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 34,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/path": 12,
+   "cli/xss": 3,
+   "http/path": 12,
+   "route/path": 2,
+   "route/xss": 2,
+   "http/xss": 2,
+   "cookie/xss": 1
+  }
+ },
+ "CVE-2025-62348-vul": {
+  "cls": "deser",
+  "flagged": true,
+  "reported": 49,
+  "minutes": 10.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [
+   {
+    "cls": "deser",
+    "source_fn": "salt.loader.render",
+    "sink_fn": "salt.modules.junos.get_table",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "archive/path": 12,
+   "cli/code": 3,
+   "cli/path": 11,
+   "network/cmdi": 1,
+   "cli/deser": 1,
+   "cli/ssti": 1,
+   "api/code": 7,
+   "api/deser": 7,
+   "api/ssti": 6
+  }
+ },
+ "CVE-2025-62348-fix": {
+  "cls": "deser",
+  "flagged": true,
+  "reported": 49,
+  "minutes": 10.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "deser",
+    "source_fn": "salt.loader.render",
+    "sink_fn": "salt.modules.junos.get_table",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "archive/path": 12,
+   "cli/code": 3,
+   "cli/path": 11,
+   "network/cmdi": 1,
+   "cli/deser": 1,
+   "cli/ssti": 1,
+   "api/code": 7,
+   "api/deser": 7,
+   "api/ssti": 6
+  }
+ },
+ "CVE-2025-62780-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 34,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Import.Import.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Import.Import.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Tags.Tag.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.tags.construct_blueprint.form_tag_add",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.ui.construct_blueprint.form_watch_list_checkbox_operations",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.ui.edit.construct_blueprint.edit_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.ui.views.construct_blueprint.form_quick_watch_add",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/path": 12,
+   "cli/xss": 3,
+   "http/path": 12,
+   "route/path": 2,
+   "route/xss": 2,
+   "http/xss": 2,
+   "cookie/xss": 1
+  }
+ },
+ "CVE-2025-62780-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 34,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Import.Import.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Import.Import.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Tags.Tag.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.api.Watch.CreateWatch.post",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.imports.construct_blueprint.import_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.tags.construct_blueprint.form_tag_add",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.ui.construct_blueprint.form_watch_list_checkbox_operations",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.ui.edit.construct_blueprint.edit_page",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "changedetectionio.blueprint.ui.views.construct_blueprint.form_quick_watch_add",
+    "sink_fn": "changedetectionio.store.ChangeDetectionStore.sync_to_json",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/path": 12,
+   "cli/xss": 3,
+   "http/path": 12,
+   "route/path": 2,
+   "route/xss": 2,
+   "http/xss": 2,
+   "cookie/xss": 1
+  }
+ },
+ "CVE-2021-41146-vul": {
+  "cls": "cmdi",
+  "flagged": false,
+  "reported": 14,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "api/code": 3,
+   "cli/cmdi": 3,
+   "cli/path": 8
+  }
+ },
+ "CVE-2021-41146-fix": {
+  "cls": "cmdi",
+  "flagged": false,
+  "reported": 14,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "api/code": 3,
+   "cli/cmdi": 3,
+   "cli/path": 8
+  }
+ },
+ "CVE-2026-6664-vul": {
+  "cls": "code",
+  "skipped": "memory",
+  "flagged": false,
+  "reported": null
+ },
+ "CVE-2026-6664-fix": {
+  "cls": "code",
+  "skipped": "memory",
+  "flagged": false,
+  "reported": null
+ },
+ "CVE-2025-56005-vul": {
+  "cls": "deser",
+  "flagged": true,
+  "reported": 22,
+  "minutes": 1.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [
+   {
+    "cls": "deser",
+    "source_fn": "astropy.extern.ply.yacc.LRTable.read_pickle",
+    "sink_fn": "astropy.extern.ply.yacc.LRTable.read_pickle",
+    "lane": "undecided"
+   },
+   {
+    "cls": "code",
+    "source_fn": "astropy.extern.ply.yacc.yacc",
+    "sink_fn": "astropy.extern.ply.yacc.yacc",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "api/code": 6,
+   "cli/path": 7,
+   "api/deser": 7,
+   "cli/cmdi": 2
+  }
+ },
+ "CVE-2025-56005-fix": {
+  "cls": "deser",
+  "skipped": "memory",
+  "flagged": false,
+  "reported": null
+ },
+ "CVE-2025-69872-vul": {
+  "cls": "deser",
+  "flagged": false,
+  "reported": 36,
+  "minutes": 8.0,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "cli/ssrf": 1,
+   "http/redirect": 3,
+   "http/path": 28,
+   "http/code": 1,
+   "api/code": 1,
+   "cli/path": 2
+  }
+ },
+ "CVE-2025-69872-fix": {
+  "cls": "deser",
+  "flagged": false,
+  "reported": 36,
+  "minutes": 7.8,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/ssrf": 1,
+   "http/redirect": 3,
+   "http/path": 28,
+   "http/code": 1,
+   "api/code": 1,
+   "cli/path": 2
+  }
+ },
+ "CVE-2018-10895-vul": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 18,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [],
+  "kinds": {
+   "api/code": 3,
+   "cli/path": 14,
+   "cli/cmdi": 1
+  }
+ },
+ "CVE-2018-10895-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 18,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "api/code": 3,
+   "cli/path": 14,
+   "cli/cmdi": 1
+  }
+ },
+ "CVE-2024-40348-vul": {
+  "cls": "path",
+  "flagged": true,
+  "reported": 178,
+  "minutes": 12.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {},
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "bazarr.app.ui.swaggerui_static",
+    "sink_fn": "bazarr.app.ui.swaggerui_static",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/sqli": 8,
+   "cli/ssrf": 1,
+   "http/sqli": 1,
+   "http/path": 2,
+   "http/ssrf": 4,
+   "cli/path": 149,
+   "archive/path": 3,
+   "cli/cmdi": 7,
+   "http/xss": 1,
+   "cli/deser": 1,
+   "cli/code": 1
+  }
+ },
+ "CVE-2024-40348-fix": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 177,
+  "minutes": 12.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/sqli": 8,
+   "cli/ssrf": 1,
+   "http/sqli": 1,
+   "http/path": 1,
+   "http/ssrf": 4,
+   "cli/path": 149,
+   "archive/path": 3,
+   "cli/cmdi": 7,
+   "http/xss": 1,
+   "cli/deser": 1,
+   "cli/code": 1
+  }
+ }
+}

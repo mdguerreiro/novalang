@@ -1,0 +1,159 @@
+{
+ "CVE-2026-28415-vul": {
+  "cls": "redirect",
+  "engine": false,
+  "review": true,
+  "flagged": true,
+  "engine_reported": 5,
+  "review_issues": 3,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": true,
+  "usd": 0.536,
+  "minutes": 2.4,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "gradio.oauth._redirect_to_target",
+    "line": 230,
+    "kind": "validator_bypass",
+    "confidence": 0.75,
+    "reason": "The open-redirect guard keeps only the parsed path, but inputs like `////evil.com` (whose path parses as `//evil.com`) or `/\\evil.com` give a protocol-relative or backslash path that browsers treat as an external host, so the user is redirected off-site after OAuth login."
+   },
+   {
+    "cls": "ssrf",
+    "at": "gradio.processing_utils.unsafe_download",
+    "line": 345,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The URL is fetched with `sync_client.stream` and `follow_redirects=True`, with no host or IP validation, so an attacker-supplied URL can make the server request internal or cloud-metadata addresses, and the response is saved to a file the attacker may be able to retrieve."
+   },
+   {
+    "cls": "path",
+    "at": "gradio.routes.App.create_app.undo_vibe_edit",
+    "line": 2197,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The request-body `hash` is inserted into `vibe_edit_history_dir / f\"{hash}.py\"` with no sanitization, so `../` sequences or an absolute path let an attacker open any `.py` file on the server and copy its contents into the watched demo file."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "gradio.oauth._redirect_to_target"
+    ],
+    "repo",
+    0.75,
+    "The open-redirect guard keeps only the parsed path, but inputs like `////evil.com` (whose path parses as `//evil.com`) or `/\\evil.com` give a protocol-relative or backslash path that browsers treat as an external host, so the user is redirected off-site after OAuth login."
+   ],
+   [
+    "sink_api",
+    [
+     "httpx.Client().stream",
+     1,
+     "ssrf"
+    ],
+    "global",
+    0.6,
+    "The URL is fetched with `sync_client.stream` and `follow_redirects=True`, with no host or IP validation, so an attacker-supplied URL can make the server request internal or cloud-metadata addresses, and the response is saved to a file the attacker may be able to retrieve."
+   ],
+   [
+    "sink_api",
+    [
+     "open",
+     0,
+     "path"
+    ],
+    "global",
+    0.6,
+    "The request-body `hash` is inserted into `vibe_edit_history_dir / f\"{hash}.py\"` with no sanitization, so `../` sequences or an absolute path let an attacker open any `.py` file on the server and copy its contents into the watched demo file."
+   ]
+  ]
+ },
+ "CVE-2026-28415-fix": {
+  "cls": "redirect",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 5,
+  "review_issues": 2,
+  "reads": 2,
+  "cached": 28,
+  "target_picked": true,
+  "usd": 0.033,
+  "minutes": 0.7,
+  "issues": [
+   {
+    "cls": "ssrf",
+    "at": "gradio.processing_utils.unsafe_download",
+    "line": 345,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The URL is fetched with `sync_client.stream` and `follow_redirects=True`, with no host or IP validation, so an attacker-supplied URL can make the server request internal or cloud-metadata addresses, and the response is saved to a file the attacker may be able to retrieve."
+   },
+   {
+    "cls": "path",
+    "at": "gradio.routes.App.create_app.undo_vibe_edit",
+    "line": 2197,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The request-body `hash` is inserted into `vibe_edit_history_dir / f\"{hash}.py\"` with no sanitization, so `../` sequences or an absolute path let an attacker open any `.py` file on the server and copy its contents into the watched demo file."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "httpx.Client().stream",
+     1,
+     "ssrf"
+    ],
+    "global",
+    0.6,
+    "The URL is fetched with `sync_client.stream` and `follow_redirects=True`, with no host or IP validation, so an attacker-supplied URL can make the server request internal or cloud-metadata addresses, and the response is saved to a file the attacker may be able to retrieve."
+   ],
+   [
+    "sink_api",
+    [
+     "open",
+     0,
+     "path"
+    ],
+    "global",
+    0.6,
+    "The request-body `hash` is inserted into `vibe_edit_history_dir / f\"{hash}.py\"` with no sanitization, so `../` sequences or an absolute path let an attacker open any `.py` file on the server and copy its contents into the watched demo file."
+   ]
+  ]
+ },
+ "CVE-2025-52558-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.44,
+  "minutes": 1.6,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-52558-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 0,
+  "reads": 9,
+  "cached": 21,
+  "target_picked": false,
+  "usd": 0.124,
+  "minutes": 0.6,
+  "issues": [],
+  "proposals": []
+ }
+}

@@ -1,0 +1,341 @@
+{
+ "CVE-2024-4181": {
+  "cls": "code",
+  "functions": 6381,
+  "targets_found": 2,
+  "engine": {
+   "ranked": 726,
+   "best_pos": 189,
+   "why": [
+    "calls eval",
+    "sink code",
+    "public library API",
+    "on a tainted path",
+    "already reported"
+   ]
+  },
+  "naive": {
+   "ranked": 2715,
+   "best_pos": 372,
+   "why": [
+    "3 keywords"
+   ]
+  }
+ },
+ "CVE-2023-40581": {
+  "cls": "cmdi",
+  "functions": 5644,
+  "targets_found": 1,
+  "engine": {
+   "ranked": 257,
+   "best_pos": 110,
+   "why": [
+    "sink cmdi",
+    "public library API",
+    "on a tainted path",
+    "already reported"
+   ]
+  },
+  "naive": {
+   "ranked": 4265,
+   "best_pos": 2465,
+   "why": [
+    "3 keywords"
+   ]
+  }
+ },
+ "CVE-2023-6709": {
+  "cls": "code",
+  "functions": 10855,
+  "targets_found": 1,
+  "engine": {
+   "ranked": 966,
+   "best_pos": 160,
+   "why": [
+    "calls render",
+    "sink ssti",
+    "reachable from an entry point",
+    "on a tainted path",
+    "already reported"
+   ]
+  },
+  "naive": {
+   "ranked": 2965,
+   "best_pos": 346,
+   "why": [
+    "4 keywords"
+   ]
+  }
+ },
+ "CVE-2024-21520": {
+  "cls": "xss",
+  "functions": 2867,
+  "targets_found": 1,
+  "engine": {
+   "ranked": 362,
+   "best_pos": 1,
+   "why": [
+    "calls mark_safe",
+    "sink xss",
+    "guards input",
+    "builds SQL/HTML/shell text",
+    "reachable from an entry point",
+    "on a tainted path",
+    "already reported"
+   ]
+  },
+  "naive": {
+   "ranked": 614,
+   "best_pos": 300,
+   "why": [
+    "2 keywords"
+   ]
+  }
+ },
+ "CVE-2022-24065": {
+  "cls": "cmdi",
+  "functions": 397,
+  "targets_found": 1,
+  "engine": {
+   "ranked": 34,
+   "best_pos": 9,
+   "why": [
+    "sink cmdi",
+    "guards input",
+    "public library API"
+   ]
+  },
+  "naive": {
+   "ranked": 56,
+   "best_pos": 16,
+   "why": [
+    "4 keywords"
+   ]
+  }
+ },
+ "CVE-2024-37060": {
+  "cls": "deser",
+  "functions": 6857,
+  "targets_found": 1,
+  "engine": {
+   "ranked": 597,
+   "best_pos": 7,
+   "why": [
+    "calls load, open",
+    "sink deser/path",
+    "guards input",
+    "public library API",
+    "on a tainted path",
+    "already reported"
+   ]
+  },
+  "naive": {
+   "ranked": 1757,
+   "best_pos": 125,
+   "why": [
+    "5 keywords"
+   ]
+  }
+ },
+ "CVE-2021-34363": {
+  "cls": "path",
+  "functions": 1366,
+  "targets_found": 2,
+  "engine": {
+   "ranked": 65,
+   "best_pos": 4,
+   "why": [
+    "calls TarFile, remove",
+    "sink path",
+    "public library API",
+    "on a tainted path",
+    "already reported"
+   ]
+  },
+  "naive": {
+   "ranked": 254,
+   "best_pos": 57,
+   "why": [
+    "2 keywords"
+   ]
+  }
+ },
+ "CVE-2024-39863": {
+  "cls": "xss",
+  "functions": 12774,
+  "targets_found": 1,
+  "engine": {
+   "ranked": 2356,
+   "best_pos": 4,
+   "why": [
+    "validator",
+    "calls Markup",
+    "sink xss",
+    "builds SQL/HTML/shell text",
+    "in a view class"
+   ]
+  },
+  "naive": {
+   "ranked": 7100,
+   "best_pos": 92,
+   "why": [
+    "validator",
+    "2 keywords"
+   ]
+  }
+ },
+ "CVE-2023-50943": {
+  "cls": "deser",
+  "functions": 12067,
+  "targets_found": 1,
+  "engine": {
+   "ranked": 2216,
+   "best_pos": 1289,
+   "why": [
+    "calls loads",
+    "sink deser",
+    "on a tainted path",
+    "already reported"
+   ]
+  },
+  "naive": {
+   "ranked": 6725,
+   "best_pos": 1133,
+   "why": [
+    "3 keywords"
+   ]
+  }
+ },
+ "CVE-2022-28347": {
+  "cls": "sqli",
+  "functions": 23472,
+  "targets_found": 0,
+  "engine": {
+   "ranked": 2133,
+   "best_pos": null,
+   "why": null
+  },
+  "naive": {
+   "ranked": 3938,
+   "best_pos": null,
+   "why": null
+  }
+ },
+ "CVE-2021-39207": {
+  "cls": "deser",
+  "functions": 4598,
+  "targets_found": 3,
+  "engine": {
+   "ranked": 1041,
+   "best_pos": 0,
+   "why": [
+    "calls load, open",
+    "sink deser/path",
+    "guards input",
+    "public library API"
+   ]
+  },
+  "naive": {
+   "ranked": 1932,
+   "best_pos": 39,
+   "why": [
+    "4 keywords"
+   ]
+  }
+ },
+ "CVE-2023-37274": {
+  "cls": "code",
+  "functions": 2237,
+  "targets_found": 0,
+  "engine": {
+   "ranked": 111,
+   "best_pos": null,
+   "why": null
+  },
+  "naive": {
+   "ranked": 1084,
+   "best_pos": null,
+   "why": null
+  }
+ },
+ "CVE-2024-37058": {
+  "cls": "deser",
+  "functions": 9655,
+  "targets_found": 0,
+  "engine": {
+   "ranked": 842,
+   "best_pos": null,
+   "why": null
+  },
+  "naive": {
+   "ranked": 2560,
+   "best_pos": null,
+   "why": null
+  }
+ },
+ "CVE-2024-39330": {
+  "cls": "path",
+  "functions": 28469,
+  "targets_found": 1,
+  "engine": {
+   "ranked": 2474,
+   "best_pos": 1743,
+   "why": [
+    "guards input",
+    "public library API"
+   ]
+  },
+  "naive": {
+   "ranked": 4511,
+   "best_pos": 1813,
+   "why": [
+    "2 keywords"
+   ]
+  }
+ },
+ "CVE-2019-1010259": {
+  "cls": "sqli",
+  "functions": 28505,
+  "targets_found": 1,
+  "engine": {
+   "ranked": 4348,
+   "best_pos": 349,
+   "why": [
+    "guards input",
+    "builds SQL/HTML/shell text",
+    "public library API"
+   ]
+  },
+  "naive": {
+   "ranked": 11417,
+   "best_pos": 925,
+   "why": [
+    "5 keywords"
+   ]
+  }
+ },
+ "CVE-2024-41950": {
+  "cls": "code",
+  "functions": 2375,
+  "targets_found": 9,
+  "engine": {
+   "ranked": 197,
+   "best_pos": 13,
+   "why": [
+    "calls Template",
+    "sink ssti",
+    "guards input",
+    "public library API",
+    "on a tainted path",
+    "already reported"
+   ]
+  },
+  "naive": {
+   "ranked": 432,
+   "best_pos": 6,
+   "why": [
+    "4 keywords"
+   ]
+  }
+ }
+}

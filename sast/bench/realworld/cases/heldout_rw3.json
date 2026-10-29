@@ -1,0 +1,307 @@
+{
+ "cases": [
+  {
+   "cve": "CVE-2021-45452",
+   "cls": "path",
+   "targets": [
+    "django/core/files/storage.py:Storage._save"
+   ],
+   "project": "https://github.com/django/django",
+   "vul": "2.2.25",
+   "fix": "2.2.26",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2021-45452-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2021-45452-fix"
+   },
+   "tools": {
+    "Bearer": "capability (RC3)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "implicit sink (RC3)",
+    "Codeql": "interface-source (RC1)",
+    "Pysa": "interface-source (RC1)"
+   }
+  },
+  {
+   "cve": "CVE-2024-39877",
+   "cls": "code",
+   "targets": [
+    "airflow/models/dag.py:DAG.get_doc_md"
+   ],
+   "project": "https://github.com/apache/airflow",
+   "vul": "2.9.2",
+   "fix": "2.9.3",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2024-39877-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2024-39877-fix"
+   },
+   "tools": {
+    "Bearer": "no rule (RC1)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "intrinsic (RC2)",
+    "Codeql": "detected",
+    "Pysa": "no sink (RC1)"
+   }
+  },
+  {
+   "cve": "CVE-2024-41656",
+   "cls": "xss",
+   "targets": [
+    "src/sentry/integrations/mixins/issues.py:IssueBasicMixin.map_external_issues_to_annotations",
+    "src/sentry/models/platformexternalissue.py:PlatformExternalIssue.get_annotations_for_group_list",
+    "src/sentry/plugins/bases/issue.py:IssueTrackingPlugin.tags",
+    "src/sentry/plugins/bases/issue2.py:IssueTrackingPlugin2.tags"
+   ],
+   "project": "https://github.com/getsentry/sentry",
+   "vul": "24.7.0",
+   "fix": "24.7.1",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2024-41656-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2024-41656-fix"
+   },
+   "tools": {
+    "Bearer": "capability (RC3)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "implicit sink (RC3)",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f (RC2)"
+   }
+  },
+  {
+   "cve": "CVE-2024-31462",
+   "cls": "path",
+   "targets": [
+    "modules/ui_extensions.py:save_config_state"
+   ],
+   "project": "https://github.com/AUTOMATIC1111/stable-diffusion-webui",
+   "vul": "v1.7.0",
+   "fix": "v1.9.0",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2024-31462-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2024-31462-fix"
+   },
+   "tools": {
+    "Bearer": "capability (RC3)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "rule implementation (RC1)",
+    "Codeql": "detected",
+    "Pysa": "inadquate capability (RC2), no sink (RC1)"
+   }
+  },
+  {
+   "cve": "CVE-2023-42819",
+   "cls": "path",
+   "targets": [
+    "apps/ops/api/playbook.py:PlaybookViewSet.perform_destroy",
+    "apps/ops/api/playbook.py:PlaybookViewSet.perform_create",
+    "apps/ops/api/playbook.py:PlaybookFileBrowserAPIView.get",
+    "apps/ops/api/playbook.py:PlaybookFileBrowserAPIView.post",
+    "apps/ops/api/playbook.py:PlaybookFileBrowserAPIView.patch",
+    "apps/ops/api/playbook.py:PlaybookFileBrowserAPIView.delete"
+   ],
+   "project": "https://github.com/jumpserver/jumpserver",
+   "vul": "v3.6.4",
+   "fix": "v3.6.5",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2023-42819-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2023-42819-fix"
+   },
+   "tools": {
+    "Bearer": "capability (RC3)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "no sink (RC1)",
+    "Codeql": "detected",
+    "Pysa": "no req (RC1)"
+   }
+  },
+  {
+   "cve": "https://www.cve.org/CVERecord?id=CVE-2024-41675",
+   "cls": "xss",
+   "targets": [
+    "ckanext/datatablesview/blueprint.py:ajax"
+   ],
+   "project": "https://github.com/ckan/ckan",
+   "vul": "9e89ce8220ab1445e0bd85a67994a51d9d3d2688^",
+   "fix": "9e89ce8220ab1445e0bd85a67994a51d9d3d2688",
+   "how": "security keyword: Escape data in datatables view",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/https:/www.cve.org/CVERecord?id=CVE-2024-41675-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/https:/www.cve.org/CVERecord?id=CVE-2024-41675-fix"
+   },
+   "tools": {
+    "Bearer": "hard to detect (RC3)",
+    "DevSkim": "hard_to_detect (RC3)",
+    "Dlint": "hard to detect (RC3)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "implicit sink (RC3)",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "no sink (RC1)"
+   }
+  },
+  {
+   "cve": "https://www.cve.org/CVERecord?id=CVE-2021-25283",
+   "cls": "code",
+   "targets": [
+    "salt/utils/templates.py:render_jinja_tmpl"
+   ],
+   "project": "https://github.com/saltstack/salt",
+   "vul": "3fbf9a35bc4f7a43f628631f89ebb31f907859e3^",
+   "fix": "3fbf9a35bc4f7a43f628631f89ebb31f907859e3",
+   "how": "names the CVE/GHSA",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/https:/www.cve.org/CVERecord?id=CVE-2021-25283-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/https:/www.cve.org/CVERecord?id=CVE-2021-25283-fix"
+   },
+   "tools": {
+    "Bearer": "no rule (RC1)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "detected",
+    "Semgrep": "detected",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f source (RC2)"
+   }
+  },
+  {
+   "cve": "https://www.cve.org/CVERecord?id=CVE-2023-41040",
+   "cls": "path",
+   "targets": [
+    "git/refs/symbolic.py:SymbolicReference._get_ref_info_helper"
+   ],
+   "project": "https://github.com/gitpython-developers/GitPython",
+   "vul": "64ebb9fcdfbe48d5d61141a557691fd91f1e88d6^",
+   "fix": "64ebb9fcdfbe48d5d61141a557691fd91f1e88d6",
+   "how": "names the CVE/GHSA",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/https:/www.cve.org/CVERecord?id=CVE-2023-41040-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/https:/www.cve.org/CVERecord?id=CVE-2023-41040-fix"
+   },
+   "tools": {
+    "Bearer": "capability (RC3)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "rule implementation (RC1)",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f source (RC2)"
+   }
+  },
+  {
+   "cve": "https://www.cve.org/CVERecord?id=CVE-2021-25963",
+   "cls": "xss",
+   "targets": [
+    "shuup/admin/utils/urls.py:AdminRegexURLPattern._get_unauth_response",
+    "shuup/core/basket/command_dispatcher.py:BasketCommandDispatcher.handle",
+    "shuup/front/checkout/_process.py:CheckoutProcess.get_current_phase",
+    "shuup/front/urls.py:_not_here_yet",
+    "shuup/xtheme/views/command.py:command_dispatch",
+    "shuup/xtheme/views/editor.py:EditorView.post",
+    "shuup/xtheme/views/extra.py:extra_view_dispatch"
+   ],
+   "project": "https://github.com/shuup/shuup",
+   "vul": "75714c37e32796eb7cbb0d977af5bcaa26573588^",
+   "fix": "75714c37e32796eb7cbb0d977af5bcaa26573588",
+   "how": "security keyword: General: fix critical views that can be subject of XSS attacks",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/https:/www.cve.org/CVERecord?id=CVE-2021-25963-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/https:/www.cve.org/CVERecord?id=CVE-2021-25963-fix"
+   },
+   "tools": {
+    "Bearer": "no rule (RC1)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "implicit sink (RC3)",
+    "Codeql": "detected",
+    "Pysa": "no sink (RC1)"
+   }
+  },
+  {
+   "cve": "CVE-2024-27132",
+   "cls": "xss",
+   "targets": [
+    "mlflow/recipes/recipe.py:BaseRecipe._get_artifact",
+    "mlflow/recipes/steps/ingest/__init__.py:BaseIngestStep._build_step_card"
+   ],
+   "project": "https://github.com/mlflow/mlflow",
+   "vul": "4ae428205821795da7364af951a7b27e21e2022f^",
+   "fix": "4ae428205821795da7364af951a7b27e21e2022f",
+   "how": "security keyword: Fix: Template injection in MLflow Recipe leads to an RCE (#10873)",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2024-27132-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2024-27132-fix"
+   },
+   "tools": {
+    "Bearer": "capability (RC3)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "implicit sink (RC3)",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f source (RC2)"
+   }
+  },
+  {
+   "cve": "CVE-2024-27133",
+   "cls": "xss",
+   "targets": [
+    "mlflow/recipes/recipe.py:BaseRecipe._get_artifact",
+    "mlflow/recipes/steps/ingest/__init__.py:BaseIngestStep._build_step_card"
+   ],
+   "project": "https://github.com/mlflow/mlflow",
+   "vul": "4ae428205821795da7364af951a7b27e21e2022f^",
+   "fix": "4ae428205821795da7364af951a7b27e21e2022f",
+   "how": "security keyword: Fix: Template injection in MLflow Recipe leads to an RCE (#10873)",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2024-27133-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/CVE-2024-27133-fix"
+   },
+   "tools": {
+    "Bearer": "capability (RC3)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "implicit sink (RC3)",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f source (RC2)"
+   }
+  },
+  {
+   "cve": "https://www.cve.org/CVERecord?id=CVE-2023-50265",
+   "cls": "path",
+   "targets": [
+    "bazarr/app/ui.py:swaggerui_static"
+   ],
+   "project": "https://github.com/morpheus65535/bazarr",
+   "vul": "e6c247edf7f9c94e6a953f9ed28c87ee975ee94e^",
+   "fix": "e6c247edf7f9c94e6a953f9ed28c87ee975ee94e",
+   "how": "security keyword: Standardized path traversal protection by using Path.is_relative_to() with realp",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/https:/www.cve.org/CVERecord?id=CVE-2023-50265-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw3/trees/https:/www.cve.org/CVERecord?id=CVE-2023-50265-fix"
+   },
+   "tools": {
+    "Bearer": "detected",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "rule implementation (RC1)",
+    "Codeql": "detected",
+    "Pysa": "no source (RC1)"
+   }
+  }
+ ],
+ "parts": {
+  "a": 5,
+  "b": 7
+ }
+}

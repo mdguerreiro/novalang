@@ -1,0 +1,345 @@
+{
+ "CVE-2021-45452-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 44,
+  "minutes": 1.6,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "interface-source (RC1)",
+   "Pysa": "interface-source (RC1)"
+  },
+  "near": []
+ },
+ "CVE-2021-45452-fix": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 44,
+  "minutes": 1.7,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": []
+ },
+ "CVE-2024-39877-vul": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 650,
+  "minutes": 2.9,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "intrinsic (RC2)",
+   "Codeql": "detected",
+   "Pysa": "no sink (RC1)"
+  },
+  "near": []
+ },
+ "CVE-2024-39877-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 683,
+  "minutes": 3.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": []
+ },
+ "CVE-2024-41656-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 30,
+  "minutes": 3.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f (RC2)"
+  },
+  "near": []
+ },
+ "CVE-2024-41656-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 30,
+  "minutes": 3.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": []
+ },
+ "CVE-2024-31462-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 0,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "rule implementation (RC1)",
+   "Codeql": "detected",
+   "Pysa": "inadquate capability (RC2), no sink (RC1)"
+  },
+  "near": []
+ },
+ "CVE-2024-31462-fix": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 0,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": []
+ },
+ "CVE-2023-42819-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 12,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "no sink (RC1)",
+   "Codeql": "detected",
+   "Pysa": "no req (RC1)"
+  },
+  "near": []
+ },
+ "CVE-2023-42819-fix": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 12,
+  "minutes": 0.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": []
+ },
+ "CVE-2024-41675-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 0,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "hard to detect (RC3)",
+   "DevSkim": "hard_to_detect (RC3)",
+   "Dlint": "hard to detect (RC3)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "no sink (RC1)"
+  },
+  "near": []
+ },
+ "CVE-2024-41675-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 0,
+  "minutes": 0.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": []
+ },
+ "CVE-2021-25283-vul": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 52,
+  "minutes": 8.6,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "detected",
+   "Semgrep": "detected",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f source (RC2)"
+  },
+  "near": []
+ },
+ "CVE-2021-25283-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 52,
+  "minutes": 8.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": []
+ },
+ "CVE-2023-41040-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 0,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "rule implementation (RC1)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f source (RC2)"
+  },
+  "near": []
+ },
+ "CVE-2023-41040-fix": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 0,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": []
+ },
+ "CVE-2021-25963-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 0,
+  "minutes": 0.4,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "detected",
+   "Pysa": "no sink (RC1)"
+  },
+  "near": []
+ },
+ "CVE-2021-25963-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 0,
+  "minutes": 0.4,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": []
+ },
+ "CVE-2024-27132-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 43,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f source (RC2)"
+  },
+  "near": []
+ },
+ "CVE-2024-27132-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 43,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": []
+ },
+ "CVE-2024-27133-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 43,
+  "minutes": 0.7,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f source (RC2)"
+  },
+  "near": []
+ },
+ "CVE-2024-27133-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 43,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": []
+ },
+ "CVE-2023-50265-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 270,
+  "minutes": 14.6,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "detected",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "rule implementation (RC1)",
+   "Codeql": "detected",
+   "Pysa": "no source (RC1)"
+  },
+  "near": []
+ },
+ "CVE-2023-50265-fix": {
+  "cls": "path",
+  "flagged": true,
+  "reported": 272,
+  "minutes": 14.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "bazarr.app.ui.swaggerui_static",
+    "sink_fn": "bazarr.app.ui.swaggerui_static",
+    "lane": "undecided"
+   }
+  ]
+ }
+}

@@ -1,0 +1,547 @@
+{
+ "seed": 20261026,
+ "cases": [
+  {
+   "cve": "CVE-2024-4181",
+   "cls": "code",
+   "targets": [
+    "llama-index-integrations/llms/llama-index-llms-rungpt/llama_index/llms/rungpt/base.py:RunGptLLM.stream_complete.gen",
+    "llama-index-integrations/llms/llama-index-llms-rungpt/llama_index/llms/rungpt/base.py:RunGptLLM.stream_chat.gen"
+   ],
+   "project": "https://github.com/run-llama/llama_index",
+   "vul": "v0.9.47",
+   "fix": "v0.10.0",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-4181-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-4181-fix"
+   },
+   "tools": {
+    "Bearer": "no rule (RC1)",
+    "DevSkim": "detected",
+    "Dlint": "detected",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "detected",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "no source (RC1)"
+   }
+  },
+  {
+   "cve": "CVE-2023-40581",
+   "cls": "cmdi",
+   "targets": [
+    "yt_dlp/postprocessor/exec.py:ExecPP.run"
+   ],
+   "project": "https://github.com/yt-dlp/yt-dlp",
+   "vul": "2023.07.06",
+   "fix": "2023.09.24",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-40581-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-40581-fix"
+   },
+   "tools": {
+    "Bearer": "detected",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "detected",
+    "Bandit": "detected",
+    "Semgrep": "detected",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f (RC2), inadquate capability (RC2)"
+   }
+  },
+  {
+   "cve": "CVE-2023-6709",
+   "cls": "code",
+   "targets": [
+    "mlflow/recipes/cards/__init__.py:CardTab.to_html"
+   ],
+   "project": "https://github.com/mlflow/mlflow",
+   "vul": "v2.9.1",
+   "fix": "v2.9.2",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-6709-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-6709-fix"
+   },
+   "tools": {
+    "Bearer": "no rule (RC1)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "detected",
+    "Semgrep": "detected",
+    "Codeql": "detected",
+    "Pysa": "complex d/c-f source (RC2)"
+   }
+  },
+  {
+   "cve": "CVE-2024-21520",
+   "cls": "xss",
+   "targets": [
+    "rest_framework/templatetags/rest_framework.py:break_long_headers"
+   ],
+   "project": "https://github.com/encode/django-rest-framework",
+   "vul": "3.15.1",
+   "fix": "3.15.2",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-21520-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-21520-fix"
+   },
+   "tools": {
+    "Bearer": "detected",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "detected",
+    "Semgrep": "detected",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f source (RC2)"
+   }
+  },
+  {
+   "cve": "CVE-2022-24065",
+   "cls": "cmdi",
+   "targets": [
+    "cookiecutter/vcs.py:clone"
+   ],
+   "project": "https://github.com/cookiecutter/cookiecutter",
+   "vul": "2.1.0",
+   "fix": "2.1.1",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2022-24065-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2022-24065-fix"
+   },
+   "tools": {
+    "Bearer": "capability (RC3)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "implementation (RC1)",
+    "Bandit": "rule implementation (RC1)",
+    "Semgrep": "detected",
+    "Codeql": "complex d/c-f  diff (RC3)",
+    "Pysa": "complex d/c-f diff (RC3)"
+   }
+  },
+  {
+   "cve": "CVE-2024-37060",
+   "cls": "deser",
+   "targets": [
+    "mlflow/pipelines/cards/__init__.py:BaseCard.load"
+   ],
+   "project": "https://github.com/mlflow/mlflow",
+   "vul": "v1.27.0",
+   "fix": "v2.0.0",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-37060-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-37060-fix"
+   },
+   "tools": {
+    "Bearer": "detected",
+    "DevSkim": "detected",
+    "Dlint": "implementation (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "detected",
+    "Codeql": "interface-source (RC1)",
+    "Pysa": "interface-source (RC1)"
+   }
+  },
+  {
+   "cve": "CVE-2021-34363",
+   "cls": "path",
+   "targets": [
+    "thefuck/rules/dirty_untar.py:side_effect",
+    "thefuck/rules/dirty_unzip.py:side_effect"
+   ],
+   "project": "https://github.com/nvbn/thefuck",
+   "vul": "3.30",
+   "fix": "3.31",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2021-34363-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2021-34363-fix"
+   },
+   "tools": {
+    "Bearer": "no rule (RC1)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "no sink (RC1)",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f (RC2)"
+   }
+  },
+  {
+   "cve": "CVE-2024-39863",
+   "cls": "xss",
+   "targets": [
+    "airflow/www/views.py:ProviderView._clean_description"
+   ],
+   "project": "https://github.com/apache/airflow",
+   "vul": "2.9.2",
+   "fix": "2.9.3",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39863-fix"
+   },
+   "tools": {
+    "Bearer": "capability (RC3)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "detected",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f (RC2)"
+   }
+  },
+  {
+   "cve": "CVE-2023-50943",
+   "cls": "deser",
+   "targets": [
+    "airflow/models/xcom.py:BaseXCom._deserialize_value"
+   ],
+   "project": "https://github.com/apache/airflow",
+   "vul": "2.8.0",
+   "fix": "2.8.1",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-50943-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-50943-fix"
+   },
+   "tools": {
+    "Bearer": "detected",
+    "DevSkim": "implementation (RC1)",
+    "Dlint": "detected",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "detected",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f (RC2)"
+   }
+  },
+  {
+   "cve": "CVE-2022-28347",
+   "cls": "sqli",
+   "targets": [
+    "django/db/backends/postgresql/operations.py:explain_query_prefix"
+   ],
+   "project": "https://github.com/django/django",
+   "vul": "2.2.27",
+   "fix": "2.2.28",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2022-28347-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2022-28347-fix"
+   },
+   "tools": {
+    "Bearer": "hard to detect (RC3)",
+    "DevSkim": "hard_to_detect (RC3)",
+    "Dlint": "hard to detect (RC3)",
+    "Bandit": "complex d/c-f (RC3)",
+    "Semgrep": "partial detected (RC3)",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f (RC2)"
+   }
+  },
+  {
+   "cve": "https://www.cve.org/CVERecord?id=CVE-2021-39207",
+   "cls": "deser",
+   "targets": [
+    "parlai/crowdsourcing/tasks/model_chat/model_chat_blueprint.py:ModelChatBlueprint._get_shared_models",
+    "parlai/crowdsourcing/tasks/model_chat/model_chat_blueprint.py:ModelImageChatBlueprint._get_shared_models",
+    "parlai/chat_service/utils/config.py:parse_configuration_file"
+   ],
+   "project": "https://github.com/facebookresearch/ParlAI",
+   "vul": "v1.0.0",
+   "fix": "v1.1.0",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2021-39207-fix"
+   },
+   "tools": {
+    "Bearer": "capability (RC3)",
+    "DevSkim": "implementation (RC1)",
+    "Dlint": "detected",
+    "Bandit": "detected",
+    "Semgrep": "rule implementation (RC1)",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "no source (RC1)"
+   }
+  },
+  {
+   "cve": "CVE-2023-37274",
+   "cls": "code",
+   "targets": [
+    "autogpt/commands/execute_code.py:execute_python_file"
+   ],
+   "project": "https://github.com/Significant-Gravitas/AutoGPT",
+   "vul": "v0.4.1",
+   "fix": "autogpt-platform-beta-v0.4.2",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-37274-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2023-37274-fix"
+   },
+   "tools": {
+    "Bearer": "hard to detect (RC3)",
+    "DevSkim": "hard_to_detect (RC3)",
+    "Dlint": "hard to detect (RC3)",
+    "Bandit": "complex d/c-f diff (RC3)",
+    "Semgrep": "implicit sink (RC3)",
+    "Codeql": "complex d/c-f  diff (RC3)",
+    "Pysa": "complex d/c-f diff (RC3)"
+   }
+  },
+  {
+   "cve": "CVE-2024-37058",
+   "cls": "deser",
+   "targets": [
+    "mlflow/langchain/utils.py:_load_from_pickle"
+   ],
+   "project": "https://github.com/mlflow/mlflow",
+   "vul": "v2.5.0",
+   "fix": "v2.9.0",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-37058-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-37058-fix"
+   },
+   "tools": {
+    "Bearer": "no rule (RC1)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "no sink (RC1)",
+    "Codeql": "interface-source (RC1)",
+    "Pysa": "interface-source (RC1)"
+   }
+  },
+  {
+   "cve": "CVE-2024-39330",
+   "cls": "path",
+   "targets": [
+    "django/core/files/storage/base.py:Storage.save"
+   ],
+   "project": "https://github.com/django/django",
+   "vul": "5.0.6",
+   "fix": "5.0.7",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39330-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-39330-fix"
+   },
+   "tools": {
+    "Bearer": "no rule (RC1)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "implicit sink (RC3)",
+    "Codeql": "interface-source (RC1)",
+    "Pysa": "interface-source (RC1)"
+   }
+  },
+  {
+   "cve": "https://www.cve.org/CVERecord?id=CVE-2019-1010259",
+   "cls": "sqli",
+   "targets": [
+    "salt/modules/mysql.py:user_chpass"
+   ],
+   "project": "https://github.com/saltstack/salt",
+   "vul": "v2018.3",
+   "fix": "v2018.3.0",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2019-1010259-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/https:/www.cve.org/CVERecord?id=CVE-2019-1010259-fix"
+   },
+   "tools": {
+    "Bearer": "no rule (RC1)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "detected",
+    "Semgrep": "intrinsic (RC2)",
+    "Codeql": "complex d/c-f source (RC2)",
+    "Pysa": "complex d/c-f source (RC2)"
+   }
+  },
+  {
+   "cve": "CVE-2024-41950",
+   "cls": "code",
+   "targets": [
+    "haystack/components/builders/chat_prompt_builder.py:ChatPromptBuilder.__init__",
+    "haystack/components/builders/chat_prompt_builder.py:ChatPromptBuilder.run",
+    "haystack/components/builders/prompt_builder.py:PromptBuilder.__init__",
+    "haystack/components/builders/prompt_builder.py:PromptBuilder.run",
+    "haystack/components/converters/output_adapter.py:OutputAdapter.__init__",
+    "haystack/components/converters/output_adapter.py:OutputAdapter.run",
+    "haystack/components/converters/output_adapter.py:OutputAdapter._extract_variables",
+    "haystack/components/routers/conditional_router.py:ConditionalRouter.__init__",
+    "haystack/components/routers/conditional_router.py:ConditionalRouter.run"
+   ],
+   "project": "https://github.com/deepset-ai/haystack",
+   "vul": "v2.3.0",
+   "fix": "v2.3.1",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-41950-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw2/trees/CVE-2024-41950-fix"
+   },
+   "tools": {
+    "Bearer": "no rule (RC1)",
+    "DevSkim": "no rule (RC1)",
+    "Dlint": "no rule (RC1)",
+    "Bandit": "no rule (RC1)",
+    "Semgrep": "detected",
+    "Codeql": "detected",
+    "Pysa": "no sink (RC1)"
+   }
+  }
+ ],
+ "skipped": [
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2021-31607",
+   "no version in ''"
+  ],
+  [
+   "CVE-2023-6730",
+   "no tag for 'prior to 4.36'"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2025-27787",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2024-4890",
+   "no later tag changes the target"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2016-10516",
+   "no version in ''"
+  ],
+  [
+   "CVE-2024-37059",
+   "no later tag changes the target"
+  ],
+  [
+   "CVE-2021-41127",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2023-30557",
+   "no version in ''"
+  ],
+  [
+   "CVE-2024-3271",
+   "no version in '-'"
+  ],
+  [
+   "CVE-2022-34265",
+   "no tag for 'Django 3.2 before 3.2.14 and 4.0 before 4.0.6'"
+  ],
+  [
+   "CVE-2021-26947",
+   "no tag for 'Odoo Community 15.0 and Odoo Enterprise 15.0'"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2024-32027",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2024-8374",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2012-4406",
+   "no version in ''"
+  ],
+  [
+   "CVE-2024-1561",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2024-25722",
+   "no version in ''"
+  ],
+  [
+   "CVE-2024-37061",
+   "no later tag changes the target"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2022-2054",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2023-50264",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2020-11010",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2018-1000559",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2024-32026",
+   "no version in ''"
+  ],
+  [
+   "CVE-2024-32651",
+   "no version in ''"
+  ],
+  [
+   "CVE-2017-10803",
+   "no tag for 'Odoo 8.0, Odoo Community Edition 9.0 and 10.0, and Odoo Enterprise Edition 9.0 and 10.0'"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2024-32024",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2022-39348",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2021-43857",
+   "no version in ''"
+  ],
+  [
+   "CVE-2022-45907",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2025-27519",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2023-30558",
+   "no version in ''"
+  ],
+  [
+   "CVE-2023-6568",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2021-21386",
+   "no version in ''"
+  ],
+  [
+   "CVE-2023-7018",
+   "no tag for 'prior to 4.36'"
+  ],
+  [
+   "CVE-2023-30620",
+   "no tag for 'addressed in release 23.2.1.0'"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2023-30605",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2024-27306",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2021-3148",
+   "no version in ''"
+  ],
+  [
+   "CVE-2023-6940",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2022-24710",
+   "no version in ''"
+  ],
+  [
+   "https://www.cve.org/CVERecord?id=CVE-2024-27763",
+   "no version in ''"
+  ]
+ ]
+}

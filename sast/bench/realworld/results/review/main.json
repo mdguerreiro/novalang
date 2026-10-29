@@ -1,0 +1,1557 @@
+{
+ "CVE-2024-22423-vul": {
+  "cls": "cmdi",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 12,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.466,
+  "minutes": 1.9,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-22423-fix": {
+  "cls": "cmdi",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 12,
+  "review_issues": 0,
+  "reads": 5,
+  "cached": 25,
+  "target_picked": false,
+  "usd": 0.077,
+  "minutes": 0.9,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2018-14574-vul": {
+  "cls": "redirect",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 40,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.413,
+  "minutes": 3.0,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2018-14574-fix": {
+  "cls": "redirect",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 40,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 1.8,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-64459-vul": {
+  "cls": "sqli",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 29,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.42,
+  "minutes": 3.4,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-64459-fix": {
+  "cls": "sqli",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 29,
+  "review_issues": 0,
+  "reads": 1,
+  "cached": 29,
+  "target_picked": false,
+  "usd": 0.023,
+  "minutes": 2.3,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2026-27696-vul": {
+  "cls": "ssrf",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 59,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.492,
+  "minutes": 1.6,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2026-27696-fix": {
+  "cls": "ssrf",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 59,
+  "review_issues": 0,
+  "reads": 5,
+  "cached": 25,
+  "target_picked": true,
+  "usd": 0.119,
+  "minutes": 0.6,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2022-22818-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 1,
+  "reads": 26,
+  "cached": 4,
+  "target_picked": false,
+  "usd": 0.439,
+  "minutes": 3.1,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "django.utils.archive.BaseArchive.target_filename",
+    "line": 141,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "target_filename checks containment with a plain string startswith and no trailing separator, so an archive member such as '../dest2/evil' (with to_path '/x/dest') resolves to '/x/dest2/evil', passes the check, and is written outside the extraction directory by open(filename, 'wb')."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "django.utils.archive.BaseArchive.target_filename"
+    ],
+    "repo",
+    0.6,
+    "target_filename checks containment with a plain string startswith and no trailing separator, so an archive member such as '../dest2/evil' (with to_path '/x/dest') resolves to '/x/dest2/evil', passes the check, and is written outside the extraction directory by open(filename, 'wb')."
+   ]
+  ]
+ },
+ "CVE-2022-22818-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 1,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 1.8,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "django.utils.archive.BaseArchive.target_filename",
+    "line": 141,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "target_filename checks containment with a plain string startswith and no trailing separator, so an archive member such as '../dest2/evil' (with to_path '/x/dest') resolves to '/x/dest2/evil', passes the check, and is written outside the extraction directory by open(filename, 'wb')."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "django.utils.archive.BaseArchive.target_filename"
+    ],
+    "repo",
+    0.6,
+    "target_filename checks containment with a plain string startswith and no trailing separator, so an archive member such as '../dest2/evil' (with to_path '/x/dest') resolves to '/x/dest2/evil', passes the check, and is written outside the extraction directory by open(filename, 'wb')."
+   ]
+  ]
+ },
+ "CVE-2026-28415-vul": {
+  "cls": "redirect",
+  "engine": false,
+  "review": true,
+  "flagged": true,
+  "engine_reported": 5,
+  "review_issues": 3,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": true,
+  "usd": 0.0,
+  "minutes": 0.4,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "gradio.oauth._redirect_to_target",
+    "line": 230,
+    "kind": "validator_bypass",
+    "confidence": 0.75,
+    "reason": "The open-redirect guard keeps only the parsed path, but inputs like `////evil.com` (whose path parses as `//evil.com`) or `/\\evil.com` give a protocol-relative or backslash path that browsers treat as an external host, so the user is redirected off-site after OAuth login."
+   },
+   {
+    "cls": "ssrf",
+    "at": "gradio.processing_utils.unsafe_download",
+    "line": 345,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The URL is fetched with `sync_client.stream` and `follow_redirects=True`, with no host or IP validation, so an attacker-supplied URL can make the server request internal or cloud-metadata addresses, and the response is saved to a file the attacker may be able to retrieve."
+   },
+   {
+    "cls": "path",
+    "at": "gradio.routes.App.create_app.undo_vibe_edit",
+    "line": 2197,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The request-body `hash` is inserted into `vibe_edit_history_dir / f\"{hash}.py\"` with no sanitization, so `../` sequences or an absolute path let an attacker open any `.py` file on the server and copy its contents into the watched demo file."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "gradio.oauth._redirect_to_target"
+    ],
+    "repo",
+    0.75,
+    "The open-redirect guard keeps only the parsed path, but inputs like `////evil.com` (whose path parses as `//evil.com`) or `/\\evil.com` give a protocol-relative or backslash path that browsers treat as an external host, so the user is redirected off-site after OAuth login."
+   ],
+   [
+    "sink_api",
+    [
+     "httpx.Client().stream",
+     1,
+     "ssrf"
+    ],
+    "global",
+    0.6,
+    "The URL is fetched with `sync_client.stream` and `follow_redirects=True`, with no host or IP validation, so an attacker-supplied URL can make the server request internal or cloud-metadata addresses, and the response is saved to a file the attacker may be able to retrieve."
+   ],
+   [
+    "sink_api",
+    [
+     "open",
+     0,
+     "path"
+    ],
+    "global",
+    0.6,
+    "The request-body `hash` is inserted into `vibe_edit_history_dir / f\"{hash}.py\"` with no sanitization, so `../` sequences or an absolute path let an attacker open any `.py` file on the server and copy its contents into the watched demo file."
+   ]
+  ]
+ },
+ "CVE-2026-28415-fix": {
+  "cls": "redirect",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 5,
+  "review_issues": 2,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": true,
+  "usd": 0.0,
+  "minutes": 0.4,
+  "issues": [
+   {
+    "cls": "ssrf",
+    "at": "gradio.processing_utils.unsafe_download",
+    "line": 345,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The URL is fetched with `sync_client.stream` and `follow_redirects=True`, with no host or IP validation, so an attacker-supplied URL can make the server request internal or cloud-metadata addresses, and the response is saved to a file the attacker may be able to retrieve."
+   },
+   {
+    "cls": "path",
+    "at": "gradio.routes.App.create_app.undo_vibe_edit",
+    "line": 2197,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The request-body `hash` is inserted into `vibe_edit_history_dir / f\"{hash}.py\"` with no sanitization, so `../` sequences or an absolute path let an attacker open any `.py` file on the server and copy its contents into the watched demo file."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "httpx.Client().stream",
+     1,
+     "ssrf"
+    ],
+    "global",
+    0.6,
+    "The URL is fetched with `sync_client.stream` and `follow_redirects=True`, with no host or IP validation, so an attacker-supplied URL can make the server request internal or cloud-metadata addresses, and the response is saved to a file the attacker may be able to retrieve."
+   ],
+   [
+    "sink_api",
+    [
+     "open",
+     0,
+     "path"
+    ],
+    "global",
+    0.6,
+    "The request-body `hash` is inserted into `vibe_edit_history_dir / f\"{hash}.py\"` with no sanitization, so `../` sequences or an absolute path let an attacker open any `.py` file on the server and copy its contents into the watched demo file."
+   ]
+  ]
+ },
+ "CVE-2025-52558-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.1,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-52558-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.1,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-62348-vul": {
+  "cls": "deser",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 28,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.57,
+  "minutes": 14.1,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-62348-fix": {
+  "cls": "deser",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 28,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 8.9,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-62780-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 2,
+  "reads": 26,
+  "cached": 4,
+  "target_picked": false,
+  "usd": 0.443,
+  "minutes": 1.4,
+  "issues": [
+   {
+    "cls": "xss",
+    "at": "changedetectionio.blueprint.ui.notification.construct_blueprint.ajax_callback_send_notification_test",
+    "line": 72,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The user-supplied notification URL from request.form['notification_urls'] is rendered through Jinja and then reflected unescaped into an HTML (text/html default) response in the error message, allowing script injection."
+   },
+   {
+    "cls": "xss",
+    "at": "changedetectionio.model.Watch.model.link",
+    "line": 95,
+    "kind": "flow",
+    "confidence": 0.75,
+    "reason": "The raw watch URL is formatted into an HTML string and wrapped in Markup without escaping. A URL that passes the protocol check but holds an invalid Jinja2 template plus HTML/script would render unescaped in the flashed error message."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "markupsafe.Markup",
+     0,
+     "xss"
+    ],
+    "global",
+    0.75,
+    "The raw watch URL is formatted into an HTML string and wrapped in Markup without escaping. A URL that passes the protocol check but holds an invalid Jinja2 template plus HTML/script would render unescaped in the flashed error message."
+   ]
+  ]
+ },
+ "CVE-2025-62780-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 1,
+  "reads": 16,
+  "cached": 14,
+  "target_picked": false,
+  "usd": 0.264,
+  "minutes": 1.0,
+  "issues": [
+   {
+    "cls": "xss",
+    "at": "changedetectionio.model.Watch.model.link",
+    "line": 78,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "When a watch URL contains '{{' or '{%' but fails Jinja rendering, the raw URL is inserted unescaped into a Markup()-wrapped HTML string and flashed. Payloads like 'http://x/{{<img src=x onerror=alert(1)>' pass is_safe_url, so script runs in the browser of whoever views the page."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "markupsafe.Markup",
+     0,
+     "xss"
+    ],
+    "global",
+    0.6,
+    "When a watch URL contains '{{' or '{%' but fails Jinja rendering, the raw URL is inserted unescaped into a Markup()-wrapped HTML string and flashed. Payloads like 'http://x/{{<img src=x onerror=alert(1)>' pass is_safe_url, so script runs in the browser of whoever views the page."
+   ]
+  ]
+ },
+ "CVE-2021-41146-vul": {
+  "cls": "cmdi",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 14,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.319,
+  "minutes": 1.2,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2021-41146-fix": {
+  "cls": "cmdi",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 14,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.3,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2026-6664-vul": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 8,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.46,
+  "minutes": 23.8,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2026-6664-fix": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 8,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 34.2,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-56005-vul": {
+  "cls": "deser",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 19,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": true,
+  "usd": 0.511,
+  "minutes": 4.5,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-56005-fix": {
+  "cls": "deser",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 18,
+  "review_issues": 0,
+  "reads": 2,
+  "cached": 28,
+  "target_picked": true,
+  "usd": 0.034,
+  "minutes": 3.3,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-69872-vul": {
+  "cls": "deser",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 36,
+  "review_issues": 0,
+  "reads": 29,
+  "cached": 1,
+  "target_picked": false,
+  "usd": 0.5,
+  "minutes": 19.0,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-69872-fix": {
+  "cls": "deser",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 36,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 17.0,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2018-10895-vul": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 18,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.308,
+  "minutes": 1.3,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2018-10895-fix": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 18,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.2,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-40348-vul": {
+  "cls": "path",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 55,
+  "review_issues": 2,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": true,
+  "usd": 0.542,
+  "minutes": 12.5,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "custom_libs.py7zr.py7zr.SevenZipFile._extract",
+    "line": 767,
+    "kind": "validator_bypass",
+    "confidence": 0.8,
+    "reason": "The only filename check is startswith('../'), so archive entry names like 'a/../../x', absolute paths ('/etc/x'), or backslash-separated names on Windows still resolve outside the extraction directory when joined and written."
+   },
+   {
+    "cls": "path",
+    "at": "custom_libs.py7zr.compression.Worker.extract_single",
+    "line": 103,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "Output paths in target_filepath come from archive member names, and this bundled old py7zr does no adequate check for '..' or absolute paths (CVE-2022-44900 era), so a crafted 7z archive can make fileish.open write files outside the extraction directory."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "*.open",
+     0,
+     "path"
+    ],
+    "org",
+    0.6,
+    "Output paths in target_filepath come from archive member names, and this bundled old py7zr does no adequate check for '..' or absolute paths (CVE-2022-44900 era), so a crafted 7z archive can make fileish.open write files outside the extraction directory."
+   ]
+  ]
+ },
+ "CVE-2024-40348-fix": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 54,
+  "review_issues": 2,
+  "reads": 1,
+  "cached": 29,
+  "target_picked": true,
+  "usd": 0.006,
+  "minutes": 10.2,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "custom_libs.py7zr.py7zr.SevenZipFile._extract",
+    "line": 767,
+    "kind": "validator_bypass",
+    "confidence": 0.8,
+    "reason": "The only filename check is startswith('../'), so archive entry names like 'a/../../x', absolute paths ('/etc/x'), or backslash-separated names on Windows still resolve outside the extraction directory when joined and written."
+   },
+   {
+    "cls": "path",
+    "at": "custom_libs.py7zr.compression.Worker.extract_single",
+    "line": 103,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "Output paths in target_filepath come from archive member names, and this bundled old py7zr does no adequate check for '..' or absolute paths (CVE-2022-44900 era), so a crafted 7z archive can make fileish.open write files outside the extraction directory."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "*.open",
+     0,
+     "path"
+    ],
+    "org",
+    0.6,
+    "Output paths in target_filepath come from archive member names, and this bundled old py7zr does no adequate check for '..' or absolute paths (CVE-2022-44900 era), so a crafted 7z archive can make fileish.open write files outside the extraction directory."
+   ]
+  ]
+ },
+ "CVE-2021-45452-vul": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 38,
+  "review_issues": 1,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 1.2,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "django.utils.archive.BaseArchive.target_filename",
+    "line": 141,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "target_filename checks containment with a plain string startswith and no trailing separator, so an archive member such as '../dest2/evil' (with to_path '/x/dest') resolves to '/x/dest2/evil', passes the check, and is written outside the extraction directory by open(filename, 'wb')."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "django.utils.archive.BaseArchive.target_filename"
+    ],
+    "repo",
+    0.6,
+    "target_filename checks containment with a plain string startswith and no trailing separator, so an archive member such as '../dest2/evil' (with to_path '/x/dest') resolves to '/x/dest2/evil', passes the check, and is written outside the extraction directory by open(filename, 'wb')."
+   ]
+  ]
+ },
+ "CVE-2021-45452-fix": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 1,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 1.2,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "django.utils.archive.BaseArchive.target_filename",
+    "line": 141,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "target_filename checks containment with a plain string startswith and no trailing separator, so an archive member such as '../dest2/evil' (with to_path '/x/dest') resolves to '/x/dest2/evil', passes the check, and is written outside the extraction directory by open(filename, 'wb')."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "django.utils.archive.BaseArchive.target_filename"
+    ],
+    "repo",
+    0.6,
+    "target_filename checks containment with a plain string startswith and no trailing separator, so an archive member such as '../dest2/evil' (with to_path '/x/dest') resolves to '/x/dest2/evil', passes the check, and is written outside the extraction directory by open(filename, 'wb')."
+   ]
+  ]
+ },
+ "CVE-2024-39877-vul": {
+  "cls": "code",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 20,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": true,
+  "usd": 0.506,
+  "minutes": 2.1,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-39877-fix": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 19,
+  "review_issues": 0,
+  "reads": 16,
+  "cached": 14,
+  "target_picked": false,
+  "usd": 0.293,
+  "minutes": 1.6,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-41656-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 26,
+  "review_issues": 2,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.464,
+  "minutes": 4.1,
+  "issues": [
+   {
+    "cls": "ssrf",
+    "at": "src.sentry_plugins.phabricator.plugin.PhabricatorPlugin.validate_config",
+    "line": 179,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The user-supplied plugin config 'host' is joined with 'api/' and requested server-side via api.user.whoami() with no restriction on internal or private addresses, and error details are echoed back to the caller, allowing SSRF to internal services."
+   },
+   {
+    "cls": "code",
+    "at": "src.sentry.api.endpoints.internal.feature_flags.InternalFeatureFlagsEndpoint.put",
+    "line": 68,
+    "kind": "flow",
+    "confidence": 0.8,
+    "reason": "Request values for allowed flag keys are put unescaped into a Python statement (line 49), written into the sentry.conf.py config file and run by configure(), so a value like `True\\nimport os;os.system('id')` executes arbitrary code."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "*.whoami",
+     0,
+     "ssrf"
+    ],
+    "org",
+    0.6,
+    "The user-supplied plugin config 'host' is joined with 'api/' and requested server-side via api.user.whoami() with no restriction on internal or private addresses, and error details are echoed back to the caller, allowing SSRF to internal services."
+   ],
+   [
+    "sink_api",
+    [
+     "*.writelines",
+     0,
+     "code"
+    ],
+    "org",
+    0.8,
+    "Request values for allowed flag keys are put unescaped into a Python statement (line 49), written into the sentry.conf.py config file and run by configure(), so a value like `True\\nimport os;os.system('id')` executes arbitrary code."
+   ]
+  ]
+ },
+ "CVE-2024-41656-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 26,
+  "review_issues": 2,
+  "reads": 10,
+  "cached": 20,
+  "target_picked": false,
+  "usd": 0.185,
+  "minutes": 3.2,
+  "issues": [
+   {
+    "cls": "ssrf",
+    "at": "src.sentry_plugins.phabricator.plugin.PhabricatorPlugin.validate_config",
+    "line": 179,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The user-supplied plugin config 'host' is joined with 'api/' and requested server-side via api.user.whoami() with no restriction on internal or private addresses, and error details are echoed back to the caller, allowing SSRF to internal services."
+   },
+   {
+    "cls": "code",
+    "at": "src.sentry.api.endpoints.internal.feature_flags.InternalFeatureFlagsEndpoint.put",
+    "line": 68,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The request-supplied value for an allowed flag key is interpolated unescaped into a Python statement written to the sentry.conf.py config file and then loaded by configure(), so a value like 'True\\nimport os;os.system(...)' runs arbitrary Python code."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "*.whoami",
+     0,
+     "ssrf"
+    ],
+    "org",
+    0.6,
+    "The user-supplied plugin config 'host' is joined with 'api/' and requested server-side via api.user.whoami() with no restriction on internal or private addresses, and error details are echoed back to the caller, allowing SSRF to internal services."
+   ],
+   [
+    "sink_api",
+    [
+     "*.writelines",
+     0,
+     "code"
+    ],
+    "org",
+    0.6,
+    "The request-supplied value for an allowed flag key is interpolated unescaped into a Python statement written to the sentry.conf.py config file and then loaded by configure(), so a value like 'True\\nimport os;os.system(...)' runs arbitrary Python code."
+   ]
+  ]
+ },
+ "CVE-2024-31462-vul": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 18,
+  "review_issues": 2,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.502,
+  "minutes": 2.3,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "modules.ui_common.save_files",
+    "line": 98,
+    "kind": "flow",
+    "confidence": 0.75,
+    "reason": "The zip filename is built by FilenameGenerator from seed and other values in attacker-supplied js_data (e.g. all_seeds entries as strings containing '../'), then joined to the output dir without sanitization, so ZipFile can write to an arbitrary path."
+   },
+   {
+    "cls": "path",
+    "at": "modules.ui_extensions.install_extension_from_url",
+    "line": 366,
+    "kind": "flow",
+    "confidence": 0.7,
+    "reason": "User-supplied dirname is joined into tmpdir without sanitization, so traversal sequences like '../../' let an attacker recursively delete arbitrary directories via shutil.rmtree (also in the finally block)."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "zipfile.ZipFile",
+     0,
+     "path"
+    ],
+    "global",
+    0.75,
+    "The zip filename is built by FilenameGenerator from seed and other values in attacker-supplied js_data (e.g. all_seeds entries as strings containing '../'), then joined to the output dir without sanitization, so ZipFile can write to an arbitrary path."
+   ],
+   [
+    "sink_api",
+    [
+     "shutil.rmtree",
+     0,
+     "path"
+    ],
+    "global",
+    0.7,
+    "User-supplied dirname is joined into tmpdir without sanitization, so traversal sequences like '../../' let an attacker recursively delete arbitrary directories via shutil.rmtree (also in the finally block)."
+   ]
+  ]
+ },
+ "CVE-2024-31462-fix": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 13,
+  "review_issues": 1,
+  "reads": 20,
+  "cached": 10,
+  "target_picked": false,
+  "usd": 0.361,
+  "minutes": 1.7,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "modules.ui_extensions.install_extension_from_url",
+    "line": 367,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The user-supplied dirname is joined into tmpdir without rejecting '..' or absolute paths, so shutil.rmtree can recursively delete an arbitrary directory (it runs again in the finally block)."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "shutil.rmtree",
+     0,
+     "path"
+    ],
+    "global",
+    0.6,
+    "The user-supplied dirname is joined into tmpdir without rejecting '..' or absolute paths, so shutil.rmtree can recursively delete an arbitrary directory (it runs again in the finally block)."
+   ]
+  ]
+ },
+ "CVE-2023-42819-vul": {
+  "cls": "path",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 21,
+  "review_issues": 1,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": true,
+  "usd": 0.355,
+  "minutes": 1.7,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "apps.users.views.profile.password.UserVerifyPasswordView.form_valid",
+    "line": 42,
+    "kind": "flow",
+    "confidence": 0.85,
+    "reason": "get_success_url returns the attacker-supplied 'next' GET parameter (or the Referer header) unvalidated, and form_valid passes it straight to redirect, allowing redirection to arbitrary external sites."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "django.shortcuts.redirect",
+     0,
+     "redirect"
+    ],
+    "global",
+    0.85,
+    "get_success_url returns the attacker-supplied 'next' GET parameter (or the Referer header) unvalidated, and form_valid passes it straight to redirect, allowing redirection to arbitrary external sites."
+   ]
+  ]
+ },
+ "CVE-2023-42819-fix": {
+  "cls": "path",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 21,
+  "review_issues": 1,
+  "reads": 8,
+  "cached": 22,
+  "target_picked": true,
+  "usd": 0.151,
+  "minutes": 0.9,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "apps.users.views.profile.password.UserVerifyPasswordView.form_valid",
+    "line": 42,
+    "kind": "flow",
+    "confidence": 0.85,
+    "reason": "get_success_url returns the attacker-supplied 'next' GET parameter (or the Referer header) unvalidated, and form_valid passes it straight to redirect, allowing redirection to arbitrary external sites."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "django.shortcuts.redirect",
+     0,
+     "redirect"
+    ],
+    "global",
+    0.85,
+    "get_success_url returns the attacker-supplied 'next' GET parameter (or the Referer header) unvalidated, and form_valid passes it straight to redirect, allowing redirection to arbitrary external sites."
+   ]
+  ]
+ },
+ "CVE-2024-41675-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 14,
+  "review_issues": 1,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.357,
+  "minutes": 1.5,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "ckan.views.dataset._form_save_redirect",
+    "line": 164,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "After a dataset is created, the `return_to` query parameter from the request is passed straight to h.redirect_to without validation, so the user can be sent to an arbitrary external URL (open redirect)."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "ckan.lib.helpers.HelperAttributeDict().redirect_to",
+     0,
+     "redirect"
+    ],
+    "global",
+    0.6,
+    "After a dataset is created, the `return_to` query parameter from the request is passed straight to h.redirect_to without validation, so the user can be sent to an arbitrary external URL (open redirect)."
+   ]
+  ]
+ },
+ "CVE-2024-41675-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 14,
+  "review_issues": 1,
+  "reads": 1,
+  "cached": 29,
+  "target_picked": false,
+  "usd": 0.012,
+  "minutes": 0.3,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "ckan.views.dataset._form_save_redirect",
+    "line": 164,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "After a dataset is created, the `return_to` query parameter from the request is passed straight to h.redirect_to without validation, so the user can be sent to an arbitrary external URL (open redirect)."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "ckan.lib.helpers.HelperAttributeDict().redirect_to",
+     0,
+     "redirect"
+    ],
+    "global",
+    0.6,
+    "After a dataset is created, the `return_to` query parameter from the request is passed straight to h.redirect_to without validation, so the user can be sent to an arbitrary external URL (open redirect)."
+   ]
+  ]
+ },
+ "CVE-2021-25283-vul": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 2,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.637,
+  "minutes": 8.7,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "salt.daemons.masterapi.AutoKey.check_autosign_dir",
+    "line": 346,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The minion-supplied keyid is joined to the autosign directory without sanitization, so traversal sequences or absolute paths let an attacker check for and delete arbitrary files writable by the master and get the key auto-signed."
+   },
+   {
+    "cls": "path",
+    "at": "salt.modules.virt.seed_non_shared_migrate",
+    "line": 4427,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "An arbitrary caller-supplied file path is passed to os.remove (and later overwritten and chowned) without any path restriction, allowing deletion of arbitrary files."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "os.remove",
+     0,
+     "path"
+    ],
+    "global",
+    0.6,
+    "The minion-supplied keyid is joined to the autosign directory without sanitization, so traversal sequences or absolute paths let an attacker check for and delete arbitrary files writable by the master and get the key auto-signed."
+   ],
+   [
+    "sink_api",
+    [
+     "os.remove",
+     0,
+     "path"
+    ],
+    "global",
+    0.6,
+    "An arbitrary caller-supplied file path is passed to os.remove (and later overwritten and chowned) without any path restriction, allowing deletion of arbitrary files."
+   ]
+  ]
+ },
+ "CVE-2021-25283-fix": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 2,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 6.9,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "salt.daemons.masterapi.AutoKey.check_autosign_dir",
+    "line": 346,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The minion-supplied keyid is joined to the autosign directory without sanitization, so traversal sequences or absolute paths let an attacker check for and delete arbitrary files writable by the master and get the key auto-signed."
+   },
+   {
+    "cls": "path",
+    "at": "salt.modules.virt.seed_non_shared_migrate",
+    "line": 4427,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "An arbitrary caller-supplied file path is passed to os.remove (and later overwritten and chowned) without any path restriction, allowing deletion of arbitrary files."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "os.remove",
+     0,
+     "path"
+    ],
+    "global",
+    0.6,
+    "The minion-supplied keyid is joined to the autosign directory without sanitization, so traversal sequences or absolute paths let an attacker check for and delete arbitrary files writable by the master and get the key auto-signed."
+   ],
+   [
+    "sink_api",
+    [
+     "os.remove",
+     0,
+     "path"
+    ],
+    "global",
+    0.6,
+    "An arbitrary caller-supplied file path is passed to os.remove (and later overwritten and chowned) without any path restriction, allowing deletion of arbitrary files."
+   ]
+  ]
+ },
+ "CVE-2023-41040-vul": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 1,
+  "review_issues": 1,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.455,
+  "minutes": 2.0,
+  "issues": [
+   {
+    "cls": "cmdi",
+    "at": "git.cmd.Git.check_unsafe_options",
+    "line": 496,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "The prefix/equality blocklist misses option forms git still honors: abbreviated long options (e.g. `--upload-pa=cmd`, `--conf=core.sshCommand=cmd`, which git's parse-options expands) and underscore kwarg keys (e.g. `upload_pack`, later dashified to `--upload-pack`), so an attacker who controls options or kwargs can still pass command-executing options to git clone/fetch/pull/push."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "git.cmd.Git.check_unsafe_options"
+    ],
+    "repo",
+    0.6,
+    "The prefix/equality blocklist misses option forms git still honors: abbreviated long options (e.g. `--upload-pa=cmd`, `--conf=core.sshCommand=cmd`, which git's parse-options expands) and underscore kwarg keys (e.g. `upload_pack`, later dashified to `--upload-pack`), so an attacker who controls optio"
+   ]
+  ]
+ },
+ "CVE-2023-41040-fix": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 1,
+  "review_issues": 2,
+  "reads": 2,
+  "cached": 28,
+  "target_picked": false,
+  "usd": 0.048,
+  "minutes": 0.3,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "git.refs.symbolic.SymbolicReference.delete",
+    "line": 491,
+    "kind": "flow",
+    "confidence": 0.75,
+    "reason": "The caller-supplied ref path is only prefixed with 'refs/' by to_full_path and joined to repo.common_dir with no '..' or absolute-path check, so a name like 'refs/../../../etc/x' deletes an arbitrary file via os.remove."
+   },
+   {
+    "cls": "cmdi",
+    "at": "git.cmd.Git.check_unsafe_options",
+    "line": 496,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "The prefix/equality blocklist misses option forms git still honors: abbreviated long options (e.g. `--upload-pa=cmd`, `--conf=core.sshCommand=cmd`, which git's parse-options expands) and underscore kwarg keys (e.g. `upload_pack`, later dashified to `--upload-pack`), so an attacker who controls options or kwargs can still pass command-executing options to git clone/fetch/pull/push."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "os.remove",
+     0,
+     "path"
+    ],
+    "global",
+    0.75,
+    "The caller-supplied ref path is only prefixed with 'refs/' by to_full_path and joined to repo.common_dir with no '..' or absolute-path check, so a name like 'refs/../../../etc/x' deletes an arbitrary file via os.remove."
+   ],
+   [
+    "not_sanitizer",
+    [
+     "git.cmd.Git.check_unsafe_options"
+    ],
+    "repo",
+    0.6,
+    "The prefix/equality blocklist misses option forms git still honors: abbreviated long options (e.g. `--upload-pa=cmd`, `--conf=core.sshCommand=cmd`, which git's parse-options expands) and underscore kwarg keys (e.g. `upload_pack`, later dashified to `--upload-pack`), so an attacker who controls optio"
+   ]
+  ]
+ },
+ "CVE-2021-25963-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 5,
+  "review_issues": 1,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.28,
+  "minutes": 1.6,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "shuup.admin.form_part.SaveFormPartsMixin.save_form_parts",
+    "line": 102,
+    "kind": "flow",
+    "confidence": 0.75,
+    "reason": "The `redirect` GET parameter is passed directly to HttpResponseRedirect without any check that the URL is safe or same-host, so an attacker-crafted link can send an admin to an arbitrary external site after a save."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "django.http.HttpResponseRedirect",
+     0,
+     "redirect"
+    ],
+    "global",
+    0.75,
+    "The `redirect` GET parameter is passed directly to HttpResponseRedirect without any check that the URL is safe or same-host, so an attacker-crafted link can send an admin to an arbitrary external site after a save."
+   ]
+  ]
+ },
+ "CVE-2021-25963-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 5,
+  "review_issues": 1,
+  "reads": 3,
+  "cached": 27,
+  "target_picked": false,
+  "usd": 0.044,
+  "minutes": 0.5,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "shuup.admin.form_part.SaveFormPartsMixin.save_form_parts",
+    "line": 102,
+    "kind": "flow",
+    "confidence": 0.75,
+    "reason": "The `redirect` GET parameter is passed directly to HttpResponseRedirect with no same-host or URL-safety check, so a crafted admin link can send the user to an attacker-controlled site after a save."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "django.http.HttpResponseRedirect",
+     0,
+     "redirect"
+    ],
+    "global",
+    0.75,
+    "The `redirect` GET parameter is passed directly to HttpResponseRedirect with no same-host or URL-safety check, so a crafted admin link can send the user to an attacker-controlled site after a save."
+   ]
+  ]
+ },
+ "CVE-2024-27132-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 35,
+  "review_issues": 1,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.429,
+  "minutes": 2.0,
+  "issues": [
+   {
+    "cls": "xss",
+    "at": "mlflow.recipes.cards.FailureCard.__init__",
+    "line": 294,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The exception traceback, which can carry attacker-influenced text such as data values or recipe content in error messages, is inserted into the card HTML without escaping, so viewing the rendered card can execute injected script."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "self.add_tab().add_html",
+     1,
+     "xss"
+    ],
+    "global",
+    0.6,
+    "The exception traceback, which can carry attacker-influenced text such as data values or recipe content in error messages, is inserted into the card HTML without escaping, so viewing the rendered card can execute injected script."
+   ]
+  ]
+ },
+ "CVE-2024-27132-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 35,
+  "review_issues": 0,
+  "reads": 1,
+  "cached": 29,
+  "target_picked": false,
+  "usd": 0.02,
+  "minutes": 0.8,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-27133-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 35,
+  "review_issues": 1,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.7,
+  "issues": [
+   {
+    "cls": "xss",
+    "at": "mlflow.recipes.cards.FailureCard.__init__",
+    "line": 294,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The exception traceback, which can carry attacker-influenced text such as data values or recipe content in error messages, is inserted into the card HTML without escaping, so viewing the rendered card can execute injected script."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "self.add_tab().add_html",
+     1,
+     "xss"
+    ],
+    "global",
+    0.6,
+    "The exception traceback, which can carry attacker-influenced text such as data values or recipe content in error messages, is inserted into the card HTML without escaping, so viewing the rendered card can execute injected script."
+   ]
+  ]
+ },
+ "CVE-2024-27133-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 35,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.7,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2023-50265-vul": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 53,
+  "review_issues": 1,
+  "reads": 26,
+  "cached": 4,
+  "target_picked": true,
+  "usd": 0.456,
+  "minutes": 11.4,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "custom_libs.py7zr.py7zr.SevenZipFile._extract",
+    "line": 751,
+    "kind": "validator_bypass",
+    "confidence": 0.85,
+    "reason": "The traversal check only rejects filenames starting with '../', so archive entries like 'a/../../etc/x', absolute paths ('/etc/x'), or backslash variants escape the extraction directory when joined at path.joinpath and written by the worker."
+   }
+  ],
+  "proposals": []
+ },
+ "CVE-2023-50265-fix": {
+  "cls": "path",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 55,
+  "review_issues": 1,
+  "reads": 2,
+  "cached": 28,
+  "target_picked": false,
+  "usd": 0.035,
+  "minutes": 10.5,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "custom_libs.py7zr.py7zr.SevenZipFile._extract",
+    "line": 751,
+    "kind": "validator_bypass",
+    "confidence": 0.85,
+    "reason": "The traversal check only rejects filenames starting with '../', so archive entries like 'a/../../etc/x', absolute paths ('/etc/x'), or backslash variants escape the extraction directory when joined at path.joinpath and written by the worker."
+   }
+  ],
+  "proposals": []
+ }
+}

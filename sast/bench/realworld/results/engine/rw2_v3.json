@@ -1,0 +1,940 @@
+{
+ "CVE-2024-4181-vul": {
+  "cls": "code",
+  "flagged": true,
+  "reported": 11,
+  "minutes": 0.4,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "detected",
+   "Dlint": "detected",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "detected",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "no source (RC1)"
+  },
+  "near": [
+   {
+    "cls": "code",
+    "source_fn": "llama_index.llms.rungpt.RunGptLLM.stream_complete",
+    "sink_fn": "llama_index.llms.rungpt.RunGptLLM.stream_complete.gen",
+    "lane": "undecided"
+   },
+   {
+    "cls": "code",
+    "source_fn": "llama_index.llms.rungpt.RunGptLLM.stream_complete",
+    "sink_fn": "llama_index.llms.rungpt.RunGptLLM.stream_complete.gen",
+    "lane": "undecided"
+   },
+   {
+    "cls": "code",
+    "source_fn": "llama_index.llms.rungpt.RunGptLLM.stream_chat",
+    "sink_fn": "llama_index.llms.rungpt.RunGptLLM.stream_chat.gen",
+    "lane": "undecided"
+   },
+   {
+    "cls": "code",
+    "source_fn": "llama_index.llms.rungpt.RunGptLLM.stream_chat",
+    "sink_fn": "llama_index.llms.rungpt.RunGptLLM.stream_chat.gen",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "api/deser": 3,
+   "api/code": 4,
+   "network/code": 4
+  }
+ },
+ "CVE-2024-4181-fix": {
+  "cls": "code",
+  "flagged": true,
+  "reported": 27,
+  "minutes": 0.8,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "code",
+    "source_fn": "llama-index-integrations.llms.llama-index-llms-rungpt.llama_index.llms.rungpt.base.RunGptLLM.stream_complete",
+    "sink_fn": "llama-index-integrations.llms.llama-index-llms-rungpt.llama_index.llms.rungpt.base.RunGptLLM.stream_complete.gen",
+    "lane": "undecided"
+   },
+   {
+    "cls": "code",
+    "source_fn": "llama-index-integrations.llms.llama-index-llms-rungpt.llama_index.llms.rungpt.base.RunGptLLM.stream_complete",
+    "sink_fn": "llama-index-integrations.llms.llama-index-llms-rungpt.llama_index.llms.rungpt.base.RunGptLLM.stream_complete.gen",
+    "lane": "undecided"
+   },
+   {
+    "cls": "code",
+    "source_fn": "llama-index-integrations.llms.llama-index-llms-rungpt.llama_index.llms.rungpt.base.RunGptLLM.stream_chat",
+    "sink_fn": "llama-index-integrations.llms.llama-index-llms-rungpt.llama_index.llms.rungpt.base.RunGptLLM.stream_chat.gen",
+    "lane": "undecided"
+   },
+   {
+    "cls": "code",
+    "source_fn": "llama-index-integrations.llms.llama-index-llms-rungpt.llama_index.llms.rungpt.base.RunGptLLM.stream_chat",
+    "sink_fn": "llama-index-integrations.llms.llama-index-llms-rungpt.llama_index.llms.rungpt.base.RunGptLLM.stream_chat.gen",
+    "lane": "undecided"
+   },
+   {
+    "cls": "code",
+    "source_fn": "llama-index-legacy.llama_index.legacy.llms.rungpt.RunGptLLM.stream_complete",
+    "sink_fn": "llama-index-legacy.llama_index.legacy.llms.rungpt.RunGptLLM.stream_complete.gen",
+    "lane": "undecided"
+   },
+   {
+    "cls": "code",
+    "source_fn": "llama-index-legacy.llama_index.legacy.llms.rungpt.RunGptLLM.stream_complete",
+    "sink_fn": "llama-index-legacy.llama_index.legacy.llms.rungpt.RunGptLLM.stream_complete.gen",
+    "lane": "undecided"
+   },
+   {
+    "cls": "code",
+    "source_fn": "llama-index-legacy.llama_index.legacy.llms.rungpt.RunGptLLM.stream_chat",
+    "sink_fn": "llama-index-legacy.llama_index.legacy.llms.rungpt.RunGptLLM.stream_chat.gen",
+    "lane": "undecided"
+   },
+   {
+    "cls": "code",
+    "source_fn": "llama-index-legacy.llama_index.legacy.llms.rungpt.RunGptLLM.stream_chat",
+    "sink_fn": "llama-index-legacy.llama_index.legacy.llms.rungpt.RunGptLLM.stream_chat.gen",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "api/code": 9,
+   "api/deser": 10,
+   "network/code": 8
+  }
+ },
+ "CVE-2023-40581-vul": {
+  "cls": "cmdi",
+  "flagged": true,
+  "reported": 34,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "detected",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "detected",
+   "Bandit": "detected",
+   "Semgrep": "detected",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f (RC2), inadquate capability (RC2)"
+  },
+  "near": [
+   {
+    "cls": "cmdi",
+    "source_fn": "yt_dlp.postprocessor.exec.ExecPP.__init__",
+    "sink_fn": "yt_dlp.postprocessor.exec.ExecPP.run",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/path": 32,
+   "api/code": 1,
+   "api/cmdi": 1
+  }
+ },
+ "CVE-2023-40581-fix": {
+  "cls": "cmdi",
+  "flagged": false,
+  "reported": 33,
+  "minutes": 0.6,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/path": 32,
+   "api/code": 1
+  }
+ },
+ "CVE-2023-6709-vul": {
+  "cls": "code",
+  "flagged": true,
+  "reported": 64,
+  "minutes": 1.2,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "detected",
+   "Semgrep": "detected",
+   "Codeql": "detected",
+   "Pysa": "complex d/c-f source (RC2)"
+  },
+  "near": [
+   {
+    "cls": "ssti",
+    "source_fn": "mlflow.recipes.cards.CardTab.__init__",
+    "sink_fn": "mlflow.recipes.cards.CardTab.to_html",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/cmdi": 2,
+   "cli/path": 24,
+   "cli/ssrf": 1,
+   "cli/deser": 1,
+   "archive/path": 4,
+   "network/cmdi": 7,
+   "api/deser": 9,
+   "api/cmdi": 2,
+   "api/ssti": 1,
+   "http/xss": 1,
+   "http/path": 12
+  }
+ },
+ "CVE-2023-6709-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 63,
+  "minutes": 1.3,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/cmdi": 2,
+   "cli/path": 24,
+   "cli/ssrf": 1,
+   "cli/deser": 1,
+   "archive/path": 4,
+   "network/cmdi": 7,
+   "api/deser": 9,
+   "api/cmdi": 2,
+   "http/xss": 1,
+   "http/path": 12
+  }
+ },
+ "CVE-2024-21520-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 1,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "detected",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "detected",
+   "Semgrep": "detected",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f source (RC2)"
+  },
+  "near": [],
+  "kinds": {
+   "api/ssti": 1
+  }
+ },
+ "CVE-2024-21520-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 1,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "api/ssti": 1
+  }
+ },
+ "CVE-2022-24065-vul": {
+  "cls": "cmdi",
+  "flagged": false,
+  "reported": 8,
+  "minutes": 0.0,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "implementation (RC1)",
+   "Bandit": "rule implementation (RC1)",
+   "Semgrep": "detected",
+   "Codeql": "complex d/c-f  diff (RC3)",
+   "Pysa": "complex d/c-f diff (RC3)"
+  },
+  "near": [],
+  "kinds": {
+   "archive/path": 8
+  }
+ },
+ "CVE-2022-24065-fix": {
+  "cls": "cmdi",
+  "flagged": false,
+  "reported": 8,
+  "minutes": 0.0,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "archive/path": 8
+  }
+ },
+ "CVE-2024-37060-vul": {
+  "cls": "deser",
+  "flagged": true,
+  "reported": 27,
+  "minutes": 0.4,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "detected",
+   "DevSkim": "detected",
+   "Dlint": "implementation (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "detected",
+   "Codeql": "interface-source (RC1)",
+   "Pysa": "interface-source (RC1)"
+  },
+  "near": [
+   {
+    "cls": "deser",
+    "source_fn": "mlflow.pipelines.cards.BaseCard.load",
+    "sink_fn": "mlflow.pipelines.cards.BaseCard.load",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/path": 5,
+   "archive/path": 4,
+   "network/cmdi": 3,
+   "api/deser": 9,
+   "api/ssti": 1,
+   "api/cmdi": 1,
+   "http/path": 4
+  }
+ },
+ "CVE-2024-37060-fix": {
+  "cls": "deser",
+  "flagged": true,
+  "reported": 35,
+  "minutes": 0.4,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "deser",
+    "source_fn": "mlflow.recipes.cards.BaseCard.load",
+    "sink_fn": "mlflow.recipes.cards.BaseCard.load",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/path": 8,
+   "cli/ssrf": 1,
+   "cli/deser": 1,
+   "archive/path": 4,
+   "network/cmdi": 5,
+   "api/deser": 9,
+   "api/cmdi": 2,
+   "api/ssti": 1,
+   "http/path": 4
+  }
+ },
+ "CVE-2021-34363-vul": {
+  "cls": "path",
+  "flagged": true,
+  "reported": 5,
+  "minutes": 0.0,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "no sink (RC1)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f (RC2)"
+  },
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "thefuck.rules.dirty_untar.side_effect",
+    "sink_fn": "thefuck.rules.dirty_untar.side_effect",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "thefuck.rules.dirty_unzip.side_effect",
+    "sink_fn": "thefuck.rules.dirty_unzip.side_effect",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/path": 2,
+   "api/cmdi": 1,
+   "archive/path": 2
+  }
+ },
+ "CVE-2021-34363-fix": {
+  "cls": "path",
+  "flagged": true,
+  "reported": 5,
+  "minutes": 0.0,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "path",
+    "source_fn": "thefuck.rules.dirty_untar.side_effect",
+    "sink_fn": "thefuck.rules.dirty_untar.side_effect",
+    "lane": "undecided"
+   },
+   {
+    "cls": "path",
+    "source_fn": "thefuck.rules.dirty_unzip.side_effect",
+    "sink_fn": "thefuck.rules.dirty_unzip.side_effect",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/path": 2,
+   "api/cmdi": 1,
+   "archive/path": 2
+  }
+ },
+ "CVE-2024-39863-vul": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 846,
+  "minutes": 8.8,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "detected",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f (RC2)"
+  },
+  "near": [],
+  "kinds": {
+   "http/sqli": 241,
+   "http/path": 468,
+   "http/ssti": 29,
+   "api/ssti": 2,
+   "archive/path": 16,
+   "archive/sqli": 8,
+   "archive/ssti": 1,
+   "api/deser": 3,
+   "api/code": 1,
+   "http/xss": 6,
+   "cli/path": 16,
+   "cli/sqli": 6,
+   "cli/ssti": 1,
+   "network/ssti": 21,
+   "http/redirect": 11,
+   "network/cmdi": 2,
+   "http/ssrf": 6,
+   "http/deser": 1,
+   "route/sqli": 7
+  }
+ },
+ "CVE-2024-39863-fix": {
+  "cls": "xss",
+  "flagged": false,
+  "reported": 878,
+  "minutes": 9.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "http/sqli": 241,
+   "http/path": 468,
+   "http/ssrf": 36,
+   "http/ssti": 29,
+   "archive/path": 16,
+   "archive/sqli": 8,
+   "archive/ssrf": 2,
+   "archive/ssti": 1,
+   "api/deser": 3,
+   "api/code": 1,
+   "http/xss": 6,
+   "api/ssti": 1,
+   "cli/path": 16,
+   "cli/sqli": 6,
+   "cli/ssrf": 1,
+   "cli/ssti": 1,
+   "network/ssti": 21,
+   "http/redirect": 11,
+   "network/cmdi": 2,
+   "http/deser": 1,
+   "route/sqli": 7
+  }
+ },
+ "CVE-2023-50943-vul": {
+  "cls": "deser",
+  "flagged": true,
+  "reported": 664,
+  "minutes": 5.7,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "detected",
+   "DevSkim": "implementation (RC1)",
+   "Dlint": "detected",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "detected",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f (RC2)"
+  },
+  "near": [
+   {
+    "cls": "deser",
+    "source_fn": "airflow.models.xcom.BaseXCom.deserialize_value",
+    "sink_fn": "airflow.models.xcom.BaseXCom._deserialize_value",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "http/sqli": 108,
+   "http/path": 436,
+   "http/ssti": 27,
+   "http/redirect": 11,
+   "network/ssti": 19,
+   "api/ssti": 2,
+   "archive/path": 16,
+   "archive/sqli": 2,
+   "archive/ssti": 1,
+   "api/deser": 3,
+   "api/code": 1,
+   "http/xss": 6,
+   "cli/path": 16,
+   "cli/ssti": 1,
+   "network/cmdi": 1,
+   "http/ssrf": 6,
+   "http/deser": 1,
+   "route/sqli": 7
+  }
+ },
+ "CVE-2023-50943-fix": {
+  "cls": "deser",
+  "flagged": true,
+  "reported": 664,
+  "minutes": 5.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [
+   {
+    "cls": "deser",
+    "source_fn": "airflow.models.xcom.BaseXCom.deserialize_value",
+    "sink_fn": "airflow.models.xcom.BaseXCom._deserialize_value",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "http/sqli": 108,
+   "http/path": 436,
+   "http/ssti": 27,
+   "http/redirect": 11,
+   "network/ssti": 19,
+   "api/ssti": 2,
+   "archive/path": 16,
+   "archive/sqli": 2,
+   "archive/ssti": 1,
+   "api/deser": 3,
+   "api/code": 1,
+   "http/xss": 6,
+   "cli/path": 16,
+   "cli/ssti": 1,
+   "network/cmdi": 1,
+   "http/ssrf": 6,
+   "http/deser": 1,
+   "route/sqli": 7
+  }
+ },
+ "CVE-2022-28347-vul": {
+  "cls": "sqli",
+  "flagged": false,
+  "reported": 134,
+  "minutes": 2.3,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "hard to detect (RC3)",
+   "DevSkim": "hard_to_detect (RC3)",
+   "Dlint": "hard to detect (RC3)",
+   "Bandit": "complex d/c-f (RC3)",
+   "Semgrep": "partial detected (RC3)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f (RC2)"
+  },
+  "near": [],
+  "kinds": {
+   "cli/sqli": 36,
+   "http/redirect": 4,
+   "http/sqli": 67,
+   "api/deser": 6,
+   "cli/code": 1,
+   "api/ssti": 1,
+   "archive/sqli": 7,
+   "http/path": 4,
+   "http/xss": 5,
+   "api/cmdi": 3
+  }
+ },
+ "CVE-2022-28347-fix": {
+  "cls": "sqli",
+  "flagged": false,
+  "reported": 134,
+  "minutes": 2.4,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/sqli": 36,
+   "http/redirect": 4,
+   "http/sqli": 67,
+   "api/deser": 6,
+   "cli/code": 1,
+   "api/ssti": 1,
+   "archive/sqli": 7,
+   "http/path": 4,
+   "http/xss": 5,
+   "api/cmdi": 3
+  }
+ },
+ "CVE-2021-39207-vul": {
+  "cls": "deser",
+  "flagged": true,
+  "reported": 203,
+  "minutes": 1.6,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "capability (RC3)",
+   "DevSkim": "implementation (RC1)",
+   "Dlint": "detected",
+   "Bandit": "detected",
+   "Semgrep": "rule implementation (RC1)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "no source (RC1)"
+  },
+  "near": [
+   {
+    "cls": "deser",
+    "source_fn": "parlai.chat_service.utils.config.parse_configuration_file",
+    "sink_fn": "parlai.chat_service.utils.config.parse_configuration_file",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "cli/deser": 90,
+   "cli/sqli": 19,
+   "api/deser": 13,
+   "cli/path": 54,
+   "cli/cmdi": 19,
+   "cli/code": 2,
+   "cli/ssrf": 4,
+   "api/code": 1,
+   "network/cmdi": 1
+  }
+ },
+ "CVE-2021-39207-fix": {
+  "cls": "deser",
+  "flagged": false,
+  "reported": 200,
+  "minutes": 1.7,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/deser": 90,
+   "cli/sqli": 19,
+   "api/deser": 12,
+   "cli/path": 52,
+   "cli/cmdi": 19,
+   "cli/code": 2,
+   "cli/ssrf": 4,
+   "api/code": 1,
+   "network/cmdi": 1
+  }
+ },
+ "CVE-2023-37274-vul": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 17,
+  "minutes": 0.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "hard to detect (RC3)",
+   "DevSkim": "hard_to_detect (RC3)",
+   "Dlint": "hard to detect (RC3)",
+   "Bandit": "complex d/c-f diff (RC3)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "complex d/c-f  diff (RC3)",
+   "Pysa": "complex d/c-f diff (RC3)"
+  },
+  "near": [],
+  "kinds": {
+   "http/ssrf": 3,
+   "http/sqli": 3,
+   "http/path": 11
+  }
+ },
+ "CVE-2023-37274-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 19,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "api/cmdi": 2,
+   "api/deser": 5,
+   "cli/deser": 1,
+   "cli/path": 8,
+   "archive/cmdi": 1,
+   "archive/path": 2
+  }
+ },
+ "CVE-2024-37058-vul": {
+  "cls": "deser",
+  "flagged": false,
+  "reported": 56,
+  "minutes": 0.9,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "no sink (RC1)",
+   "Codeql": "interface-source (RC1)",
+   "Pysa": "interface-source (RC1)"
+  },
+  "near": [],
+  "kinds": {
+   "cli/path": 22,
+   "cli/ssrf": 1,
+   "cli/deser": 1,
+   "archive/path": 4,
+   "network/cmdi": 5,
+   "api/deser": 12,
+   "api/cmdi": 2,
+   "api/ssti": 1,
+   "http/xss": 3,
+   "header/xss": 1,
+   "http/path": 4
+  }
+ },
+ "CVE-2024-37058-fix": {
+  "cls": "deser",
+  "flagged": false,
+  "reported": 64,
+  "minutes": 1.2,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/cmdi": 2,
+   "cli/path": 24,
+   "cli/ssrf": 1,
+   "cli/deser": 1,
+   "archive/path": 4,
+   "network/cmdi": 7,
+   "api/deser": 9,
+   "api/cmdi": 2,
+   "api/ssti": 1,
+   "http/xss": 1,
+   "http/path": 12
+  }
+ },
+ "CVE-2024-39330-vul": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 136,
+  "minutes": 2.5,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "implicit sink (RC3)",
+   "Codeql": "interface-source (RC1)",
+   "Pysa": "interface-source (RC1)"
+  },
+  "near": [],
+  "kinds": {
+   "cli/sqli": 30,
+   "http/sqli": 77,
+   "http/redirect": 4,
+   "api/deser": 6,
+   "cli/path": 2,
+   "cli/code": 1,
+   "archive/sqli": 7,
+   "archive/xss": 3,
+   "http/path": 3,
+   "http/xss": 3
+  }
+ },
+ "CVE-2024-39330-fix": {
+  "cls": "path",
+  "flagged": false,
+  "reported": 136,
+  "minutes": 2.5,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/sqli": 30,
+   "http/sqli": 77,
+   "http/redirect": 4,
+   "api/deser": 6,
+   "cli/path": 2,
+   "cli/code": 1,
+   "archive/sqli": 7,
+   "archive/xss": 3,
+   "http/path": 3,
+   "http/xss": 3
+  }
+ },
+ "CVE-2019-1010259-vul": {
+  "cls": "sqli",
+  "flagged": false,
+  "reported": 89,
+  "minutes": 9.0,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "detected",
+   "Semgrep": "intrinsic (RC2)",
+   "Codeql": "complex d/c-f source (RC2)",
+   "Pysa": "complex d/c-f source (RC2)"
+  },
+  "near": [],
+  "kinds": {
+   "cli/cmdi": 4,
+   "cli/code": 5,
+   "cli/path": 17,
+   "cli/deser": 2,
+   "cli/ssti": 1,
+   "api/deser": 20,
+   "api/ssti": 6,
+   "archive/code": 3,
+   "archive/path": 8,
+   "network/code": 7,
+   "api/cmdi": 13,
+   "api/code": 2,
+   "cli/sqli": 1
+  }
+ },
+ "CVE-2019-1010259-fix": {
+  "cls": "sqli",
+  "flagged": false,
+  "reported": 70,
+  "minutes": 9.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "cli/cmdi": 4,
+   "cli/code": 5,
+   "cli/path": 16,
+   "cli/deser": 1,
+   "cli/ssti": 1,
+   "archive/code": 3,
+   "archive/path": 8,
+   "network/code": 7,
+   "api/cmdi": 13,
+   "api/ssti": 6,
+   "api/deser": 3,
+   "api/code": 2,
+   "cli/sqli": 1
+  }
+ },
+ "CVE-2024-41950-vul": {
+  "cls": "code",
+  "flagged": true,
+  "reported": 8,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": {
+   "Bearer": "no rule (RC1)",
+   "DevSkim": "no rule (RC1)",
+   "Dlint": "no rule (RC1)",
+   "Bandit": "no rule (RC1)",
+   "Semgrep": "detected",
+   "Codeql": "detected",
+   "Pysa": "no sink (RC1)"
+  },
+  "near": [
+   {
+    "cls": "ssti",
+    "source_fn": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder.__init__",
+    "sink_fn": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder.__init__",
+    "lane": "undecided"
+   },
+   {
+    "cls": "ssti",
+    "source_fn": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder.run",
+    "sink_fn": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder.run",
+    "lane": "undecided"
+   },
+   {
+    "cls": "ssti",
+    "source_fn": "haystack.components.builders.prompt_builder.PromptBuilder.__init__",
+    "sink_fn": "haystack.components.builders.prompt_builder.PromptBuilder.__init__",
+    "lane": "undecided"
+   },
+   {
+    "cls": "ssti",
+    "source_fn": "haystack.components.builders.prompt_builder.PromptBuilder.run",
+    "sink_fn": "haystack.components.builders.prompt_builder.PromptBuilder.run",
+    "lane": "undecided"
+   }
+  ],
+  "kinds": {
+   "api/ssti": 7,
+   "api/deser": 1
+  }
+ },
+ "CVE-2024-41950-fix": {
+  "cls": "code",
+  "flagged": false,
+  "reported": 1,
+  "minutes": 0.1,
+  "usd": 0,
+  "questions": null,
+  "tools": null,
+  "near": [],
+  "kinds": {
+   "api/deser": 1
+  }
+ }
+}

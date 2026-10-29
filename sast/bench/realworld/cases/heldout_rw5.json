@@ -1,0 +1,625 @@
+{
+ "seed": 20261027,
+ "cases": [
+  {
+   "cve": "CVE-2026-54017",
+   "cls": "path",
+   "targets": [
+    "backend/open_webui/routers/models.py:_safe_static_redirect_path",
+    "backend/open_webui/routers/terminals.py:_sanitize_proxy_path"
+   ],
+   "project": "open-webui__open-webui",
+   "vul": "05098d25a58d03738e01c4e85e8852c3b4ad849c^",
+   "fix": "05098d25a58d03738e01c4e85e8852c3b4ad849c",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2026-54017-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2026-54017-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "GHSA-C7VM-F5P4-8FQH",
+   "cls": "redirect",
+   "targets": [
+    "notebook/base/handlers.py:TrailingSlashHandler.get"
+   ],
+   "project": "jupyter__notebook",
+   "vul": "1abd95130c3345accf002805fa7c12c7fcca5286^",
+   "fix": "1abd95130c3345accf002805fa7c12c7fcca5286",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-C7VM-F5P4-8FQH-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-C7VM-F5P4-8FQH-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2026-45401",
+   "cls": "ssrf",
+   "targets": [
+    "backend/open_webui/utils/oauth.py:OAuthManager._process_picture_url"
+   ],
+   "project": "open-webui__open-webui",
+   "vul": "d07fd7d6d85eeee0d4c2a45c01e1d1628081d0ab^",
+   "fix": "d07fd7d6d85eeee0d4c2a45c01e1d1628081d0ab",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2026-45401-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2026-45401-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2020-12759",
+   "cls": "xss",
+   "targets": [
+    "zerver/webhooks/dropbox/tests.py:DropboxHookTests.test_verification_request",
+    "zerver/webhooks/dropbox/view.py:api_dropbox_webhook"
+   ],
+   "project": "zulip__zulip",
+   "vul": "83380b42969a4a42f3a90d3be00bf39e6d6f6e23^",
+   "fix": "83380b42969a4a42f3a90d3be00bf39e6d6f6e23",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2020-12759-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2020-12759-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2021-23727",
+   "cls": "cmdi",
+   "targets": [
+    "celery/backends/base.py:Backend.exception_to_python"
+   ],
+   "project": "celery__celery",
+   "vul": "1f7ad7e6df1e02039b6ab9eec617d283598cad6b^",
+   "fix": "1f7ad7e6df1e02039b6ab9eec617d283598cad6b",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2021-23727-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2021-23727-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2024-3116",
+   "cls": "code",
+   "targets": [
+    "web/pgadmin/browser/server_groups/servers/types.py:ServerType.set_default_binary_path",
+    "web/pgadmin/misc/__init__.py:validate_binary_path",
+    "web/pgadmin/utils/__init__.py:does_utility_exist",
+    "web/pgadmin/utils/__init__.py:set_binary_path"
+   ],
+   "project": "pgadmin-org__pgadmin4",
+   "vul": "fbbbfe22dd468bcfef1e1f833ec32289a6e56a8b^",
+   "fix": "fbbbfe22dd468bcfef1e1f833ec32289a6e56a8b",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2024-3116-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2024-3116-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "GHSA-88JQ-GRJP-JX6F",
+   "cls": "ssrf",
+   "targets": [
+    "backend/open_webui/routers/retrieval.py:process_file",
+    "backend/open_webui/routers/retrieval.py:process_files_batch",
+    "backend/open_webui/utils/files.py:get_image_base64_from_url"
+   ],
+   "project": "open-webui__open-webui",
+   "vul": "d11e06f1b7f6f6298c31432d88fec7c4a40c7499^",
+   "fix": "d11e06f1b7f6f6298c31432d88fec7c4a40c7499",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-88JQ-GRJP-JX6F-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-88JQ-GRJP-JX6F-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2025-12763",
+   "cls": "cmdi",
+   "targets": [
+    "web/pgadmin/misc/bgprocess/process_executor.py:execute",
+    "web/pgadmin/tools/restore/__init__.py:get_restore_util_args",
+    "web/pgadmin/utils/__init__.py:filename_with_file_manager_path.short_filepath"
+   ],
+   "project": "pgadmin-org__pgadmin4",
+   "vul": "e374edc69239b3e02ecde895e27d9f9e488b87ee^",
+   "fix": "e374edc69239b3e02ecde895e27d9f9e488b87ee",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2025-12763-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2025-12763-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "GHSA-QX72-X46H-WR9P",
+   "cls": "path",
+   "targets": [
+    "src/pyload/plugins/base/extractor.py:BaseExtractor.progress",
+    "src/pyload/plugins/extractors/HjSplit.py:HjSplit.extract",
+    "src/pyload/plugins/extractors/SevenZip.py:SevenZip.extract",
+    "src/pyload/plugins/extractors/UnRar.py:UnRar.extract",
+    "src/pyload/plugins/extractors/UnTar.py:UnTar.extract",
+    "src/pyload/plugins/extractors/UnZip.py:UnZip.extract"
+   ],
+   "project": "pyload__pyload",
+   "vul": "f09201955c2c229afdcf49cf2a3f4e11bfec7ee9^",
+   "fix": "f09201955c2c229afdcf49cf2a3f4e11bfec7ee9",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-QX72-X46H-WR9P-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-QX72-X46H-WR9P-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2019-19775",
+   "cls": "redirect",
+   "targets": [
+    "zerver/lib/thumbnail.py:generate_thumbnail_url",
+    "zerver/lib/thumbnail.py:user_uploads_or_external"
+   ],
+   "project": "zulip__zulip",
+   "vul": "319e2231b8db60100a70d8fc0fbc1e5621d8d0cb^",
+   "fix": "319e2231b8db60100a70d8fc0fbc1e5621d8d0cb",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2019-19775-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2019-19775-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2025-65958",
+   "cls": "ssrf",
+   "targets": [
+    "backend/open_webui/retrieval/web/utils.py:validate_url"
+   ],
+   "project": "open-webui__open-webui",
+   "vul": "0753409e7b18ffe4fc95a0a821f605d25b58ccad^",
+   "fix": "0753409e7b18ffe4fc95a0a821f605d25b58ccad",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2025-65958-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2025-65958-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "GHSA-P5CM-246W-84JM",
+   "cls": "xss",
+   "targets": [
+    "wagtail/contrib/table_block/templatetags/table_block_tags.py:cell_classname",
+    "wagtail/contrib/table_block/templatetags/table_block_tags.py:cell_span"
+   ],
+   "project": "wagtail__wagtail",
+   "vul": "80c61971d4f603c5b28b5422e1dc9490350d72e9^",
+   "fix": "80c61971d4f603c5b28b5422e1dc9490350d72e9",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-P5CM-246W-84JM-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-P5CM-246W-84JM-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2019-6446",
+   "cls": "deser",
+   "targets": [
+    "keras/datasets/imdb.py:load_data"
+   ],
+   "project": "keras-team__keras",
+   "vul": "9416f3647ac4c9ec0c57575a66d66aeac077d56c^",
+   "fix": "9416f3647ac4c9ec0c57575a66d66aeac077d56c",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2019-6446-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2019-6446-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "GHSA-74V8-HGWQ-2PPV",
+   "cls": "ssrf",
+   "targets": [
+    "src/pyload/core/network/http/http_request.py:HTTPRequest.set_request_context"
+   ],
+   "project": "pyload__pyload",
+   "vul": "8af2b1a282f20932d3cd3d7f43d123d57e25fe9b^",
+   "fix": "8af2b1a282f20932d3cd3d7f43d123d57e25fe9b",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-74V8-HGWQ-2PPV-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-74V8-HGWQ-2PPV-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2024-46946",
+   "cls": "code",
+   "targets": [
+    "libs/experimental/langchain_experimental/llm_symbolic_math/base.py:LLMSymbolicMathChain._evaluate_expression"
+   ],
+   "project": "langchain-ai__langchain",
+   "vul": "0414be4b8039b65f9c59537e8027739f10019652^",
+   "fix": "0414be4b8039b65f9c59537e8027739f10019652",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2024-46946-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2024-46946-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2026-35397",
+   "cls": "path",
+   "targets": [
+    "jupyter_server/services/contents/fileio.py:FileManagerMixin._get_os_path"
+   ],
+   "project": "jupyter-server__jupyter_server",
+   "vul": "2ee51eccf3ff2e27068cc0b7a39101eeedc4f665^",
+   "fix": "2ee51eccf3ff2e27068cc0b7a39101eeedc4f665",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2026-35397-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2026-35397-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2026-26058",
+   "cls": "path",
+   "targets": [
+    "zerver/lib/import_realm.py:import_uploads",
+    "zerver/lib/import_realm.py:process_avatars",
+    "zerver/lib/import_realm.py:process_emojis"
+   ],
+   "project": "zulip__zulip",
+   "vul": "2df49e7750ce3fc49ef1d44b1c4ece654d4b754c^",
+   "fix": "2df49e7750ce3fc49ef1d44b1c4ece654d4b754c",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2026-26058-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2026-26058-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2024-2044",
+   "cls": "deser",
+   "targets": [
+    "web/pgadmin/utils/session.py:FileBackedSessionManager.exists",
+    "web/pgadmin/utils/session.py:FileBackedSessionManager.get",
+    "web/pgadmin/utils/session.py:FileBackedSessionManager.new_session",
+    "web/pgadmin/utils/session.py:FileBackedSessionManager.put",
+    "web/pgadmin/utils/session.py:FileBackedSessionManager.remove"
+   ],
+   "project": "pgadmin-org__pgadmin4",
+   "vul": "4e49d752fba72953acceeb7f4aa2e6e32d25853d^",
+   "fix": "4e49d752fba72953acceeb7f4aa2e6e32d25853d",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2024-2044-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2024-2044-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2026-33340",
+   "cls": "ssrf",
+   "targets": [
+    "lollms/server/endpoints/lollms_apps.py:proxy"
+   ],
+   "project": "ParisNeo__lollms-webui",
+   "vul": "590ff34d557379677f2c0dd20d0af349879a5042^",
+   "fix": "590ff34d557379677f2c0dd20d0af349879a5042",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2026-33340-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2026-33340-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2025-12762",
+   "cls": "code",
+   "targets": [
+    "web/pgadmin/tools/restore/__init__.py:use_sql_utility"
+   ],
+   "project": "pgadmin-org__pgadmin4",
+   "vul": "1d397395f75320ca1d4ed5e9ca721c603415e836^",
+   "fix": "1d397395f75320ca1d4ed5e9ca721c603415e836",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2025-12762-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2025-12762-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2020-10935",
+   "cls": "xss",
+   "targets": [
+    "zerver/lib/bugdown/__init__.py:rewrite_local_links_to_relative"
+   ],
+   "project": "zulip__zulip",
+   "vul": "2d4530854673d78d2212ec91523135452dbd75fb^",
+   "fix": "2d4530854673d78d2212ec91523135452dbd75fb",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2020-10935-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2020-10935-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "CVE-2023-34540",
+   "cls": "code",
+   "targets": [
+    "langchain/utilities/jira.py:JiraAPIWrapper.other"
+   ],
+   "project": "langchain-ai__langchain",
+   "vul": "a2f191a32229256dd41deadf97786fe41ce04cbb^",
+   "fix": "a2f191a32229256dd41deadf97786fe41ce04cbb",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2023-34540-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/CVE-2023-34540-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "GHSA-FCW5-X6J4-CCMP",
+   "cls": "xss",
+   "targets": [
+    "jupyter_server/serverapp.py:ServerWebApplication.init_settings"
+   ],
+   "project": "jupyter-server__jupyter_server",
+   "vul": "6cbee8d65e71abac851c4492fea987ad080580bd^",
+   "fix": "6cbee8d65e71abac851c4492fea987ad080580bd",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-FCW5-X6J4-CCMP-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-FCW5-X6J4-CCMP-fix"
+   },
+   "tools": {}
+  },
+  {
+   "cve": "GHSA-XVXQ-G8HW-FX4G",
+   "cls": "xss",
+   "targets": [
+    "src/octoprint/plugins/appkeys/__init__.py:AppKeysPlugin.handle_auth_dialog"
+   ],
+   "project": "OctoPrint__OctoPrint",
+   "vul": "8c569bc88461f1bb05405c6818956ec1f85be932^",
+   "fix": "8c569bc88461f1bb05405c6818956ec1f85be932",
+   "how": "commit message names the CVE",
+   "trees": {
+    "vul": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-XVXQ-G8HW-FX4G-vul",
+    "fix": "/tmp/claude-0/-home-user-novalang/5ebd2589-6346-5f51-a8a0-2efa638ebc48/scratchpad/rw5/trees/GHSA-XVXQ-G8HW-FX4G-fix"
+   },
+   "tools": {}
+  }
+ ],
+ "skipped": [
+  [
+   "CVE-2024-28219",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-WGRM-67XF-HHPQ",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2024-35195",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2026-12046",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-RF74-V2FM-23PW",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2026-34070",
+   "8 changed functions"
+  ],
+  [
+   "GHSA-CCGP-PV8R-95WM",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2018-9987",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2026-93749",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2026-7813",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-XMJ3-9GF7-H52W",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-9CRC-Q9X8-HGQQ",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2023-47117",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2022-23656",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2026-1669",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-VGQ5-9859-3MMW",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-JGX9-JR5X-MVPV",
+   "repo cap"
+  ],
+  [
+   "GHSA-J2W9-8XRR-7G98",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-8GVC-J273-4WM5",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2025-14009",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-8W7Q-Q5JP-JVGX",
+   "repo cap"
+  ],
+  [
+   "GHSA-P623-MXF7-QXJM",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-RPJ2-4HQ8-938G",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-8988-9CW3-XX77",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-RH5X-H6PP-CJJ6",
+   "repo cap"
+  ],
+  [
+   "CVE-2026-12044",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-F23M-R3PF-42RH",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2026-40110",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2024-39338",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2018-9999",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-P4FX-23FQ-JFG6",
+   "repo cap"
+  ],
+  [
+   "CVE-2025-64756",
+   "11 changed functions"
+  ],
+  [
+   "CVE-2026-24050",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-VXVM-J4XQ-Q7M4",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-5X9F-85CG-W3HF",
+   "repo cap"
+  ],
+  [
+   "GHSA-X7MF-WRH9-R76C",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2022-21699",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-8RFP-98V4-MMR6",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2025-2945",
+   "repo cap"
+  ],
+  [
+   "CVE-2019-16216",
+   "repo cap"
+  ],
+  [
+   "CVE-2021-23358",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2018-9986",
+   "repo cap"
+  ],
+  [
+   "CVE-2020-15070",
+   "repo cap"
+  ],
+  [
+   "CVE-2025-2946",
+   "repo cap"
+  ],
+  [
+   "CVE-2024-34062",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2016-6524",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2023-22735",
+   "repo cap"
+  ],
+  [
+   "CVE-2023-49083",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-CG87-WMX4-V546",
+   "0 changed functions"
+  ],
+  [
+   "GHSA-CRVM-XJHM-9H29",
+   "0 changed functions"
+  ],
+  [
+   "CVE-2023-33186",
+   "repo cap"
+  ],
+  [
+   "CVE-2018-9990",
+   "repo cap"
+  ],
+  [
+   "CVE-2016-6524",
+   "0 changed functions"
+  ]
+ ]
+}

@@ -1,0 +1,330 @@
+{
+ "CVE-2024-22423": {
+  "cls": "cmdi",
+  "project": "yt-dlp__yt-dlp",
+  "targets_found": 5,
+  "targets": 5,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2018-14574": {
+  "cls": "redirect",
+  "project": "django__django",
+  "targets_found": 3,
+  "targets": 3,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2025-64459": {
+  "cls": "sqli",
+  "project": "django__django",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2026-27696": {
+  "cls": "ssrf",
+  "project": "dgtlmoon__changedetection.io",
+  "targets_found": 3,
+  "targets": 3,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {
+   "mitigated/path/http": 15,
+   "undecided/path/http": 19
+  },
+  "frontier_in_target": 0,
+  "verdict": "other-class finding at target"
+ },
+ "CVE-2022-22818": {
+  "cls": "xss",
+  "project": "django__django",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2026-28415": {
+  "cls": "redirect",
+  "project": "gradio-app__gradio",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {
+   "redirect": 1
+  },
+  "class_sink_in_target": true,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "class sink in target, no attacker data reaches it"
+ },
+ "CVE-2025-52558": {
+  "cls": "xss",
+  "project": "dgtlmoon__changedetection.io",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {
+   "xss": 6
+  },
+  "class_sink_in_target": true,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "class sink in target, no attacker data reaches it"
+ },
+ "CVE-2025-62348": {
+  "cls": "deser",
+  "project": "saltstack__salt",
+  "targets_found": 2,
+  "targets": 1,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2025-62780": {
+  "cls": "xss",
+  "project": "dgtlmoon__changedetection.io",
+  "targets_found": 4,
+  "targets": 4,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {
+   "undecided/path/http": 10
+  },
+  "frontier_in_target": 0,
+  "verdict": "other-class finding at target"
+ },
+ "CVE-2021-41146": {
+  "cls": "cmdi",
+  "project": "qutebrowser__qutebrowser",
+  "targets_found": 2,
+  "targets": 2,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2026-6664": {
+  "cls": "code",
+  "project": "BerriAI__litellm",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2025-56005": {
+  "cls": "deser",
+  "project": "astropy__astropy",
+  "targets_found": 3,
+  "targets": 3,
+  "sinks_in_target": {
+   "path": 3,
+   "deser": 6,
+   "code": 1
+  },
+  "class_sink_in_target": true,
+  "near": {
+   "undecided/deser/api": 1,
+   "undecided/code/api": 1
+  },
+  "frontier_in_target": 0,
+  "verdict": "caught"
+ },
+ "CVE-2025-69872": {
+  "error": "RuntimeError('souffle run failed (-9): ')"
+ },
+ "CVE-2018-10895": {
+  "cls": "code",
+  "project": "qutebrowser__qutebrowser",
+  "targets_found": 6,
+  "targets": 6,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2024-40348": {
+  "cls": "path",
+  "project": "morpheus65535__bazarr",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {
+   "path": 1
+  },
+  "class_sink_in_target": true,
+  "near": {
+   "undecided/path/http": 1
+  },
+  "frontier_in_target": 0,
+  "verdict": "caught"
+ },
+ "CVE-2021-45452": {
+  "cls": "path",
+  "project": "https://github.com/django/django",
+  "targets_found": 0,
+  "targets": 1,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "target not in tree"
+ },
+ "CVE-2024-39877": {
+  "cls": "code",
+  "project": "https://github.com/apache/airflow",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {
+   "ssti": 1
+  },
+  "class_sink_in_target": true,
+  "near": {
+   "undecided/ssti/api": 1
+  },
+  "frontier_in_target": 0,
+  "verdict": "caught"
+ },
+ "CVE-2024-41656": {
+  "cls": "xss",
+  "project": "https://github.com/getsentry/sentry",
+  "targets_found": 4,
+  "targets": 4,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2024-31462": {
+  "cls": "path",
+  "project": "https://github.com/AUTOMATIC1111/stable-diffusion-webui",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {
+   "path": 1
+  },
+  "class_sink_in_target": true,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "class sink in target, no attacker data reaches it"
+ },
+ "CVE-2023-42819": {
+  "cls": "path",
+  "project": "https://github.com/jumpserver/jumpserver",
+  "targets_found": 6,
+  "targets": 6,
+  "sinks_in_target": {
+   "path": 7
+  },
+  "class_sink_in_target": true,
+  "near": {
+   "confirmed/path/route": 3,
+   "undecided/path/route": 1
+  },
+  "frontier_in_target": 0,
+  "verdict": "caught"
+ },
+ "CVE-2024-41675": {
+  "cls": "xss",
+  "project": "https://github.com/ckan/ckan",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2021-25283": {
+  "cls": "code",
+  "project": "https://github.com/saltstack/salt",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2023-41040": {
+  "cls": "path",
+  "project": "https://github.com/gitpython-developers/GitPython",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {
+   "path": 1
+  },
+  "class_sink_in_target": true,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "class sink in target, no attacker data reaches it"
+ },
+ "CVE-2021-25963": {
+  "cls": "xss",
+  "project": "https://github.com/shuup/shuup",
+  "targets_found": 7,
+  "targets": 7,
+  "sinks_in_target": {
+   "redirect": 1
+  },
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2024-27132": {
+  "cls": "xss",
+  "project": "https://github.com/mlflow/mlflow",
+  "targets_found": 2,
+  "targets": 2,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2024-27133": {
+  "cls": "xss",
+  "project": "https://github.com/mlflow/mlflow",
+  "targets_found": 2,
+  "targets": 2,
+  "sinks_in_target": {},
+  "class_sink_in_target": false,
+  "near": {},
+  "frontier_in_target": 0,
+  "verdict": "no sink of the class modelled in target"
+ },
+ "CVE-2023-50265": {
+  "cls": "path",
+  "project": "https://github.com/morpheus65535/bazarr",
+  "targets_found": 1,
+  "targets": 1,
+  "sinks_in_target": {
+   "path": 1
+  },
+  "class_sink_in_target": true,
+  "near": {
+   "mitigated/path/http": 1
+  },
+  "frontier_in_target": 0,
+  "verdict": "class flow found but mitigated/test-only"
+ }
+}

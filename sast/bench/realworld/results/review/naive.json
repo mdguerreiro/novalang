@@ -1,0 +1,1652 @@
+{
+ "CVE-2024-22423-vul": {
+  "cls": "cmdi",
+  "engine": false,
+  "review": true,
+  "flagged": true,
+  "engine_reported": 12,
+  "review_issues": 1,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": true,
+  "usd": 0.314,
+  "minutes": 1.5,
+  "issues": [
+   {
+    "cls": "cmdi",
+    "at": "yt_dlp.utils._utils.shell_quote",
+    "line": 1647,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "shell_quote relies on compat_shlex_quote, which on Windows only wraps arguments in double quotes and backslash-escapes quotes; cmd.exe ignores backslash escaping and still expands %VAR% and metacharacters, so attacker-controlled metadata (e.g. a video title substituted into an --exec command) can break out and inject commands (CVE-2023-40581)."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "yt_dlp.utils._utils.shell_quote"
+    ],
+    "repo",
+    0.6,
+    "shell_quote relies on compat_shlex_quote, which on Windows only wraps arguments in double quotes and backslash-escapes quotes; cmd.exe ignores backslash escaping and still expands %VAR% and metacharacters, so attacker-controlled metadata (e.g. a video title substituted into an --exec command) can br"
+   ]
+  ]
+ },
+ "CVE-2024-22423-fix": {
+  "cls": "cmdi",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 12,
+  "review_issues": 0,
+  "reads": 6,
+  "cached": 24,
+  "target_picked": true,
+  "usd": 0.058,
+  "minutes": 0.8,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2018-14574-vul": {
+  "cls": "redirect",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 40,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.429,
+  "minutes": 2.3,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2018-14574-fix": {
+  "cls": "redirect",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 40,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 1.2,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-64459-vul": {
+  "cls": "sqli",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 29,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.392,
+  "minutes": 2.5,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-64459-fix": {
+  "cls": "sqli",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 29,
+  "review_issues": 0,
+  "reads": 2,
+  "cached": 28,
+  "target_picked": false,
+  "usd": 0.044,
+  "minutes": 1.5,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2026-27696-vul": {
+  "cls": "ssrf",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 59,
+  "review_issues": 2,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": true,
+  "usd": 0.435,
+  "minutes": 1.7,
+  "issues": [
+   {
+    "cls": "xxe",
+    "at": "changedetectionio.html_tools.xpath_filter",
+    "line": 196,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "Fetched remote XML/RSS content is parsed with etree.XMLParser(strip_cdata=False) without resolve_entities=False, so a malicious feed can declare external entities (e.g. file:///etc/passwd) whose contents get expanded into the watched text."
+   },
+   {
+    "cls": "xxe",
+    "at": "changedetectionio.html_tools.xpath1_filter",
+    "line": 257,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "Fetched remote XML/RSS content is parsed with an XMLParser that still resolves entities, so an attacker-controlled feed can use external entities to read local files."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "lxml.etree.fromstring",
+     0,
+     "xxe"
+    ],
+    "global",
+    0.6,
+    "Fetched remote XML/RSS content is parsed with etree.XMLParser(strip_cdata=False) without resolve_entities=False, so a malicious feed can declare external entities (e.g. file:///etc/passwd) whose contents get expanded into the watched text."
+   ],
+   [
+    "sink_api",
+    [
+     "lxml.etree.fromstring",
+     0,
+     "xxe"
+    ],
+    "global",
+    0.6,
+    "Fetched remote XML/RSS content is parsed with an XMLParser that still resolves entities, so an attacker-controlled feed can use external entities to read local files."
+   ]
+  ]
+ },
+ "CVE-2026-27696-fix": {
+  "cls": "ssrf",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 59,
+  "review_issues": 2,
+  "reads": 3,
+  "cached": 27,
+  "target_picked": true,
+  "usd": 0.069,
+  "minutes": 0.4,
+  "issues": [
+   {
+    "cls": "xxe",
+    "at": "changedetectionio.html_tools.xpath_filter",
+    "line": 196,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "Fetched remote XML/RSS content is parsed with etree.XMLParser(strip_cdata=False) without resolve_entities=False, so a malicious feed can declare external entities (e.g. file:///etc/passwd) whose contents get expanded into the watched text."
+   },
+   {
+    "cls": "xxe",
+    "at": "changedetectionio.html_tools.xpath1_filter",
+    "line": 257,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "Fetched remote XML/RSS content is parsed with an XMLParser that still resolves entities, so an attacker-controlled feed can use external entities to read local files."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "lxml.etree.fromstring",
+     0,
+     "xxe"
+    ],
+    "global",
+    0.6,
+    "Fetched remote XML/RSS content is parsed with etree.XMLParser(strip_cdata=False) without resolve_entities=False, so a malicious feed can declare external entities (e.g. file:///etc/passwd) whose contents get expanded into the watched text."
+   ],
+   [
+    "sink_api",
+    [
+     "lxml.etree.fromstring",
+     0,
+     "xxe"
+    ],
+    "global",
+    0.6,
+    "Fetched remote XML/RSS content is parsed with an XMLParser that still resolves entities, so an attacker-controlled feed can use external entities to read local files."
+   ]
+  ]
+ },
+ "CVE-2022-22818-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 0,
+  "reads": 25,
+  "cached": 5,
+  "target_picked": false,
+  "usd": 0.409,
+  "minutes": 2.1,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2022-22818-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 0,
+  "reads": 1,
+  "cached": 29,
+  "target_picked": false,
+  "usd": 0.02,
+  "minutes": 1.2,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2026-28415-vul": {
+  "cls": "redirect",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 5,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.403,
+  "minutes": 2.1,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2026-28415-fix": {
+  "cls": "redirect",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 5,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.3,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-52558-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 2,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.45,
+  "minutes": 1.8,
+  "issues": [
+   {
+    "cls": "xxe",
+    "at": "changedetectionio.html_tools.xpath1_filter",
+    "line": 207,
+    "kind": "flow",
+    "confidence": 0.8,
+    "reason": "For RSS content, the fetched page body (controlled by the remote site) is parsed with etree.XMLParser(strip_cdata=False), which leaves entity resolution on by default, so a malicious feed can define external entities that read local files into the watch output."
+   },
+   {
+    "cls": "path",
+    "at": "changedetectionio.html_tools.xpath_filter",
+    "line": 174,
+    "kind": "flow",
+    "confidence": 0.7,
+    "reason": "The user-supplied XPath is evaluated with elementpath's XPath3Parser, whose unparsed-text(), doc() and json-doc() functions can read local files (file:///etc/passwd) or fetch internal URLs, and the results come back as filtered text."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "lxml.html.fromstring",
+     0,
+     "xxe"
+    ],
+    "global",
+    0.8,
+    "For RSS content, the fetched page body (controlled by the remote site) is parsed with etree.XMLParser(strip_cdata=False), which leaves entity resolution on by default, so a malicious feed can define external entities that read local files into the watch output."
+   ],
+   [
+    "sink_api",
+    [
+     "elementpath.select",
+     1,
+     "path"
+    ],
+    "global",
+    0.7,
+    "The user-supplied XPath is evaluated with elementpath's XPath3Parser, whose unparsed-text(), doc() and json-doc() functions can read local files (file:///etc/passwd) or fetch internal URLs, and the results come back as filtered text."
+   ]
+  ]
+ },
+ "CVE-2025-52558-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 2,
+  "reads": 9,
+  "cached": 21,
+  "target_picked": false,
+  "usd": 0.139,
+  "minutes": 0.7,
+  "issues": [
+   {
+    "cls": "xxe",
+    "at": "changedetectionio.html_tools.xpath1_filter",
+    "line": 207,
+    "kind": "flow",
+    "confidence": 0.8,
+    "reason": "For RSS content, the fetched page body (controlled by the remote site) is parsed with etree.XMLParser(strip_cdata=False), which leaves entity resolution on by default, so a malicious feed can define external entities that read local files into the watch output."
+   },
+   {
+    "cls": "path",
+    "at": "changedetectionio.html_tools.xpath_filter",
+    "line": 174,
+    "kind": "flow",
+    "confidence": 0.7,
+    "reason": "The user-supplied XPath is evaluated with elementpath's XPath3Parser, whose unparsed-text(), doc() and json-doc() functions can read local files (file:///etc/passwd) or fetch internal URLs, and the results come back as filtered text."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "lxml.html.fromstring",
+     0,
+     "xxe"
+    ],
+    "global",
+    0.8,
+    "For RSS content, the fetched page body (controlled by the remote site) is parsed with etree.XMLParser(strip_cdata=False), which leaves entity resolution on by default, so a malicious feed can define external entities that read local files into the watch output."
+   ],
+   [
+    "sink_api",
+    [
+     "elementpath.select",
+     1,
+     "path"
+    ],
+    "global",
+    0.7,
+    "The user-supplied XPath is evaluated with elementpath's XPath3Parser, whose unparsed-text(), doc() and json-doc() functions can read local files (file:///etc/passwd) or fetch internal URLs, and the results come back as filtered text."
+   ]
+  ]
+ },
+ "CVE-2025-62348-vul": {
+  "cls": "deser",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 28,
+  "review_issues": 3,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.519,
+  "minutes": 7.9,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "salt.ext.tornado.web.StaticFileHandler.validate_absolute_path",
+    "line": 2547,
+    "kind": "flow",
+    "confidence": 0.7,
+    "reason": "When the requested path resolves to a directory and lacks a trailing slash, the handler redirects to `self.request.path + \"/\"` without rejecting paths that begin with `//`, so a request like `//evil.com/..` yields a protocol-relative `Location` header pointing to an attacker's host (CVE-2023-28370)."
+   },
+   {
+    "cls": "cmdi",
+    "at": "salt.modules.npm.cache_clean",
+    "line": 357,
+    "kind": "flow",
+    "confidence": 0.75,
+    "reason": "The caller-supplied `path` argument is space-joined into a command string without quoting and run through `cmd.run_all` with `python_shell=True`, so shell metacharacters in `path` (e.g. `; id`) execute arbitrary commands."
+   },
+   {
+    "cls": "code",
+    "at": "salt.modules.rabbitmq.check_password",
+    "line": 566,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "The name and password are embedded in an Erlang expression passed to `rabbitmqctl eval`, and the escaping only replaces `\"` without escaping backslashes, so an input like `\\\"` closes the binary string and lets arbitrary Erlang code be injected."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "salt.modules.rabbitmq.check_password"
+    ],
+    "repo",
+    0.6,
+    "The name and password are embedded in an Erlang expression passed to `rabbitmqctl eval`, and the escaping only replaces `\"` without escaping backslashes, so an input like `\\\"` closes the binary string and lets arbitrary Erlang code be injected."
+   ]
+  ]
+ },
+ "CVE-2025-62348-fix": {
+  "cls": "deser",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 28,
+  "review_issues": 3,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 6.6,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "salt.ext.tornado.web.StaticFileHandler.validate_absolute_path",
+    "line": 2547,
+    "kind": "flow",
+    "confidence": 0.7,
+    "reason": "When the requested path resolves to a directory and lacks a trailing slash, the handler redirects to `self.request.path + \"/\"` without rejecting paths that begin with `//`, so a request like `//evil.com/..` yields a protocol-relative `Location` header pointing to an attacker's host (CVE-2023-28370)."
+   },
+   {
+    "cls": "cmdi",
+    "at": "salt.modules.npm.cache_clean",
+    "line": 357,
+    "kind": "flow",
+    "confidence": 0.75,
+    "reason": "The caller-supplied `path` argument is space-joined into a command string without quoting and run through `cmd.run_all` with `python_shell=True`, so shell metacharacters in `path` (e.g. `; id`) execute arbitrary commands."
+   },
+   {
+    "cls": "code",
+    "at": "salt.modules.rabbitmq.check_password",
+    "line": 566,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "The name and password are embedded in an Erlang expression passed to `rabbitmqctl eval`, and the escaping only replaces `\"` without escaping backslashes, so an input like `\\\"` closes the binary string and lets arbitrary Erlang code be injected."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "salt.modules.rabbitmq.check_password"
+    ],
+    "repo",
+    0.6,
+    "The name and password are embedded in an Erlang expression passed to `rabbitmqctl eval`, and the escaping only replaces `\"` without escaping backslashes, so an input like `\\\"` closes the binary string and lets arbitrary Erlang code be injected."
+   ]
+  ]
+ },
+ "CVE-2025-62780-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 1,
+  "reads": 26,
+  "cached": 4,
+  "target_picked": true,
+  "usd": 0.435,
+  "minutes": 1.9,
+  "issues": [
+   {
+    "cls": "xxe",
+    "at": "changedetectionio.html_tools.xpath1_filter",
+    "line": 234,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "For RSS content, remote attacker-controlled feed data is parsed with etree.XMLParser(strip_cdata=False), which does not set resolve_entities=False, so external entities such as file:///etc/passwd can be expanded into the filtered output on lxml versions that resolve them."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "html.fromstring",
+     0,
+     "xxe"
+    ],
+    "global",
+    0.6,
+    "For RSS content, remote attacker-controlled feed data is parsed with etree.XMLParser(strip_cdata=False), which does not set resolve_entities=False, so external entities such as file:///etc/passwd can be expanded into the filtered output on lxml versions that resolve them."
+   ]
+  ]
+ },
+ "CVE-2025-62780-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 2,
+  "reads": 16,
+  "cached": 14,
+  "target_picked": true,
+  "usd": 0.35,
+  "minutes": 1.9,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "changedetectionio.html_tools.xpath_filter",
+    "line": 216,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "A user-supplied include filter is run through elementpath's XPath3Parser with no function restrictions, so XPath 3 functions such as unparsed-text() or doc() can read arbitrary local files (e.g. /etc/passwd) into the watch output."
+   },
+   {
+    "cls": "xxe",
+    "at": "changedetectionio.html_tools.xpath1_filter",
+    "line": 250,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "For RSS content, the document is parsed with etree.XMLParser(strip_cdata=False), which does not set resolve_entities=False or no_network. A remote page the watcher fetches could declare external entities that are expanded into the filtered output, depending on lxml version defaults. That could expose local files or trigger server-side requests."
+   }
+  ],
+  "proposals": [
+   [
+    "sink_api",
+    [
+     "elementpath.select",
+     1,
+     "path"
+    ],
+    "global",
+    0.6,
+    "A user-supplied include filter is run through elementpath's XPath3Parser with no function restrictions, so XPath 3 functions such as unparsed-text() or doc() can read arbitrary local files (e.g. /etc/passwd) into the watch output."
+   ],
+   [
+    "sink_api",
+    [
+     "html.fromstring",
+     0,
+     "xxe"
+    ],
+    "global",
+    0.6,
+    "For RSS content, the document is parsed with etree.XMLParser(strip_cdata=False), which does not set resolve_entities=False or no_network. A remote page the watcher fetches could declare external entities that are expanded into the filtered output, depending on lxml version defaults. That could expos"
+   ]
+  ]
+ },
+ "CVE-2021-41146-vul": {
+  "cls": "cmdi",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 14,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.292,
+  "minutes": 1.1,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2021-41146-fix": {
+  "cls": "cmdi",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 14,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.2,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2026-6664-vul": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 8,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.482,
+  "minutes": 11.1,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2026-6664-fix": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 8,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 10.0,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-56005-vul": {
+  "cls": "deser",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 19,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.425,
+  "minutes": 2.1,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-56005-fix": {
+  "cls": "deser",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 18,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 1.0,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-69872-vul": {
+  "cls": "deser",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 36,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.607,
+  "minutes": 8.0,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2025-69872-fix": {
+  "cls": "deser",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 36,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 6.4,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2018-10895-vul": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 18,
+  "review_issues": 0,
+  "reads": 28,
+  "cached": 2,
+  "target_picked": false,
+  "usd": 0.298,
+  "minutes": 0.9,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2018-10895-fix": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 18,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.2,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-40348-vul": {
+  "cls": "path",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 55,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.422,
+  "minutes": 11.3,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-40348-fix": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 54,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 10.5,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2021-45452-vul": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 38,
+  "review_issues": 0,
+  "reads": 1,
+  "cached": 29,
+  "target_picked": false,
+  "usd": 0.018,
+  "minutes": 1.2,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2021-45452-fix": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 1.2,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-39877-vul": {
+  "cls": "code",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 20,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.39,
+  "minutes": 1.7,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-39877-fix": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 19,
+  "review_issues": 0,
+  "reads": 3,
+  "cached": 27,
+  "target_picked": false,
+  "usd": 0.061,
+  "minutes": 1.0,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-41656-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 26,
+  "review_issues": 0,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.394,
+  "minutes": 3.5,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-41656-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 26,
+  "review_issues": 0,
+  "reads": 8,
+  "cached": 22,
+  "target_picked": false,
+  "usd": 0.133,
+  "minutes": 3.0,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2024-31462-vul": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 18,
+  "review_issues": 2,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.429,
+  "minutes": 1.5,
+  "issues": [
+   {
+    "cls": "ssrf",
+    "at": "modules.api.api.verify_url",
+    "line": 66,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "verify_url resolves the hostname only once, at check time. The later requests.get call in decode_base64_to_image resolves it again and follows HTTP redirects, so DNS rebinding or a redirect from a global host lets an attacker reach internal or loopback addresses."
+   },
+   {
+    "cls": "path",
+    "at": "modules.extras.run_modelmerger",
+    "line": 317,
+    "kind": "flow",
+    "confidence": 0.8,
+    "reason": "User-supplied custom_name and checkpoint_format are joined to ckpt_dir with no sanitization, so '../' sequences or absolute paths let a request write the merged model file anywhere on disk."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "modules.api.api.verify_url"
+    ],
+    "repo",
+    0.6,
+    "verify_url resolves the hostname only once, at check time. The later requests.get call in decode_base64_to_image resolves it again and follows HTTP redirects, so DNS rebinding or a redirect from a global host lets an attacker reach internal or loopback addresses."
+   ],
+   [
+    "sink_api",
+    [
+     "torch.save",
+     1,
+     "path"
+    ],
+    "global",
+    0.8,
+    "User-supplied custom_name and checkpoint_format are joined to ckpt_dir with no sanitization, so '../' sequences or absolute paths let a request write the merged model file anywhere on disk."
+   ]
+  ]
+ },
+ "CVE-2024-31462-fix": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 13,
+  "review_issues": 2,
+  "reads": 23,
+  "cached": 7,
+  "target_picked": false,
+  "usd": 0.315,
+  "minutes": 1.1,
+  "issues": [
+   {
+    "cls": "ssrf",
+    "at": "modules.api.api.verify_url",
+    "line": 66,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "verify_url resolves the hostname only once, at check time. The later requests.get call in decode_base64_to_image resolves it again and follows HTTP redirects, so DNS rebinding or a redirect from a global host lets an attacker reach internal or loopback addresses."
+   },
+   {
+    "cls": "path",
+    "at": "modules.extras.run_modelmerger",
+    "line": 317,
+    "kind": "flow",
+    "confidence": 0.8,
+    "reason": "User-supplied custom_name and checkpoint_format are joined to ckpt_dir with no sanitization, so '../' sequences or absolute paths let a request write the merged model file anywhere on disk."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "modules.api.api.verify_url"
+    ],
+    "repo",
+    0.6,
+    "verify_url resolves the hostname only once, at check time. The later requests.get call in decode_base64_to_image resolves it again and follows HTTP redirects, so DNS rebinding or a redirect from a global host lets an attacker reach internal or loopback addresses."
+   ],
+   [
+    "sink_api",
+    [
+     "torch.save",
+     1,
+     "path"
+    ],
+    "global",
+    0.8,
+    "User-supplied custom_name and checkpoint_format are joined to ckpt_dir with no sanitization, so '../' sequences or absolute paths let a request write the merged model file anywhere on disk."
+   ]
+  ]
+ },
+ "CVE-2023-42819-vul": {
+  "cls": "path",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 21,
+  "review_issues": 2,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.287,
+  "minutes": 1.3,
+  "issues": [
+   {
+    "cls": "code",
+    "at": "apps.ops.models.playbook.Playbook.search_keywords",
+    "line": 63,
+    "kind": "validator_bypass",
+    "confidence": 0.75,
+    "reason": "The dangerous-keyword blocklist only does literal substring matching on single lines of files ending in lowercase .yml/.yaml. It can be bypassed in several ways: case changes (LOCALHOST), YAML flow or multi-line syntax, anchors and aliases, variables or templating (e.g. hosts: \"{{ var }}\"), other extensions (.YML, .json, included task files), or directives not on the list (connection: local). An uploaded playbook can therefore run arbitrary code on the controller/Celery host."
+   },
+   {
+    "cls": "redirect",
+    "at": "apps.users.views.profile.password.UserVerifyPasswordView.form_valid",
+    "line": 42,
+    "kind": "flow",
+    "confidence": 0.8,
+    "reason": "get_success_url returns the unvalidated `next` query parameter (or the Referer header), and form_valid passes it straight to redirect(), so a crafted link can send the user to an attacker-controlled site after password verification."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "apps.ops.models.playbook.Playbook.check_dangerous_keywords"
+    ],
+    "repo",
+    0.75,
+    "The dangerous-keyword blocklist only does literal substring matching on single lines of files ending in lowercase .yml/.yaml. It can be bypassed in several ways: case changes (LOCALHOST), YAML flow or multi-line syntax, anchors and aliases, variables or templating (e.g. hosts: \"{{ var }}\"), other ex"
+   ],
+   [
+    "sink_api",
+    [
+     "django.shortcuts.redirect",
+     0,
+     "redirect"
+    ],
+    "global",
+    0.8,
+    "get_success_url returns the unvalidated `next` query parameter (or the Referer header), and form_valid passes it straight to redirect(), so a crafted link can send the user to an attacker-controlled site after password verification."
+   ]
+  ]
+ },
+ "CVE-2023-42819-fix": {
+  "cls": "path",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 21,
+  "review_issues": 2,
+  "reads": 3,
+  "cached": 27,
+  "target_picked": false,
+  "usd": 0.049,
+  "minutes": 0.4,
+  "issues": [
+   {
+    "cls": "code",
+    "at": "apps.ops.models.playbook.Playbook.search_keywords",
+    "line": 63,
+    "kind": "validator_bypass",
+    "confidence": 0.75,
+    "reason": "The dangerous-keyword blocklist only does literal substring matching on single lines of files ending in lowercase .yml/.yaml. It can be bypassed in several ways: case changes (LOCALHOST), YAML flow or multi-line syntax, anchors and aliases, variables or templating (e.g. hosts: \"{{ var }}\"), other extensions (.YML, .json, included task files), or directives not on the list (connection: local). An uploaded playbook can therefore run arbitrary code on the controller/Celery host."
+   },
+   {
+    "cls": "redirect",
+    "at": "apps.users.views.profile.password.UserVerifyPasswordView.form_valid",
+    "line": 42,
+    "kind": "flow",
+    "confidence": 0.8,
+    "reason": "get_success_url returns the unvalidated `next` query parameter (or the Referer header), and form_valid passes it straight to redirect(), so a crafted link can send the user to an attacker-controlled site after password verification."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "apps.ops.models.playbook.Playbook.check_dangerous_keywords"
+    ],
+    "repo",
+    0.75,
+    "The dangerous-keyword blocklist only does literal substring matching on single lines of files ending in lowercase .yml/.yaml. It can be bypassed in several ways: case changes (LOCALHOST), YAML flow or multi-line syntax, anchors and aliases, variables or templating (e.g. hosts: \"{{ var }}\"), other ex"
+   ],
+   [
+    "sink_api",
+    [
+     "django.shortcuts.redirect",
+     0,
+     "redirect"
+    ],
+    "global",
+    0.8,
+    "get_success_url returns the unvalidated `next` query parameter (or the Referer header), and form_valid passes it straight to redirect(), so a crafted link can send the user to an attacker-controlled site after password verification."
+   ]
+  ]
+ },
+ "CVE-2024-41675-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 14,
+  "review_issues": 1,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.355,
+  "minutes": 1.4,
+  "issues": [
+   {
+    "cls": "xss",
+    "at": "ckan.lib.helpers.sanitize_url",
+    "line": 1401,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "The URL scheme is never restricted to http/https and an empty netloc passes the host regex, so a value like `javascript:alert%281%29` survives sanitization; when placed in an <a href> as the docstring intends, the browser percent-decodes it and runs the script."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "ckan.lib.helpers.sanitize_url"
+    ],
+    "repo",
+    0.6,
+    "The URL scheme is never restricted to http/https and an empty netloc passes the host regex, so a value like `javascript:alert%281%29` survives sanitization; when placed in an <a href> as the docstring intends, the browser percent-decodes it and runs the script."
+   ]
+  ]
+ },
+ "CVE-2024-41675-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 14,
+  "review_issues": 1,
+  "reads": 1,
+  "cached": 29,
+  "target_picked": false,
+  "usd": 0.015,
+  "minutes": 0.3,
+  "issues": [
+   {
+    "cls": "xss",
+    "at": "ckan.lib.helpers.sanitize_url",
+    "line": 1401,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "The URL scheme is never restricted to http/https and an empty netloc passes the host regex, so a value like `javascript:alert%281%29` survives sanitization; when placed in an <a href> as the docstring intends, the browser percent-decodes it and runs the script."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "ckan.lib.helpers.sanitize_url"
+    ],
+    "repo",
+    0.6,
+    "The URL scheme is never restricted to http/https and an empty netloc passes the host regex, so a value like `javascript:alert%281%29` survives sanitization; when placed in an <a href> as the docstring intends, the browser percent-decodes it and runs the script."
+   ]
+  ]
+ },
+ "CVE-2021-25283-vul": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 3,
+  "reads": 28,
+  "cached": 2,
+  "target_picked": false,
+  "usd": 0.524,
+  "minutes": 8.2,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "salt.ext.tornado.web.StaticFileHandler.validate_absolute_path",
+    "line": 2547,
+    "kind": "flow",
+    "confidence": 0.7,
+    "reason": "When the requested path resolves to a directory and lacks a trailing slash, the handler redirects to `self.request.path + \"/\"` without rejecting paths that begin with `//`, so a request like `//evil.com/..` yields a protocol-relative `Location` header pointing to an attacker's host (CVE-2023-28370)."
+   },
+   {
+    "cls": "cmdi",
+    "at": "salt.modules.npm.cache_clean",
+    "line": 365,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The caller-supplied `path` argument is space-joined into a command string and run with `python_shell=True`, so shell metacharacters in `path` (e.g. `; rm -rf /`) execute arbitrary commands."
+   },
+   {
+    "cls": "code",
+    "at": "salt.modules.rabbitmq.check_password",
+    "line": 572,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "For RabbitMQ versions below 3.5.7, name and password are placed in an Erlang expression run via `rabbitmqctl eval`, and the only escaping is replacing `\"` with `\\\"`; backslashes are left alone, so an input such as `\\\"` turns into `\\\\\"`, which closes the binary string and lets arbitrary Erlang code run."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "salt.modules.rabbitmq.check_password"
+    ],
+    "repo",
+    0.6,
+    "For RabbitMQ versions below 3.5.7, name and password are placed in an Erlang expression run via `rabbitmqctl eval`, and the only escaping is replacing `\"` with `\\\"`; backslashes are left alone, so an input such as `\\\"` turns into `\\\\\"`, which closes the binary string and lets arbitrary Erlang code r"
+   ]
+  ]
+ },
+ "CVE-2021-25283-fix": {
+  "cls": "code",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 34,
+  "review_issues": 3,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 6.9,
+  "issues": [
+   {
+    "cls": "redirect",
+    "at": "salt.ext.tornado.web.StaticFileHandler.validate_absolute_path",
+    "line": 2547,
+    "kind": "flow",
+    "confidence": 0.7,
+    "reason": "When the requested path resolves to a directory and lacks a trailing slash, the handler redirects to `self.request.path + \"/\"` without rejecting paths that begin with `//`, so a request like `//evil.com/..` yields a protocol-relative `Location` header pointing to an attacker's host (CVE-2023-28370)."
+   },
+   {
+    "cls": "cmdi",
+    "at": "salt.modules.npm.cache_clean",
+    "line": 365,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The caller-supplied `path` argument is space-joined into a command string and run with `python_shell=True`, so shell metacharacters in `path` (e.g. `; rm -rf /`) execute arbitrary commands."
+   },
+   {
+    "cls": "code",
+    "at": "salt.modules.rabbitmq.check_password",
+    "line": 572,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "For RabbitMQ versions below 3.5.7, name and password are placed in an Erlang expression run via `rabbitmqctl eval`, and the only escaping is replacing `\"` with `\\\"`; backslashes are left alone, so an input such as `\\\"` turns into `\\\\\"`, which closes the binary string and lets arbitrary Erlang code run."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "salt.modules.rabbitmq.check_password"
+    ],
+    "repo",
+    0.6,
+    "For RabbitMQ versions below 3.5.7, name and password are placed in an Erlang expression run via `rabbitmqctl eval`, and the only escaping is replacing `\"` with `\\\"`; backslashes are left alone, so an input such as `\\\"` turns into `\\\\\"`, which closes the binary string and lets arbitrary Erlang code r"
+   ]
+  ]
+ },
+ "CVE-2023-41040-vul": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 1,
+  "review_issues": 5,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.756,
+  "minutes": 2.9,
+  "issues": [
+   {
+    "cls": "cmdi",
+    "at": "git.cmd.Git.check_unsafe_options",
+    "line": 496,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "The blocklist only matches exact prefixes or bare names, so git's accepted abbreviated long options (e.g. `--upload-pa=cmd`, `--conf=core.sshCommand=...`) and underscore kwarg names (`upload_pack`, later dashified) get past the check and lead to arbitrary command execution in fetch/pull/push/clone."
+   },
+   {
+    "cls": "path",
+    "at": "git.objects.submodule.base.Submodule.move",
+    "line": 904,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "The submodule path, which can come from an attacker-controlled .gitmodules during RootModule.update, is joined to the working tree without rejecting '../' segments. The submodule checkout can therefore be moved (and its .git file written) to arbitrary locations outside the repository."
+   },
+   {
+    "cls": "path",
+    "at": "git.refs.symbolic.SymbolicReference._create",
+    "line": 564,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The reference path supplied by the caller is joined onto the git dir without any ref-name validation, so names containing '../' (or absolute paths) can make it open files outside the repository."
+   },
+   {
+    "cls": "path",
+    "at": "git.refs.symbolic.SymbolicReference.set_reference",
+    "line": 369,
+    "kind": "flow",
+    "confidence": 0.6,
+    "reason": "The unvalidated traversal ref path becomes ref.abspath, and set_reference creates directories and writes the ref content there, allowing arbitrary file write outside .git."
+   },
+   {
+    "cls": "path",
+    "at": "git.refs.symbolic.SymbolicReference.delete",
+    "line": 489,
+    "kind": "flow",
+    "confidence": 0.7,
+    "reason": "The caller-supplied ref path goes through to_full_path, which does not reject '..' segments or absolute paths, and is then joined with repo.common_dir and passed to os.remove, so a traversal path can delete arbitrary files."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "git.cmd.Git.check_unsafe_options"
+    ],
+    "repo",
+    0.6,
+    "The blocklist only matches exact prefixes or bare names, so git's accepted abbreviated long options (e.g. `--upload-pa=cmd`, `--conf=core.sshCommand=...`) and underscore kwarg names (`upload_pack`, later dashified) get past the check and lead to arbitrary command execution in fetch/pull/push/clone."
+   ],
+   [
+    "not_sanitizer",
+    [
+     "git.index.base.IndexFile._to_relative_path"
+    ],
+    "repo",
+    0.6,
+    "The submodule path, which can come from an attacker-controlled .gitmodules during RootModule.update, is joined to the working tree without rejecting '../' segments. The submodule checkout can therefore be moved (and its .git file written) to arbitrary locations outside the repository."
+   ],
+   [
+    "sink_api",
+    [
+     "open",
+     0,
+     "path"
+    ],
+    "global",
+    0.6,
+    "The reference path supplied by the caller is joined onto the git dir without any ref-name validation, so names containing '../' (or absolute paths) can make it open files outside the repository."
+   ],
+   [
+    "sink_api",
+    [
+     "git.util.LockedFD",
+     0,
+     "path"
+    ],
+    "global",
+    0.6,
+    "The unvalidated traversal ref path becomes ref.abspath, and set_reference creates directories and writes the ref content there, allowing arbitrary file write outside .git."
+   ],
+   [
+    "sink_api",
+    [
+     "os.remove",
+     0,
+     "path"
+    ],
+    "global",
+    0.7,
+    "The caller-supplied ref path goes through to_full_path, which does not reject '..' segments or absolute paths, and is then joined with repo.common_dir and passed to os.remove, so a traversal path can delete arbitrary files."
+   ]
+  ]
+ },
+ "CVE-2023-41040-fix": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 1,
+  "review_issues": 4,
+  "reads": 4,
+  "cached": 26,
+  "target_picked": false,
+  "usd": 0.104,
+  "minutes": 0.5,
+  "issues": [
+   {
+    "cls": "cmdi",
+    "at": "git.cmd.Git.check_unsafe_options",
+    "line": 496,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "The blocklist only matches exact prefixes or bare names, so git's accepted abbreviated long options (e.g. `--upload-pa=cmd`, `--conf=core.sshCommand=...`) and underscore kwarg names (`upload_pack`, later dashified) get past the check and lead to arbitrary command execution in fetch/pull/push/clone."
+   },
+   {
+    "cls": "path",
+    "at": "git.objects.submodule.base.Submodule.move",
+    "line": 904,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "The submodule path, which can come from an attacker-controlled .gitmodules during RootModule.update, is joined to the working tree without rejecting '../' segments. The submodule checkout can therefore be moved (and its .git file written) to arbitrary locations outside the repository."
+   },
+   {
+    "cls": "path",
+    "at": "git.refs.symbolic.SymbolicReference._create",
+    "line": 553,
+    "kind": "flow",
+    "confidence": 0.7,
+    "reason": "The caller-supplied reference path is joined onto the git dir without rejecting '..' or absolute components, so a name like '../../../tmp/x' makes set_reference write the ref file (and _create read it) outside the repository."
+   },
+   {
+    "cls": "path",
+    "at": "git.refs.symbolic.SymbolicReference.delete",
+    "line": 491,
+    "kind": "flow",
+    "confidence": 0.75,
+    "reason": "The caller-supplied reference path is joined with repo.common_dir without any ref-name validation, so a value with '../' segments makes os.remove delete arbitrary files outside the repository."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "git.cmd.Git.check_unsafe_options"
+    ],
+    "repo",
+    0.6,
+    "The blocklist only matches exact prefixes or bare names, so git's accepted abbreviated long options (e.g. `--upload-pa=cmd`, `--conf=core.sshCommand=...`) and underscore kwarg names (`upload_pack`, later dashified) get past the check and lead to arbitrary command execution in fetch/pull/push/clone."
+   ],
+   [
+    "not_sanitizer",
+    [
+     "git.index.base.IndexFile._to_relative_path"
+    ],
+    "repo",
+    0.6,
+    "The submodule path, which can come from an attacker-controlled .gitmodules during RootModule.update, is joined to the working tree without rejecting '../' segments. The submodule checkout can therefore be moved (and its .git file written) to arbitrary locations outside the repository."
+   ],
+   [
+    "sink_api",
+    [
+     "os.remove",
+     0,
+     "path"
+    ],
+    "global",
+    0.75,
+    "The caller-supplied reference path is joined with repo.common_dir without any ref-name validation, so a value with '../' segments makes os.remove delete arbitrary files outside the repository."
+   ]
+  ]
+ },
+ "CVE-2021-25963-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 5,
+  "review_issues": 1,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.297,
+  "minutes": 1.5,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "shuup.addons.admin_module.views.upload.AddonUploadConfirmView.get_addon_path",
+    "line": 76,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "Only the filename is passed through basename; the GET 'token' is joined unchecked, so an absolute path or '../' sequences can point at any file the process user owns, which form_valid then installs with pip and deletes with os.unlink."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "shuup.addons.admin_module.views.upload.AddonUploadConfirmView.get_addon_path"
+    ],
+    "repo",
+    0.6,
+    "Only the filename is passed through basename; the GET 'token' is joined unchecked, so an absolute path or '../' sequences can point at any file the process user owns, which form_valid then installs with pip and deletes with os.unlink."
+   ]
+  ]
+ },
+ "CVE-2021-25963-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 5,
+  "review_issues": 1,
+  "reads": 6,
+  "cached": 24,
+  "target_picked": false,
+  "usd": 0.069,
+  "minutes": 0.5,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "shuup.addons.admin_module.views.upload.AddonUploadConfirmView.get_addon_path",
+    "line": 76,
+    "kind": "validator_bypass",
+    "confidence": 0.6,
+    "reason": "Only the filename is passed through basename; the GET 'token' is joined unchecked, so an absolute path or '../' sequences can point at any file the process user owns, which form_valid then installs with pip and deletes with os.unlink."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "shuup.addons.admin_module.views.upload.AddonUploadConfirmView.get_addon_path"
+    ],
+    "repo",
+    0.6,
+    "Only the filename is passed through basename; the GET 'token' is joined unchecked, so an absolute path or '../' sequences can point at any file the process user owns, which form_valid then installs with pip and deletes with os.unlink."
+   ]
+  ]
+ },
+ "CVE-2024-27132-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 35,
+  "review_issues": 1,
+  "reads": 30,
+  "cached": 0,
+  "target_picked": false,
+  "usd": 0.414,
+  "minutes": 1.8,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "mlflow.server.handlers._validate_non_local_source_contains_relative_paths",
+    "line": 1575,
+    "kind": "validator_bypass",
+    "confidence": 0.7,
+    "reason": "The traversal check only looks at the parsed URL path, so `..` segments placed in the query, fragment or params (e.g. `mlflow-artifacts://host/x#/../../../etc` or `?/../..`) pass validation. Downstream artifact handling can still use these segments to read files outside the artifact root."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "mlflow.server.handlers._validate_non_local_source_contains_relative_paths"
+    ],
+    "repo",
+    0.7,
+    "The traversal check only looks at the parsed URL path, so `..` segments placed in the query, fragment or params (e.g. `mlflow-artifacts://host/x#/../../../etc` or `?/../..`) pass validation. Downstream artifact handling can still use these segments to read files outside the artifact root."
+   ]
+  ]
+ },
+ "CVE-2024-27132-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 35,
+  "review_issues": 1,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.6,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "mlflow.server.handlers._validate_non_local_source_contains_relative_paths",
+    "line": 1575,
+    "kind": "validator_bypass",
+    "confidence": 0.7,
+    "reason": "The traversal check only looks at the parsed URL path, so `..` segments placed in the query, fragment or params (e.g. `mlflow-artifacts://host/x#/../../../etc` or `?/../..`) pass validation. Downstream artifact handling can still use these segments to read files outside the artifact root."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "mlflow.server.handlers._validate_non_local_source_contains_relative_paths"
+    ],
+    "repo",
+    0.7,
+    "The traversal check only looks at the parsed URL path, so `..` segments placed in the query, fragment or params (e.g. `mlflow-artifacts://host/x#/../../../etc` or `?/../..`) pass validation. Downstream artifact handling can still use these segments to read files outside the artifact root."
+   ]
+  ]
+ },
+ "CVE-2024-27133-vul": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 35,
+  "review_issues": 1,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.6,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "mlflow.server.handlers._validate_non_local_source_contains_relative_paths",
+    "line": 1575,
+    "kind": "validator_bypass",
+    "confidence": 0.7,
+    "reason": "The traversal check only looks at the parsed URL path, so `..` segments placed in the query, fragment or params (e.g. `mlflow-artifacts://host/x#/../../../etc` or `?/../..`) pass validation. Downstream artifact handling can still use these segments to read files outside the artifact root."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "mlflow.server.handlers._validate_non_local_source_contains_relative_paths"
+    ],
+    "repo",
+    0.7,
+    "The traversal check only looks at the parsed URL path, so `..` segments placed in the query, fragment or params (e.g. `mlflow-artifacts://host/x#/../../../etc` or `?/../..`) pass validation. Downstream artifact handling can still use these segments to read files outside the artifact root."
+   ]
+  ]
+ },
+ "CVE-2024-27133-fix": {
+  "cls": "xss",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 35,
+  "review_issues": 1,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 0.6,
+  "issues": [
+   {
+    "cls": "path",
+    "at": "mlflow.server.handlers._validate_non_local_source_contains_relative_paths",
+    "line": 1575,
+    "kind": "validator_bypass",
+    "confidence": 0.7,
+    "reason": "The traversal check only looks at the parsed URL path, so `..` segments placed in the query, fragment or params (e.g. `mlflow-artifacts://host/x#/../../../etc` or `?/../..`) pass validation. Downstream artifact handling can still use these segments to read files outside the artifact root."
+   }
+  ],
+  "proposals": [
+   [
+    "not_sanitizer",
+    [
+     "mlflow.server.handlers._validate_non_local_source_contains_relative_paths"
+    ],
+    "repo",
+    0.7,
+    "The traversal check only looks at the parsed URL path, so `..` segments placed in the query, fragment or params (e.g. `mlflow-artifacts://host/x#/../../../etc` or `?/../..`) pass validation. Downstream artifact handling can still use these segments to read files outside the artifact root."
+   ]
+  ]
+ },
+ "CVE-2023-50265-vul": {
+  "cls": "path",
+  "engine": false,
+  "review": false,
+  "flagged": false,
+  "engine_reported": 53,
+  "review_issues": 0,
+  "reads": 23,
+  "cached": 7,
+  "target_picked": false,
+  "usd": 0.367,
+  "minutes": 11.7,
+  "issues": [],
+  "proposals": []
+ },
+ "CVE-2023-50265-fix": {
+  "cls": "path",
+  "engine": true,
+  "review": false,
+  "flagged": true,
+  "engine_reported": 55,
+  "review_issues": 0,
+  "reads": 0,
+  "cached": 30,
+  "target_picked": false,
+  "usd": 0.0,
+  "minutes": 11.0,
+  "issues": [],
+  "proposals": []
+ }
+}
